@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SkillLink – SaaS Learning Platform UI (Next.js + Tailwind)
 
-## Getting Started
+SkillLink is a modern SaaS-style learning platform built with [Next.js 14](https://nextjs.org/) and [Tailwind CSS](https://tailwindcss.com/). It features distinct dashboards for learners and instructors, a polished landing page, and reusable UI components—making it a great starting point for an educational or productivity SaaS product.
 
-First, run the development server:
+---
+
+## ✨ Features
+
+- ✅ **Landing Page** with responsive layout
+- 👩‍🏫 **Instructor Dashboard**: Course management & student activity
+- 🎓 **Learner Dashboard**: Courses, project progress & credentials
+- 🧩 **Reusable UI Components**: Navbar, Footer, Cards, Avatars, Progress Bars
+- 🌙 **Dark mode support** (via `ModeToggle`)
+- 💨 Built with **Tailwind CSS** for rapid UI development
+- 🔐 Auth-ready layout with placeholder buttons for Login/Signup
+
+---
+
+## 🚀 Getting Started
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run the development server:
 
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🗂️ Project Structure
 
-## Learn More
+```
+/app
+  /dashboard
+    page.tsx        → Learner Dashboard
+  /instructor
+    page.tsx        → Instructor Dashboard
+  /page.tsx         → Landing Page
 
-To learn more about Next.js, take a look at the following resources:
+/components
+  /layout
+    Navbar.tsx      → Navigation bar
+    Footer.tsx      → Footer
+  /ui
+    button.tsx, card.tsx, progress.tsx, avatar.tsx, etc.
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📦 Tech Stack
 
-## Deploy on Vercel
+- [Next.js 14 App Router](https://nextjs.org/docs/app)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [ShadCN UI](https://ui.shadcn.com/) components
+- [Lucide Icons](https://lucide.dev/) (optional if used)
+- Fully typed with **TypeScript**
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🧪 Future Improvements
+
+- 🔐 Authentication & role-based routing (e.g., Clerk/Auth.js)
+- 📈 Analytics Dashboard for instructors
+- 🧾 Certificate generator & verification
+- 🧠 Course authoring flow
+
+---
+
+## 📄 License
+
+MIT – feel free to use, customize, or extend this starter.
+
+---
+
+## 🌍 Deployment
+
+This app is optimized for deployment on [Vercel](https://vercel.com). You can get started by clicking below:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
+
+---
+
+## 👋 Stay in Touch
+
+If you're building something with this or want to collab, feel free to reach out!
