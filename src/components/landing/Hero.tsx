@@ -11,7 +11,7 @@ export const Hero = () => {
           Build Skills. Prove Mastery. Get Hired.
         </h1>
         <p className="text-xl text-muted-foreground mb-8">
-          Micro-courses + real-world projects = career-ready skills.
+        Build Skills That Get You Hired
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4">
           <Button size="lg" className="gap-2">
