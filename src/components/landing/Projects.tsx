@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import Image from "next/image";
 
 export const Projects = () => {
   return (
@@ -13,8 +14,17 @@ export const Projects = () => {
           </p>
         </div>
         <Card className="p-8 bg-secondary/50">
-          <div className="aspect-video rounded-lg bg-secondary mb-4" />
-          <h3 className="font-semibold mb-2">E-Commerce Platform</h3>
+          <div className="relative aspect-video w-full mb-4">
+            <Image
+              src="/example_homepage.png"
+              alt="E-Commerce Platform preview"
+              layout="intrinsic"  // Or you can try layout="responsive" if you need it to be responsive
+              width={800}         // Width for intrinsic layout
+              height={450}        // Height for intrinsic layout
+              className="rounded-lg"
+            />
+          </div>
+          <h3 className="font-semibold mb-2">Dashboard Platform</h3>
           <p className="text-sm text-muted-foreground">
             Built with React, Node.js, and PostgreSQL
           </p>

@@ -1,8 +1,11 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export const Credentials = () => {
+  const name = "John Lawrence";
+
   return (
     <section className="container py-20 border-t">
       <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -10,9 +13,14 @@ export const Credentials = () => {
           <div className="flex justify-between items-start mb-8">
             <div>
               <h4 className="font-semibold">Advanced React Development</h4>
-              <p className="text-sm text-muted-foreground">Issued to John Doe</p>
+              <p className="text-sm text-muted-foreground">Issued to {name}</p>
             </div>
-            <div className="h-12 w-12 rounded-full bg-secondary" />
+            <Avatar className="h-12 w-12">
+              <AvatarImage src={`https://i.pravatar.cc/150?u=${name}`} alt={name} />
+              <AvatarFallback>
+                {name.split(" ").map(n => n[0]).join("")}
+              </AvatarFallback>
+            </Avatar>
           </div>
           <div className="text-xs font-mono text-muted-foreground break-all">
             hash: 0x7d8f3e2a1c5b9d6f4...

@@ -1,14 +1,16 @@
 "use client";
 
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
 const testimonials = [
   {
     quote: "SkillLink helped me transition from junior to senior developer in just 6 months.",
-    author: "Alex Thompson",
+    author: "Alini Grace",
     role: "Senior Frontend Developer",
   },
   {
     quote: "The project-based approach made all the difference in my learning journey.",
-    author: "Maria Garcia",
+    author: "Mark Batterby",
     role: "Full Stack Engineer",
   },
 ];
@@ -22,7 +24,15 @@ export const Testimonials = () => {
           <div key={i} className="space-y-4">
             <p className="text-lg font-medium">&quot;{testimonial.quote}&quot;</p>
             <div className="flex items-center">
-              <div className="w-10 h-10 rounded-full bg-secondary" />
+              <Avatar className="w-10 h-10">
+                <AvatarImage
+                  src={`https://i.pravatar.cc/150?u=${testimonial.author}`}
+                  alt={testimonial.author}
+                />
+                <AvatarFallback>
+                  {testimonial.author.split(" ").map((n) => n[0]).join("")}
+                </AvatarFallback>
+              </Avatar>
               <div className="ml-3">
                 <p className="font-medium">{testimonial.author}</p>
                 <p className="text-sm text-muted-foreground">{testimonial.role}</p>
