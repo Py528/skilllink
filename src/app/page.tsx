@@ -1,9 +1,9 @@
 // import { CourseView } from "@/app/course/course-view";
-import LandingPage from "./landing/page";
+import Landing from "./landing/landing";
 export default function Home() {
   return (
     <div>
-      <LandingPage />
+      <Landing/>
       {/* <CourseView /> */}
     </div>
   );
