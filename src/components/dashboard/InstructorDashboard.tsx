@@ -7,6 +7,42 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
+const courses = [
+  {
+    title: "React Bootcamp",
+    students: 12,
+    tags: ["Beginner", "Web Dev"],
+  },
+  {
+    title: "JavaScript Mastery",
+    students: 35,
+    tags: ["Intermediate", "Frontend"],
+  },
+  {
+    title: "Advanced TypeScript",
+    students: 8,
+    tags: ["Advanced", "Backend"],
+  },
+];
+
+const activityLogs = [
+  {
+    icon: "🔔",
+    message: "Alex submitted Project 2 for React Bootcamp",
+    time: "2h ago",
+  },
+  {
+    icon: "🎓",
+    message: "Mia earned a certificate in Frontend Basics",
+    time: "5h ago",
+  },
+  {
+    icon: "📬",
+    message: "John messaged you regarding JavaScript Mastery",
+    time: "1 day ago",
+  },
+];
+
 export default function InstructorDashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -21,13 +57,15 @@ export default function InstructorDashboard() {
             <Card className="rounded-xl shadow-sm">
               <CardContent className="p-4">
                 <div className="text-sm text-muted-foreground">Active Courses</div>
-                <div className="text-2xl font-semibold mt-1">4</div>
+                <div className="text-2xl font-semibold mt-1">{courses.length}</div>
               </CardContent>
             </Card>
             <Card className="rounded-xl shadow-sm">
               <CardContent className="p-4">
                 <div className="text-sm text-muted-foreground">Enrolled Students</div>
-                <div className="text-2xl font-semibold mt-1">128</div>
+                <div className="text-2xl font-semibold mt-1">
+                  {courses.reduce((sum, c) => sum + c.students, 0)}
+                </div>
               </CardContent>
             </Card>
             <Card className="rounded-xl shadow-sm">
@@ -47,16 +85,30 @@ export default function InstructorDashboard() {
               <Button size="sm">+ Create New Course</Button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((_, i) => (
+              {courses.map((course, i) => (
                 <Card key={i} className="rounded-2xl shadow-sm hover:shadow-md transition">
                   <CardContent className="p-4 space-y-3">
-                    <div className="text-md font-semibold">React Bootcamp</div>
-                    <div className="text-sm text-muted-foreground">12 students enrolled</div>
-                    <div className="flex gap-2">
-                      <Badge variant="secondary">Beginner</Badge>
-                      <Badge variant="outline">Web Dev</Badge>
+                    <div className="text-md font-semibold">{course.title}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {course.students} students enrolled
                     </div>
-                    <Button variant="outline" size="sm" className="w-full">View Submissions</Button>
+                    <div className="flex gap-2 flex-wrap">
+                      {course.tags.map((tag, j) => (
+                        <Badge
+                          key={j}
+                          variant={j === 0 ? "secondary" : "outline"}
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                    >
+                      View Submissions
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
@@ -69,18 +121,12 @@ export default function InstructorDashboard() {
           <section className="space-y-4">
             <h2 className="text-lg font-medium">Recent Student Activity</h2>
             <div className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex justify-between">
-                <p>🔔 Alex submitted <strong>Project 2</strong> for React Bootcamp</p>
-                <span className="text-xs text-muted-foreground">2h ago</span>
-              </div>
-              <div className="flex justify-between">
-                <p>🎓 Mia earned a certificate in <strong>Frontend Basics</strong></p>
-                <span className="text-xs text-muted-foreground">5h ago</span>
-              </div>
-              <div className="flex justify-between">
-                <p>📬 John messaged you regarding <strong>JavaScript Mastery</strong></p>
-                <span className="text-xs text-muted-foreground">1 day ago</span>
-              </div>
+              {activityLogs.map((log, i) => (
+                <div key={i} className="flex justify-between">
+                  <p>{log.icon} {log.message}</p>
+                  <span className="text-xs text-muted-foreground">{log.time}</span>
+                </div>
+              ))}
             </div>
           </section>
         </main>
