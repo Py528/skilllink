@@ -4,8 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { Mail, Lock, Github, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { FcGoogle } from "react-icons/fc";
 import { useAuth } from '@/components/auth/useAuth';
-import { validateEmail } from '@/components/auth/authUtils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
+const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+};
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
@@ -13,10 +19,14 @@ export default function LoginForm() {
   const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<{email?: string; password?: string}>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isGithubLoading, setIsGithubLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
+  const [generalError, setGeneralError] = useState('');
   
-  const { login, loginWithGithub } = useAuth();
+  const { login, loginWithGithub, loginWithGoogle } = useAuth();
+
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -27,7 +37,10 @@ export default function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
+
     setErrors({});
+    setGeneralError('');
     
     const newErrors: {email?: string; password?: string} = {};
     
@@ -52,22 +65,44 @@ export default function LoginForm() {
     
     try {
       await login(email, password, rememberMe);
-    } catch (error) {
+      // Navigation is handled by the useAuth hook
+    } catch (error: any) {
       console.error('Login error:', error);
-      setErrors({ email: 'Invalid email or password' });
+      setGeneralError(error.message || 'Invalid email or password. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGithubLogin = async () => {
-    setIsLoading(true);
+    if (isGithubLoading) return;
+    
+    setIsGithubLoading(true);
+    setGeneralError('');
+    
     try {
       await loginWithGithub();
-    } catch (error) {
+      // Redirect is handled by Supabase OAuth flow
+    } catch (error: any) {
       console.error('GitHub login error:', error);
-    } finally {
-      setIsLoading(false);
+      setGeneralError(error.message || 'GitHub login failed. Please try again.');
+      setIsGithubLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    if (isGoogleLoading) return;
+    
+    setIsGoogleLoading(true);
+    setGeneralError('');
+    
+    try {
+      await loginWithGoogle();
+      // Redirect is handled by Supabase OAuth flow
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      setGeneralError(error.message || 'Google login failed. Please try again.');
+      setIsGoogleLoading(false);
     }
   };
 
@@ -86,6 +121,8 @@ export default function LoginForm() {
     initial: { scale: 0, rotate: 0 },
     animate: { scale: 1, rotate: 360, transition: { duration: 0.5 } },
   };
+
+  const isAnyLoading = isLoading || isGithubLoading || isGoogleLoading;
   
   return (
     <div className="relative w-full max-w-md">
@@ -145,6 +182,20 @@ export default function LoginForm() {
           </motion.h1>
           <p className="text-gray-400">Sign in to your account to continue</p>
         </div>
+
+        {generalError && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <Alert variant="destructive" className="bg-red-900/20 border-red-500/50">
+              <AlertDescription className="text-red-300">
+                {generalError}
+              </AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <motion.div 
@@ -162,9 +213,10 @@ export default function LoginForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 onFocus={() => setFocusedField('email')}
                 onBlur={() => setFocusedField(null)}
+                disabled={isAnyLoading}
                 className={`w-full bg-[#111111] border ${
                   errors.email ? 'border-red-500' : focusedField === 'email' ? 'border-[#0CF2A0]' : 'border-gray-700'
-                } rounded-lg py-3 pl-10 pr-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0CF2A0]/30 focus:border-[#0CF2A0] transition-all duration-200`}
+                } rounded-lg py-3 pl-10 pr-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0CF2A0]/30 focus:border-[#0CF2A0] transition-all duration-200 disabled:opacity-50`}
               />
               <motion.div
                 initial={false}
@@ -203,9 +255,10 @@ export default function LoginForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 onFocus={() => setFocusedField('password')}
                 onBlur={() => setFocusedField(null)}
+                disabled={isAnyLoading}
                 className={`w-full bg-[#111111] border ${
                   errors.password ? 'border-red-500' : focusedField === 'password' ? 'border-[#0CF2A0]' : 'border-gray-700'
-                } rounded-lg py-3 pl-10 pr-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0CF2A0]/30 focus:border-[#0CF2A0] transition-all duration-200`}
+                } rounded-lg py-3 pl-10 pr-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0CF2A0]/30 focus:border-[#0CF2A0] transition-all duration-200 disabled:opacity-50`}
               />
               <motion.div
                 initial={false}
@@ -235,7 +288,8 @@ export default function LoginForm() {
                 type="checkbox" 
                 checked={rememberMe}
                 onChange={() => setRememberMe(!rememberMe)}
-                className="form-checkbox h-4 w-4 rounded border-gray-700 bg-[#111111] text-[#0CF2A0] focus:ring-[#0CF2A0]/50"
+                disabled={isAnyLoading}
+                className="form-checkbox h-4 w-4 rounded border-gray-700 bg-[#111111] text-[#0CF2A0] focus:ring-[#0CF2A0]/50 disabled:opacity-50"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               />
@@ -257,10 +311,10 @@ export default function LoginForm() {
           
           <motion.button
             type="submit"
-            disabled={isLoading}
+            disabled={isAnyLoading}
             className="w-full flex items-center justify-center bg-[#0CF2A0] text-[#111111] rounded-lg py-3 font-medium hover:bg-[#0CF2A0]/90 transition-colors duration-200 disabled:opacity-70 relative overflow-hidden group"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: isAnyLoading ? 1 : 1.02 }}
+            whileTap={{ scale: isAnyLoading ? 1 : 0.98 }}
           >
             <motion.div
               className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
@@ -284,20 +338,49 @@ export default function LoginForm() {
             </div>
           </div>
           
-          <motion.button
-            type="button"
-            onClick={handleGithubLogin}
-            disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 bg-[#24292F] text-white rounded-lg py-3 font-medium hover:bg-[#24292F]/90 transition-colors duration-200 disabled:opacity-70 relative overflow-hidden group"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <motion.div
-              className="absolute inset-0 bg-white/10 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
-            />
-            <Github className="h-5 w-5" />
-            <span className="relative z-10">Sign in with GitHub</span>
-          </motion.button>
+          <div className="space-y-3">
+            <motion.button
+              type="button"
+              onClick={handleGithubLogin}
+              disabled={isAnyLoading}
+              className="w-full flex items-center justify-center gap-2 bg-[#24292F] text-white rounded-lg py-3 font-medium hover:bg-[#24292F]/90 transition-colors duration-200 disabled:opacity-70 relative overflow-hidden group"
+              whileHover={{ scale: isAnyLoading ? 1 : 1.02 }}
+              whileTap={{ scale: isAnyLoading ? 1 : 0.98 }}
+            >
+              <motion.div
+                className="absolute inset-0 bg-white/10 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
+              />
+              {isGithubLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Github className="h-5 w-5" />
+              )}
+              <span className="relative z-10">
+                {isGithubLoading ? 'Connecting...' : 'Continue with GitHub'}
+              </span>
+            </motion.button>
+
+            <motion.button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={isAnyLoading}
+              className="w-full flex items-center justify-center gap-2 bg-white text-gray-900 rounded-lg py-3 font-medium hover:bg-gray-50 transition-colors duration-200 disabled:opacity-70 relative overflow-hidden group"
+              whileHover={{ scale: isAnyLoading ? 1 : 1.02 }}
+              whileTap={{ scale: isAnyLoading ? 1 : 0.98 }}
+            >
+              <motion.div
+                className="absolute inset-0 bg-gray-100/50 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
+              />
+              {isGoogleLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-gray-600" />
+              ) : (
+                <FcGoogle className="h-5 w-5" />
+              )}
+              <span className="relative z-10">
+                {isGoogleLoading ? 'Connecting...' : 'Continue with Google'}
+              </span>
+            </motion.button>
+          </div>
         </form>
         
         <div className="mt-8 text-center">

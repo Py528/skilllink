@@ -2,28 +2,33 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from './authUtils';
+import supabase from '@/lib/supabaseClient';
+import { User } from '@supabase/supabase-js';
 
-interface User {
+interface UserProfile {
   id: string;
-  name: string;
   email: string;
+  full_name?: string;
+  user_type: 'instructor' | 'learner';
+  onboarding_completed?: boolean;
 }
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is logged in
+    // Check initial session
     const checkAuth = async () => {
       try {
-        // This would typically be a call to your auth API to check session
-        // For now, we'll just check localStorage
-        const storedUser = localStorage.getItem('skilllink_user');
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          setUser(session.user);
+          // Don't wait for profile fetch, do it in background
+          fetchUserProfile(session.user.id);
         }
       } catch (error) {
         console.error('Auth check error:', error);
@@ -33,92 +38,131 @@ export function useAuth() {
     };
 
     checkAuth();
-  }, []);
 
-  const login = async (email: string, password: string, rememberMe: boolean = false) => {
-    try {
-      // In a real app, this would call your auth API
-      const userData = await signInWithEmailAndPassword(email, password);
-      
-      setUser(userData);
-      
-      // Store user data if remember me is checked
-      if (rememberMe) {
-        localStorage.setItem('skilllink_user', JSON.stringify(userData));
-      } else {
-        // Use sessionStorage if remember me is not checked
-        sessionStorage.setItem('skilllink_user', JSON.stringify(userData));
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          setUser(session.user);
+          // Redirect immediately, fetch profile in background
+          router.push('/dashboard');
+          fetchUserProfile(session.user.id);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setProfile(null);
+          router.push('/');
+        }
       }
-      
-      // Redirect to dashboard
-      router.push('/dashboard');
-      
-      return userData;
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
-  };
+    );
 
-  const register = async (name: string, email: string, password: string) => {
+    return () => subscription.unsubscribe();
+  }, [router]);
+
+  const fetchUserProfile = async (userId: string) => {
     try {
-      // In a real app, this would call your auth API
-      const userData = await createUserWithEmailAndPassword(name, email, password);
-      
-      setUser(userData);
-      
-      // Store user data
-      localStorage.setItem('skilllink_user', JSON.stringify(userData));
-      
-      // Redirect to dashboard
-      router.push('/dashboard');
-      
-      return userData;
+      let { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        // Profile doesn't exist, create one in background
+        const { data: newProfile } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            email: user?.email || '',
+            full_name: user?.user_metadata?.full_name || user?.user_metadata?.name || '',
+            user_type: 'learner',
+            onboarding_completed: false
+          })
+          .select()
+          .single();
+
+        if (newProfile) {
+          profile = newProfile;
+        }
+      }
+
+      if (profile) {
+        setProfile(profile);
+      }
     } catch (error) {
-      console.error('Registration error:', error);
-      throw error;
+      console.error('Error with profile:', error);
+      // Don't block the UI if profile operations fail
     }
   };
 
-  const logout = () => {
-    // Clear user data
-    setUser(null);
-    localStorage.removeItem('skilllink_user');
-    sessionStorage.removeItem('skilllink_user');
-    
-    // Redirect to home
-    router.push('/');
+  const login = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+    return data.user;
+  };
+
+  const register = async (name: string, email: string, password: string, userType: 'instructor' | 'learner' = 'learner') => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name,
+          user_type: userType,
+        }
+      }
+    });
+
+    if (error) throw error;
+    return data.user;
+  };
+
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   };
 
   const loginWithGithub = async () => {
-    try {
-      // In a real app, this would redirect to GitHub OAuth
-      // For demo purposes, we'll just create a mock user
-      const mockGithubUser = {
-        id: 'github-123456',
-        name: 'GitHub User',
-        email: 'github@example.com',
-      };
-      
-      setUser(mockGithubUser);
-      localStorage.setItem('skilllink_user', JSON.stringify(mockGithubUser));
-      
-      // Redirect to dashboard
-      router.push('/dashboard');
-      
-      return mockGithubUser;
-    } catch (error) {
-      console.error('GitHub login error:', error);
-      throw error;
-    }
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`
+      }
+    });
+
+    if (error) throw error;
+    return data;
+  };
+
+  const updateUserType = async (userType: 'instructor' | 'learner') => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ 
+        user_type: userType,
+        onboarding_completed: true 
+      })
+      .eq('id', user.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    setProfile(data);
+    return data;
   };
 
   return {
     user,
+    profile,
     loading,
     login,
     register,
     logout,
-    loginWithGithub
+    loginWithGithub,
+    updateUserType,
   };
 }

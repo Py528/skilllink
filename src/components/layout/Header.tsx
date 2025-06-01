@@ -8,6 +8,7 @@ import { MobileMenu } from "./MobileMenu";
 import { MenuIcon } from "../icons/MenuIcon";
 import { CloseIcon } from "../icons/CloseIcon";
 import { ExternalLinkIcon } from "../icons/ExternalLinkIcon";
+import Link from "next/link";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -107,19 +108,21 @@ export const Header = ({ isScrolled }: HeaderProps) => {
         </div>
 
         <div className="flex items-center flex-shrink-0 space-x-4 lg:space-x-6">
-          <NavLink href="#" className="hidden md:inline-block">
-            Sign in
-          </NavLink>
-
-          <motion.a
-            href="#"
-            className="bg-[#0CF2A0] text-[#111111] px-4 py-[6px] rounded-md text-sm font-semibold hover:bg-opacity-90 transition-colors duration-200 whitespace-nowrap shadow-sm hover:shadow-md"
-            whileHover={{ scale: 1.03, y: -1 }}
-            whileTap={{ scale: 0.97 }}
-            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+          <Link 
+            href="/login" 
+            className="hidden md:inline-block text-gray-300 hover:text-white transition-colors duration-200 text-sm font-medium"
           >
-            Get Started
-          </motion.a>
+            Sign in
+          </Link>
+
+          <motion.div whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}>
+            <Link
+              href="/register"
+              className="bg-[#0CF2A0] text-[#111111] px-4 py-[6px] rounded-md text-sm font-semibold hover:bg-opacity-90 transition-colors duration-200 whitespace-nowrap shadow-sm hover:shadow-md inline-block"
+            >
+              Get Started
+            </Link>
+          </motion.div>
 
           <motion.button
             className="md:hidden text-gray-300 hover:text-white z-50"
