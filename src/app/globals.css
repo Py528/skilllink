@@ -41,10 +41,86 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  
+  /* Custom color palette from first file (unique to first file) */
+  --color-primary-50: var(--color-primary-50);
+  --color-primary-100: var(--color-primary-100);
+  --color-primary-200: var(--color-primary-200);
+  --color-primary-300: var(--color-primary-300);
+  --color-primary-400: var(--color-primary-400);
+  --color-primary-500: var(--color-primary-500);
+  --color-primary-600: var(--color-primary-600);
+  --color-primary-700: var(--color-primary-700);
+  --color-primary-800: var(--color-primary-800);
+  --color-primary-900: var(--color-primary-900);
+  
+  --color-secondary-50: var(--color-secondary-50);
+  --color-secondary-100: var(--color-secondary-100);
+  --color-secondary-200: var(--color-secondary-200);
+  --color-secondary-300: var(--color-secondary-300);
+  --color-secondary-400: var(--color-secondary-400);
+  --color-secondary-500: var(--color-secondary-500);
+  --color-secondary-600: var(--color-secondary-600);
+  --color-secondary-700: var(--color-secondary-700);
+  --color-secondary-800: var(--color-secondary-800);
+  --color-secondary-900: var(--color-secondary-900);
+  
+  --color-accent-50: var(--color-accent-50);
+  --color-accent-100: var(--color-accent-100);
+  --color-accent-200: var(--color-accent-200);
+  --color-accent-300: var(--color-accent-300);
+  --color-accent-400: var(--color-accent-400);
+  --color-accent-500: var(--color-accent-500);
+  --color-accent-600: var(--color-accent-600);
+  --color-accent-700: var(--color-accent-700);
+  --color-accent-800: var(--color-accent-800);
+  --color-accent-900: var(--color-accent-900);
+  
+  --color-success-50: var(--color-success-50);
+  --color-success-100: var(--color-success-100);
+  --color-success-200: var(--color-success-200);
+  --color-success-300: var(--color-success-300);
+  --color-success-400: var(--color-success-400);
+  --color-success-500: var(--color-success-500);
+  --color-success-600: var(--color-success-600);
+  --color-success-700: var(--color-success-700);
+  --color-success-800: var(--color-success-800);
+  --color-success-900: var(--color-success-900);
+  
+  --color-warning-50: var(--color-warning-50);
+  --color-warning-100: var(--color-warning-100);
+  --color-warning-200: var(--color-warning-200);
+  --color-warning-300: var(--color-warning-300);
+  --color-warning-400: var(--color-warning-400);
+  --color-warning-500: var(--color-warning-500);
+  --color-warning-600: var(--color-warning-600);
+  --color-warning-700: var(--color-warning-700);
+  --color-warning-800: var(--color-warning-800);
+  --color-warning-900: var(--color-warning-900);
+  
+  --color-error-50: var(--color-error-50);
+  --color-error-100: var(--color-error-100);
+  --color-error-200: var(--color-error-200);
+  --color-error-300: var(--color-error-300);
+  --color-error-400: var(--color-error-400);
+  --color-error-500: var(--color-error-500);
+  --color-error-600: var(--color-error-600);
+  --color-error-700: var(--color-error-700);
+  --color-error-800: var(--color-error-800);
+  --color-error-900: var(--color-error-900);
+  
+  --radius-2xl: var(--radius-2xl);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --shadow-soft: var(--shadow-soft);
+  --shadow-soft-lg: var(--shadow-soft-lg);
+  --shadow-soft-xl: var(--shadow-soft-xl);
 }
 
 :root {
   --radius: 0.625rem;
+  
+  /* Second file dominant - using OKLCH color space */
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -76,9 +152,84 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  
+  /* Custom color palette from first file (unique additions) */
+  --color-primary-50: #e0fef4;
+  --color-primary-100: #c0fde9;
+  --color-primary-200: #a1fbdd;
+  --color-primary-300: #81f9d2;
+  --color-primary-400: #62f8c6;
+  --color-primary-500: #42f6bb;
+  --color-primary-600: #0CF2A0;
+  --color-primary-700: #0ad285;
+  --color-primary-800: #08b26b;
+  --color-primary-900: #069250;
+
+  --color-secondary-50: #f0f0f0;
+  --color-secondary-100: #e0e0e0;
+  --color-secondary-200: #c2c2c2;
+  --color-secondary-300: #a3a3a3;
+  --color-secondary-400: #858585;
+  --color-secondary-500: #666666;
+  --color-secondary-600: #484848;
+  --color-secondary-700: #2a2a2a;
+  --color-secondary-800: #1b1b1b;
+  --color-secondary-900: #111111;
+
+  --color-accent-50: #fff0f9;
+  --color-accent-100: #ffe0f3;
+  --color-accent-200: #ffb3e0;
+  --color-accent-300: #ff85cd;
+  --color-accent-400: #ff57ba;
+  --color-accent-500: #ff29a7;
+  --color-accent-600: #ff0095;
+  --color-accent-700: #cc0077;
+  --color-accent-800: #990059;
+  --color-accent-900: #66003c;
+
+  --color-success-50: #e6f9e6;
+  --color-success-100: #ccf3cd;
+  --color-success-200: #99e699;
+  --color-success-300: #66da66;
+  --color-success-400: #33cd33;
+  --color-success-500: #00c100;
+  --color-success-600: #009a00;
+  --color-success-700: #007400;
+  --color-success-800: #004d00;
+  --color-success-900: #002700;
+
+  --color-warning-50: #fff9e6;
+  --color-warning-100: #fff3cc;
+  --color-warning-200: #ffe799;
+  --color-warning-300: #ffdb66;
+  --color-warning-400: #ffcf33;
+  --color-warning-500: #ffc300;
+  --color-warning-600: #cc9c00;
+  --color-warning-700: #997500;
+  --color-warning-800: #664e00;
+  --color-warning-900: #332700;
+
+  --color-error-50: #fee6e6;
+  --color-error-100: #fdcccc;
+  --color-error-200: #fb9999;
+  --color-error-300: #f96666;
+  --color-error-400: #f73333;
+  --color-error-500: #f50000;
+  --color-error-600: #c40000;
+  --color-error-700: #930000;
+  --color-error-800: #620000;
+  --color-error-900: #310000;
+
+  --radius-2xl: 1rem;
+  --font-sans: 'Inter var', sans-serif;
+  --font-display: 'Lexend', sans-serif;
+  --shadow-soft: 0 2px 15px rgba(0, 0, 0, 0.05);
+  --shadow-soft-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+  --shadow-soft-xl: 0 20px 35px -10px rgba(0, 0, 0, 0.05);
 }
 
 .dark {
+  /* Second file dominant - using OKLCH color space */
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -117,9 +268,10 @@
   display: flex;
   flex-direction: column;
 }
+
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
@@ -135,14 +287,6 @@
   }
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
 html, body {
   overflow-y: auto !important;
 }

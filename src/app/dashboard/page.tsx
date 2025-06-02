@@ -2,29 +2,53 @@
 "use client";
 
 import { useAuth } from "@/components/auth/useAuth";
-import InstructorDashboard from "@/components/dashboard/InstructorDashboard";
-import LearnerDashboard from "@/components/dashboard/LearnerDashboard";
+import { InstructorDashboard } from "@/components/dashboard/InstructorDashboard";
+import { LearnerDashboard } from "@/components/dashboard/LearnerDashboard";
 import RoleSelection from "@/components/auth/RoleSelection";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect, useState } from "react";
 
 export default function DashboardPage() {
-  const { user, profile, loading, updateUserType } = useAuth();
+  const { user, profile, loading, updateUserType, refreshProfile } = useAuth();
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
   const handleRoleSelection = async (role: 'instructor' | 'learner') => {
     try {
+      setIsUpdatingRole(true);
+      console.log('Updating user type to:', role);
+      
       await updateUserType(role);
+      
+      // Force refresh the profile to get updated data
+      if (refreshProfile) {
+        await refreshProfile();
+      }
+      
+      console.log('Role updated successfully');
     } catch (error) {
       console.error('Error updating user type:', error);
       throw error;
+    } finally {
+      setIsUpdatingRole(false);
     }
   };
-  console.log('DashboardPage rendered with user:', user, 'profile:', profile, 'loading:', loading);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('DashboardPage state:', {
+      user: user?.id,
+      profile: profile,
+      loading,
+      onboardingCompleted: profile?.onboarding_completed,
+      userType: profile?.user_type
+    });
+  }, [user, profile, loading]);
+
   if (loading) {
     return <DashboardSkeleton />;
   }
 
   if (!user) {
-    // This should be handled by the useAuth hook redirecting to login
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -39,21 +63,46 @@ export default function DashboardPage() {
     );
   }
 
-  // Show role selection if user hasn't completed onboarding
-  if (!profile || !profile.onboarding_completed) {
+  // Show role selection if:
+  // 1. No profile exists, OR
+  // 2. Onboarding not completed, OR  
+  // 3. No user_type set
+  const needsRoleSelection = !profile || 
+                            !profile.onboarding_completed || 
+                            !profile.user_type ||
+                            profile.user_type === null;
+
+  if (needsRoleSelection) {
+    console.log('Showing role selection because:', {
+      noProfile: !profile,
+      onboardingNotCompleted: profile && !profile.onboarding_completed,
+      noUserType: profile && (!profile.user_type || profile.user_type === null)
+    });
+
     return (
       <RoleSelection 
         onSelectRole={handleRoleSelection}
-        loading={false}
+        loading={isUpdatingRole}
       />
     );
   }
 
   // Route to appropriate dashboard based on user type
+  console.log('Routing to dashboard for user type:', profile.user_type);
+  
   if (profile.user_type === 'instructor') {
     return <InstructorDashboard user={user} profile={profile} />;
-  } else {
+  } else if (profile.user_type === 'learner') {
     return <LearnerDashboard user={user} profile={profile} />;
+  } else {
+    // Fallback - show role selection if user_type is unexpected
+    console.warn('Unexpected user_type:', profile.user_type);
+    return (
+      <RoleSelection 
+        onSelectRole={handleRoleSelection}
+        loading={isUpdatingRole}
+      />
+    );
   }
 }
 

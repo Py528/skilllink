@@ -1,4 +1,5 @@
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider as NextThemeProvider } from "next-themes";
+import { Providers } from "../providers/Providers";
 import "./globals.css";
 
 export default function RootLayout({
@@ -9,13 +10,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="relative">
-        <ThemeProvider
+        <NextThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
-        >{children}
-        </ThemeProvider>
+        >
+          <Providers>
+            {children}
+          </Providers>
+        </NextThemeProvider>
       </body>
     </html>
   );

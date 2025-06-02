@@ -2,7 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { Card } from "../common/Card";
-import { cn } from "../../utils/cn";
+import { cn } from "@/lib/utils";
 
 interface StatisticsCardProps {
   title: string;
