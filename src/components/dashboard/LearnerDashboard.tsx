@@ -1,17 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { 
-  BookOpen,
-  Clock,
-  Award,
-  Compass,
-  PlayCircle,
-  BadgeCheck,
-  Search,
-  Filter,
-  Calendar,
-  TrendingUp,
-  Zap
+  BookOpen, Clock, Compass, PlayCircle, BadgeCheck, 
+  Search, Target, Flame, Brain, Trophy, ChevronRight, 
+  BarChart2, Lightbulb, Zap
 } from "lucide-react";
 import { Card, CardHeader, CardContent } from "../common/Card";
 import { Button } from "../common/Button";
@@ -156,209 +148,345 @@ export const LearnerDashboard: React.FC = () => {
       <main className={`pt-16 transition-all duration-300 ${isSidebarOpen ? 'lg:pl-64' : ''}`}>
         <div className="p-8">
           <div className="space-y-8">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="flex flex-col md:flex-row md:items-center md:justify-between"
-            >
-              <div>
-                <h1 className="text-2xl font-bold">{greeting}!</h1>
-                <p className="text-secondary-600 dark:text-secondary-400">
-                  Your learning journey continues. You&apos;re on a {learningStreak}-day streak! 🔥
-                </p>
+            {/* Hero Section */}
+            <div className="relative overflow-hidden rounded-2xl bg-secondary-900/40 backdrop-blur-xl dark:bg-secondary-900">
+              <div className="absolute inset-0">
+                <div className="absolute inset-0 bg-secondary-200/5 dark:bg-secondary-800/5" />
+                <div className="absolute h-full w-full bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.12),transparent_40%)]" />
               </div>
-              
-              <div className="mt-4 md:mt-0 relative">
-                <div className="flex items-center space-x-2">
-                  <div className="relative">
-                    <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400" />
-                    <input
-                      type="text"
-                      placeholder="Search courses..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 pr-4 py-2 rounded-full bg-secondary-100 dark:bg-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full md:w-64"
-                    />
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={showFilters ? "bg-primary-100 dark:bg-primary-900/20" : ""}
-                  >
-                    <Filter size={16} />
-                  </Button>
-                </div>
-                
-                <AnimatePresence>
-                  {showFilters && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
+              <div className="relative p-6">
+                <div className="grid md:grid-cols-3 gap-6">
+                  {/* Greeting and Stats */}
+                  <div className="md:col-span-2">
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute right-0 mt-2 p-3 bg-white dark:bg-secondary-900 rounded-lg shadow-lg z-10 w-48 border border-secondary-200 dark:border-secondary-700"
+                      className="flex items-center space-x-4 mb-6"
                     >
-                      <div className="space-y-2">
-                        <button 
-                          className={`block w-full text-left px-2 py-1.5 text-sm rounded-md ${activeFilter === 'all' ? 'bg-primary-100 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400' : 'hover:bg-secondary-100 dark:hover:bg-secondary-800'}`}
-                          onClick={() => setActiveFilter('all')}
+                      <motion.div 
+                        className="flex-shrink-0"
+                        animate={{ 
+                          rotate: [0, 15, -15, 15, 0],
+                          transition: {
+                            duration: 2,
+                            repeat: Infinity,
+                            repeatType: "reverse",
+                            ease: "easeInOut"
+                          }
+                        }}
+                      >
+                        <motion.div 
+                          className="w-12 h-12 rounded-full bg-white/5 backdrop-blur-sm flex items-center justify-center"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
                         >
-                          All Courses
-                        </button>
-                        <button 
-                          className={`block w-full text-left px-2 py-1.5 text-sm rounded-md ${activeFilter === 'inProgress' ? 'bg-primary-100 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400' : 'hover:bg-secondary-100 dark:hover:bg-secondary-800'}`}
-                          onClick={() => setActiveFilter('inProgress')}
-                        >
-                          In Progress
-                        </button>
-                        <button 
-                          className={`block w-full text-left px-2 py-1.5 text-sm rounded-md ${activeFilter === 'completed' ? 'bg-primary-100 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400' : 'hover:bg-secondary-100 dark:hover:bg-secondary-800'}`}
-                          onClick={() => setActiveFilter('completed')}
-                        >
-                          Completed
-                        </button>
-                        <button 
-                          className={`block w-full text-left px-2 py-1.5 text-sm rounded-md ${activeFilter === 'notStarted' ? 'bg-primary-100 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400' : 'hover:bg-secondary-100 dark:hover:bg-secondary-800'}`}
-                          onClick={() => setActiveFilter('notStarted')}
-                        >
-                          Not Started
-                        </button>
-                      </div>
+                          <span className="text-2xl">👋</span>
+                        </motion.div>
+                      </motion.div>
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.2 }}
+                      >
+                        <h1 className="text-xl font-semibold text-white">
+                          {greeting}, {user?.name || 'Learner'}
+                        </h1>
+                        <p className="text-primary-100">
+                          {new Date().toLocaleDateString('en-US', { 
+                            weekday: 'long',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+                      </motion.div>
                     </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </motion.div>
 
-            {/* Weekly Goal Progress */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 rounded-2xl p-4"
-            >
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-primary-100 dark:bg-primary-800/30 mr-4">
-                    <Zap className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                    <div className="grid grid-cols-2 gap-4">
+                      <motion.div 
+                        className="bg-white/5 backdrop-blur-sm rounded-lg p-4 hover:bg-white/10 transition-colors"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.3 }}
+                        whileHover={{ y: -2 }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            <motion.div
+                              animate={{
+                                scale: [1, 1.2, 1],
+                                transition: {
+                                  duration: 2,
+                                  repeat: Infinity,
+                                  ease: "easeInOut"
+                                }
+                              }}
+                            >
+                              <Clock className="h-4 w-4 text-primary-200" />
+                            </motion.div>
+                            <span className="text-sm text-primary-100">Today&apos;s Goal</span>
+                          </div>
+                          <Badge variant="success" className="bg-green-500/20">2/3h</Badge>
+                        </div>
+                        <motion.div
+                          initial={{ width: "0%" }}
+                          animate={{ width: "66%" }}
+                          transition={{ delay: 0.5, duration: 1 }}
+                        >
+                          <Progress 
+                            value={66} 
+                            max={100}
+                            className="h-1.5 mb-2"
+                          />
+                        </motion.div>
+                        <p className="text-xs text-primary-200">1 hour remaining to reach your daily goal</p>
+                      </motion.div>
+
+                      <motion.div 
+                        className="bg-white/5 backdrop-blur-sm rounded-lg p-4 hover:bg-white/10 transition-colors"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.4 }}
+                        whileHover={{ y: -2 }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            <motion.div
+                              animate={{
+                                scale: [1, 1.2, 1],
+                                rotate: [0, 10, -10, 0],
+                                transition: {
+                                  duration: 2,
+                                  repeat: Infinity,
+                                  ease: "easeInOut"
+                                }
+                              }}
+                            >
+                              <Flame className="h-4 w-4 text-amber-400" />
+                            </motion.div>
+                            <span className="text-sm text-primary-100">Learning Streak</span>
+                          </div>
+                          <Badge variant="warning" className="bg-amber-500/20">7 days</Badge>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          {[1, 2, 3, 4, 5, 6, 7].map((day) => (
+                            <motion.div
+                              key={day}
+                              className="flex-1 h-1.5 rounded-full bg-amber-400"
+                              initial={{ scaleX: 0 }}
+                              animate={{ scaleX: 1 }}
+                              transition={{ delay: 0.4 + (day * 0.1) }}
+                            />
+                          ))}
+                        </div>
+                        <p className="text-xs text-primary-200 mt-2">Keep it up! You&apos;re on a roll</p>
+                      </motion.div>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">Weekly Learning Goal</h3>
-                    <p className="text-secondary-600 dark:text-secondary-400">
-                      {weeklyProgress} of {weeklyGoalHours} hours completed this week
-                    </p>
+
+                  {/* Quick Actions */}
+                  <div className="space-y-3">
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.5 }}
+                    >
+                      <Button
+                        variant="secondary"
+                        className="w-full bg-white/5 backdrop-blur-sm border-white/10 text-white hover:bg-white/10 hover:border-white/20 transition-all"
+                        leftIcon={<PlayCircle size={18} />}
+                      >
+                        Resume Latest Course
+                      </Button>
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.6 }}
+                    >
+                      <Button
+                        variant="secondary"
+                        className="w-full bg-white/5 backdrop-blur-sm border-white/10 text-white hover:bg-white/10 hover:border-white/20 transition-all"
+                        leftIcon={<BookOpen size={18} />}
+                      >
+                        Continue Assignment
+                      </Button>
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.7 }}
+                    >
+                      <Button
+                        variant="secondary"
+                        className="w-full bg-white/5 backdrop-blur-sm border-white/10 text-white hover:bg-white/10 hover:border-white/20 transition-all"
+                        leftIcon={<Compass size={18} />}
+                      >
+                        Browse New Courses
+                      </Button>
+                    </motion.div>
                   </div>
                 </div>
-                
-                <div className="w-full md:w-48">
-                  <div className="mb-1 flex justify-between text-xs">
-                    <span>{Math.round(weeklyProgressPercentage)}% Complete</span>
-                    <span>{weeklyGoalHours - weeklyProgress}h remaining</span>
-                  </div>
-                  <Progress 
-                    value={weeklyProgressPercentage} 
-                    max={100}
-                    size="lg" 
-                  />
-                </div>
               </div>
-            </motion.div>
+            </div>
 
-            {/* Continue Learning Section */}
-            {continuelearningCourse && (
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-white dark:bg-secondary-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
+                    <Flame className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                  </div>
+                  <Badge variant="success">+2 days</Badge>
+                </div>
+                <h3 className="text-2xl font-bold mb-1">7 Days</h3>
+                <p className="text-secondary-600 dark:text-secondary-400">Learning Streak</p>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-success-100 dark:bg-success-900/20 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-success-100 dark:bg-success-900/20 rounded-lg">
+                    <Brain className="h-6 w-6 text-success-600 dark:text-success-400" />
+                  </div>
+                  <Badge variant="warning">+2.5h</Badge>
+                </div>
+                <h3 className="text-2xl font-bold mb-1">34h</h3>
+                <p className="text-secondary-600 dark:text-secondary-400">Total Learning Time</p>
+              </motion.div>
+
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
+                className="bg-warning-100 dark:bg-warning-900/20 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
               >
-                <Card className="overflow-hidden">
-                  <div className="md:flex">
-                    <div className="md:w-2/5 relative">
-                      <div className="h-48 md:h-full relative">
-                        <img
-                          src={continuelearningCourse.coverImage}
-                          alt={continuelearningCourse.title}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-r from-secondary-900/80 to-transparent" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-warning-100 dark:bg-warning-900/20 rounded-lg">
+                    <Trophy className="h-6 w-6 text-warning-600 dark:text-warning-400" />
+                  </div>
+                  <Badge variant="success">+2 new</Badge>
+                </div>
+                <h3 className="text-2xl font-bold mb-1">12</h3>
+                <p className="text-secondary-600 dark:text-secondary-400">Certificates Earned</p>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="bg-error-100 dark:bg-error-900/20 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-error-100 dark:bg-error-900/20 rounded-lg">
+                    <Target className="h-6 w-6 text-error-600 dark:text-error-400" />
+                  </div>
+                  <Badge variant="error">85%</Badge>
+                </div>
+                <h3 className="text-2xl font-bold mb-1">4/5</h3>
+                <p className="text-secondary-600 dark:text-secondary-400">Weekly Goals</p>
+              </motion.div>
+            </div>
+
+            {/* Active Course */}
+            {continuelearningCourse && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <Card className="overflow-hidden border-none shadow-lg bg-gradient-to-br from-white to-primary-50 dark:from-secondary-800 dark:to-primary-900/20">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center space-x-2">
+                        <div className="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
+                          <BarChart2 className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                        </div>
+                        <h2 className="text-lg font-semibold">Currently Learning</h2>
                       </div>
-                      
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <motion.div
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <Button
-                            variant="primary"
-                            leftIcon={<PlayCircle size={16} />}
-                            className="shadow-lg"
-                          >
-                            Resume Learning
-                          </Button>
-                        </motion.div>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-primary-600 hover:text-primary-700 hover:bg-primary-100 dark:hover:bg-primary-900/20"
+                      >
+                        View All Courses
+                      </Button>
                     </div>
-                    
-                    <div className="p-6 md:w-3/5">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h2 className="text-xl font-bold mb-2">{continuelearningCourse.title}</h2>
-                          <div className="flex items-center mb-4">
+
+                    <div className="grid md:grid-cols-3 gap-6">
+                      <div className="md:col-span-2">
+                        <div className="flex items-start space-x-4">
+                          <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
                             <img
-                              src={continuelearningCourse.instructor.avatar}
-                              alt={continuelearningCourse.instructor.name}
-                              className="w-6 h-6 rounded-full mr-2"
+                              src={continuelearningCourse.coverImage}
+                              alt={continuelearningCourse.title}
+                              className="w-full h-full object-cover"
                             />
-                            <span className="text-sm text-secondary-600 dark:text-secondary-400">
-                              {continuelearningCourse.instructor.name}
-                            </span>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-xl font-bold mb-2">{continuelearningCourse.title}</h3>
+                            <div className="flex items-center space-x-4 mb-3">
+                              <div className="flex items-center space-x-2">
+                                <img
+                                  src={continuelearningCourse.instructor.avatar}
+                                  alt={continuelearningCourse.instructor.name}
+                                  className="w-6 h-6 rounded-full"
+                                />
+                                <span className="text-sm text-secondary-600 dark:text-secondary-400">
+                                  {continuelearningCourse.instructor.name}
+                                </span>
+                              </div>
+                              <Badge variant="outline">
+                                {continuelearningCourse.category}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center space-x-4 text-sm text-secondary-600 dark:text-secondary-400">
+                              <div className="flex items-center">
+                                <Clock size={14} className="mr-1" />
+                                {continuelearningCourse.duration}
+                              </div>
+                              <div className="flex items-center">
+                                <BookOpen size={14} className="mr-1" />
+                                {continuelearningCourse.lessonsCompleted} / {continuelearningCourse.lessons} lessons
+                              </div>
+                              <div className="flex items-center">
+                                <Zap size={14} className="mr-1" />
+                                {continuelearningCourse.xp} XP
+                              </div>
+                            </div>
                           </div>
                         </div>
-                        <Badge variant={continuelearningCourse.progress > 75 ? "success" : "warning"}>
-                          {continuelearningCourse.progress}% Complete
-                        </Badge>
                       </div>
-                      
-                      <p className="text-secondary-600 dark:text-secondary-400 mb-4 line-clamp-2">
-                        {continuelearningCourse.description}
-                      </p>
-                      
-                      <div className="mb-2 flex justify-between text-sm">
-                        <span>Your progress</span>
-                        <div className="flex items-center">
-                          <span className="font-medium">{continuelearningCourse.progress}%</span>
-                          {continuelearningCourse.prevProgress !== undefined && continuelearningCourse.progress > continuelearningCourse.prevProgress && (
-                            <span className="ml-2 text-xs text-success-600 dark:text-success-400 flex items-center">
-                              <TrendingUp size={12} className="mr-1" />
-                              +{continuelearningCourse.progress - continuelearningCourse.prevProgress}%
-                            </span>
-                          )}
+
+                      <div className="flex flex-col justify-center">
+                        <div className="mb-4">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm text-secondary-600 dark:text-secondary-400">Course Progress</span>
+                            <span className="text-sm font-medium">{continuelearningCourse.progress}%</span>
+                          </div>
+                          <Progress 
+                            value={continuelearningCourse.progress} 
+                            max={100}
+                            size="lg"
+                            className="h-3"
+                          />
                         </div>
-                      </div>
-                      <Progress 
-                        value={continuelearningCourse.progress} 
-                        max={100}
-                        size="lg" 
-                      />
-                      
-                      <div className="mt-4 grid grid-cols-2 gap-2">
-                        <div className="flex items-center text-secondary-600 dark:text-secondary-400 text-sm">
-                          <Clock size={16} className="mr-1" />
-                          <span>Last: Today</span>
-                        </div>
-                        <div className="flex items-center text-secondary-600 dark:text-secondary-400 text-sm">
-                          <BookOpen size={16} className="mr-1" />
-                          <span>{continuelearningCourse.lessonsCompleted} / {continuelearningCourse.lessons} lessons</span>
-                        </div>
-                        <div className="flex items-center text-secondary-600 dark:text-secondary-400 text-sm">
-                          <Calendar size={16} className="mr-1" />
-                          <span>Est. completion: 4 days</span>
-                        </div>
-                        <div className="flex items-center text-secondary-600 dark:text-secondary-400 text-sm">
-                          <Zap size={16} className="mr-1" />
-                          <span>{continuelearningCourse.xp} XP earned</span>
-                        </div>
+                        <Button
+                          variant="primary"
+                          className="w-full"
+                          leftIcon={<PlayCircle size={18} />}
+                        >
+                          Continue Learning
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -366,95 +494,48 @@ export const LearnerDashboard: React.FC = () => {
               </motion.div>
             )}
 
-            {/* Learning Stats */}
-            <motion.div 
-              className="grid grid-cols-1 md:grid-cols-3 gap-4"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              <motion.div variants={itemVariants}>
-                <Card className="h-full overflow-hidden group">
-                  <CardContent className="flex flex-col items-center justify-center text-center p-6 relative">
-                    <motion.div 
-                      className="p-3 rounded-full bg-primary-100 dark:bg-primary-900/20 mb-4 relative z-10 group-hover:scale-110 transition-transform duration-300"
-                      whileHover={{ rotate: 15 }}
+            {/* Learning Path and Search */}
+            <div className="grid lg:grid-cols-3 gap-6">
+              <motion.div 
+                className="lg:col-span-2"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+              >
+                <Card>
+                  <CardHeader className="flex justify-between items-center border-b border-secondary-200 dark:border-secondary-800">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-warning-100 dark:bg-warning-900/20 rounded-lg">
+                        <Lightbulb className="h-5 w-5 text-warning-600 dark:text-warning-400" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-semibold">Learning Path</h2>
+                        <p className="text-sm text-secondary-600 dark:text-secondary-400">Your personalized learning journey</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-primary-600"
+                      rightIcon={<ChevronRight size={16} />}
                     >
-                      <Clock className="h-6 w-6 text-primary-600 dark:text-primary-500" />
-                    </motion.div>
-                    <h3 className="text-3xl font-bold mb-1 relative z-10">34h</h3>
-                    <p className="text-secondary-600 dark:text-secondary-400 relative z-10">Total Learning Time</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-              
-              <motion.div variants={itemVariants}>
-                <Card className="h-full overflow-hidden group">
-                  <CardContent className="flex flex-col items-center justify-center text-center p-6 relative">
-                    <motion.div 
-                      className="p-3 rounded-full bg-success-100 dark:bg-success-900/20 mb-4 relative z-10 group-hover:scale-110 transition-transform duration-300"
-                      whileHover={{ rotate: 15 }}
-                    >
-                      <BadgeCheck className="h-6 w-6 text-success-600 dark:text-success-500" />
-                    </motion.div>
-                    <h3 className="text-3xl font-bold mb-1 relative z-10">7</h3>
-                    <p className="text-secondary-600 dark:text-secondary-400 relative z-10">Courses Completed</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-              
-              <motion.div variants={itemVariants}>
-                <Card className="h-full overflow-hidden group">
-                  <CardContent className="flex flex-col items-center justify-center text-center p-6 relative">
-                    <motion.div 
-                      className="p-3 rounded-full bg-warning-100 dark:bg-warning-900/20 mb-4 relative z-10 group-hover:scale-110 transition-transform duration-300"
-                      whileHover={{ rotate: 15 }}
-                    >
-                      <Award className="h-6 w-6 text-warning-600 dark:text-warning-500" />
-                    </motion.div>
-                    <h3 className="text-3xl font-bold mb-1 relative z-10">12</h3>
-                    <p className="text-secondary-600 dark:text-secondary-400 relative z-10">Certificates Earned</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </motion.div>
-
-            {/* Learning Path */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="relative"
-            >
-              <Card>
-                <CardHeader className="flex justify-between items-center border-b border-secondary-200 dark:border-secondary-800">
-                  <div className="flex items-center space-x-2">
-                    <h2 className="text-lg font-semibold">Your Learning Path</h2>
-                    {filteredCourses.length > 0 && (
-                      <Badge variant="success" className="animate-pulse">Active</Badge>
-                    )}
-                  </div>
-                  {filteredCourses.length > 0 && (
-                    <Button variant="ghost" size="sm" className="text-primary-600">
-                      Edit Path
+                      View All
                     </Button>
-                  )}
-                </CardHeader>
+                  </CardHeader>
 
-                <CardContent className={filteredCourses.length > 0 ? "p-0 pb-4" : "p-8"}>
-                  {filteredCourses.length > 0 ? (
+                  <CardContent className="p-0">
                     <div className="divide-y divide-secondary-100 dark:divide-secondary-800">
-                      {filteredCourses.map((course, index) => (
+                      {filteredCourses.slice(0, 4).map((course, index) => (
                         <motion.div
                           key={course.id}
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.1 }}
-                          className="relative p-4 hover:bg-secondary-50 dark:hover:bg-secondary-800/50 group"
+                          className="p-4 hover:bg-secondary-50 dark:hover:bg-secondary-800/50 group"
                         >
-                          <div className="flex items-start space-x-4">
+                          <div className="flex items-center space-x-4">
                             <div className={`
-                              relative flex-shrink-0 w-8 h-8 rounded-full 
+                              relative flex-shrink-0 w-10 h-10 rounded-lg 
                               ${course.progress === 100 
                                 ? "bg-success-500" 
                                 : course.progress > 0 
@@ -463,132 +544,136 @@ export const LearnerDashboard: React.FC = () => {
                               flex items-center justify-center
                             `}>
                               {course.progress === 100 ? (
-                                <BadgeCheck className="w-5 h-5 text-white" />
+                                <BadgeCheck className="w-6 h-6 text-white" />
                               ) : (
-                                <span className="text-sm font-bold text-white">{index + 1}</span>
-                              )}
-                              {index !== filteredCourses.length - 1 && (
-                                <div className="absolute top-full left-1/2 w-0.5 h-full -translate-x-1/2 bg-secondary-200 dark:bg-secondary-700" />
+                                <span className="text-lg font-bold text-white">{index + 1}</span>
                               )}
                             </div>
 
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <h3 className="text-base font-medium truncate pr-8">{course.title}</h3>
+                              <div className="flex items-center justify-between mb-1">
+                                <h3 className="text-base font-medium truncate">{course.title}</h3>
                                 <Badge
                                   variant={
                                     course.progress === 100 ? "success" 
                                     : course.progress > 0 ? "warning" 
                                     : "secondary"
                                   }
-                                  className="transition-transform group-hover:scale-110"
+                                  className="ml-2"
                                 >
-                                  {course.progress === 100 ? "Completed" 
-                                   : course.progress > 0 ? `${course.progress}%` 
-                                   : "Not Started"}
+                                  {course.progress}%
                                 </Badge>
                               </div>
-                              <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400 line-clamp-2">
-                                {course.description}
-                              </p>
-                              {course.progress > 0 && course.progress < 100 && (
-                                <div className="mt-2 h-1 bg-secondary-100 dark:bg-secondary-700 rounded-full overflow-hidden">
-                                  <div 
-                                    className="h-full bg-primary-500 rounded-full transition-all duration-300"
-                                    style={{ width: `${course.progress}%` }}
-                                  />
-                                </div>
-                              )}
+                              <div className="flex items-center text-sm text-secondary-600 dark:text-secondary-400">
+                                <Clock size={14} className="mr-1" />
+                                {course.duration}
+                                <span className="mx-2">•</span>
+                                <BookOpen size={14} className="mr-1" />
+                                {course.lessons} lessons
+                              </div>
                             </div>
                           </div>
                         </motion.div>
                       ))}
                     </div>
-                  ) : (
-                    <div className="text-center">
-                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-secondary-100 dark:bg-secondary-800 mb-4">
-                        <BookOpen className="h-8 w-8 text-secondary-600 dark:text-secondary-400" />
-                      </div>
-                      <h3 className="text-lg font-medium mb-2">Create Your Learning Path</h3>
-                      <p className="text-secondary-600 dark:text-secondary-400 mb-6 max-w-md mx-auto">
-                        Design a structured learning journey by selecting courses that align with your goals and interests.
-                      </p>
-                      <Button 
-                        variant="outline"
-                        className="hover:bg-primary-50 dark:hover:bg-primary-900/20"
-                      >
-                        Browse Learning Paths
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-            {/* My Courses */}
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">My Courses</h2>
-                <Button 
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+              >
+                <Card>
+                  <CardHeader className="border-b border-secondary-200 dark:border-secondary-800">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-success-100 dark:bg-success-900/20 rounded-lg">
+                        <Search className="h-5 w-5 text-success-600 dark:text-success-400" />
+                      </div>
+                      <h2 className="text-lg font-semibold">Quick Search</h2>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="space-y-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400" size={18} />
+                        <input
+                          type="text"
+                          placeholder="Search courses..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 rounded-lg bg-secondary-100 dark:bg-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border-none"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400">Popular Categories</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {['Web Development', 'Design', 'Business', 'Marketing'].map((category) => (
+                            <Badge
+                              key={category}
+                              variant="outline"
+                              className="cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20"
+                            >
+                              {category}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400">Quick Filters</h3>
+                        <div className="space-y-1">
+                          {[
+                            { label: 'In Progress', count: filteredCourses.filter(c => c.progress > 0 && c.progress < 100).length },
+                            { label: 'Completed', count: filteredCourses.filter(c => c.progress === 100).length },
+                            { label: 'Not Started', count: filteredCourses.filter(c => c.progress === 0).length }
+                          ].map((filter) => (
+                            <button
+                              key={filter.label}
+                              className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-secondary-100 dark:hover:bg-secondary-800 text-left"
+                              onClick={() => setActiveFilter(filter.label.toLowerCase().replace(' ', ''))}
+                            >
+                              <span className="text-sm">{filter.label}</span>
+                              <Badge variant="secondary">{filter.count}</Badge>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+
+            {/* Recommended Courses */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-2">
+                  <div className="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
+                    <Compass className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold">Recommended For You</h2>
+                    <p className="text-sm text-secondary-600 dark:text-secondary-400">
+                      Courses that match your interests and goals
+                    </p>
+                  </div>
+                </div>
+                <Button
                   variant="outline"
-                  size="sm"
-                  rightIcon={<BookOpen size={16} />}
+                  rightIcon={<ChevronRight size={16} />}
                 >
                   View All
                 </Button>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredCourses.slice(0, 4).map((course, index) => (
-                  <motion.div
-                    key={course.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                    whileHover={{ y: -5 }}
-                  >
-                    <LearnerCourseCard course={course} />
-                  </motion.div>
-                ))}
-              </div>
-              
-              {filteredCourses.length === 0 && (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="bg-secondary-50 dark:bg-secondary-800/50 rounded-lg p-8 text-center"
-                >
-                  <div className="mx-auto w-16 h-16 mb-4 flex items-center justify-center rounded-full bg-secondary-100 dark:bg-secondary-700/50">
-                    <Search className="h-8 w-8 text-secondary-400" />
-                  </div>
-                  <h3 className="text-lg font-medium mb-2">No courses found</h3>
-                  <p className="text-secondary-500 dark:text-secondary-400 mb-4">
-                    Try adjusting your search or filters to find what you&apos;re looking for.
-                  </p>
-                  <Button variant="outline" onClick={() => {
-                    setSearchQuery('');
-                    setActiveFilter('all');
-                  }}>
-                    Clear Filters
-                  </Button>
-                </motion.div>
-              )}
-            </div>
-            
-            {/* Recommended Courses */}
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Recommended For You</h2>
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  rightIcon={<Compass size={16} />}
-                >
-                  Explore
-                </Button>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {mockRecommendedCourses.slice(0, 4).map((course, index) => (
                   <motion.div
                     key={course.id}
@@ -601,7 +686,7 @@ export const LearnerDashboard: React.FC = () => {
                   </motion.div>
                 ))}
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </main>
