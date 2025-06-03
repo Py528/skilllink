@@ -53,11 +53,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   // Simulated notification update
   useEffect(() => {
     const interval = setInterval(() => {
-      const change = Math.floor(Math.random() * 2) - 0.7; // Bias slightly toward decrease
+      // Use Math.round to ensure whole numbers
+      const change = Math.random() > 0.5 ? 1 : -1;
       setNotifications(prev => Math.max(0, Math.min(5, prev + change)));
       
       if (Math.random() > 0.7) {
-        setMessages(prev => Math.max(0, Math.min(3, prev + Math.floor(Math.random() * 2) - 0.8)));
+        const messageChange = Math.random() > 0.5 ? 1 : -1;
+        setMessages(prev => Math.max(0, Math.min(3, prev + messageChange)));
       }
     }, 45000);
     
@@ -116,14 +118,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Book className="h-6 w-6 sm:h-7 sm:w-7 text-primary-600 dark:text-primary-500" />
-                <span className="ml-2 text-lg sm:text-xl font-bold text-secondary-900 dark:text-white">
+                <Book className="h-7 w-7 text-primary-600 dark:text-primary-500" />
+                <span className="ml-2 text-xl font-bold text-secondary-900 dark:text-white">
                   Skill<span className="text-primary-600 dark:text-primary-500">Learn</span>
                 </span>
               </motion.div>
             </div>
 
-            {/* Center Section: Search */}
+            {/* Center Section: Search (Desktop) */}
             <div className="hidden md:flex flex-1 justify-center px-8 max-w-md mx-auto">
               <div className="relative w-full">
                 <div className="relative">
@@ -151,7 +153,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* Right Section: Actions and User */}
-            <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="flex items-center space-x-3">
               {/* Search Icon (Mobile) */}
               <motion.button
                 className={cn(
@@ -224,8 +226,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   "p-2 rounded-full focus:outline-none",
                   "bg-secondary-100 dark:bg-secondary-800",
                   "text-secondary-600 dark:text-secondary-400",
-                  "hover:bg-secondary-200 dark:hover:bg-secondary-700",
-                  "hidden xs:flex"
+                  "hover:bg-secondary-200 dark:hover:bg-secondary-700"
                 )}
               >
                 <AnimatePresence mode="wait">
@@ -247,18 +248,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {/* User Menu */}
               {user && (
-                <div className="flex items-center">
+                <div className="flex items-center space-x-2">
                   <motion.div 
-                    className="hidden sm:block text-right mr-2"
+                    className="hidden md:block text-right"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                   >
-                    <div className="text-sm font-medium text-secondary-900 dark:text-white truncate max-w-[120px] lg:max-w-[200px]">
-                      {user.name}
-                    </div>
-                    <div className="text-xs text-secondary-500 dark:text-secondary-400 capitalize">
-                      {user.role}
-                    </div>
+                    <div className="text-sm font-medium text-secondary-900 dark:text-white">{user.name}</div>
+                    <div className="text-xs text-secondary-500 dark:text-secondary-400">{user.role}</div>
                   </motion.div>
                   
                   <div className="flex items-center">
@@ -305,7 +302,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
           
-          {/* Mobile Search */}
+          {/* Mobile Search (Conditional) */}
           <AnimatePresence>
             {isSearchOpen && isMobile && (
               <motion.div
@@ -324,20 +321,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                       "py-2 pl-4 pr-10 transition-all duration-300",
                       "focus:outline-none",
                       "placeholder-secondary-500 dark:placeholder-secondary-400",
-                      "text-secondary-900 dark:text-white",
-                      "text-sm"
+                      "text-secondary-900 dark:text-white"
                     )}
                     autoFocus
                   />
                   <div className="absolute right-3 top-2.5 text-secondary-500 dark:text-secondary-400">
-                    <Search className="h-4 w-4" />
+                    <Search className="h-5 w-5" />
                   </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
           
-          {/* Mobile Menu */}
+          {/* Mobile Menu (Conditional) */}
           <AnimatePresence>
             {mobileMenuOpen && (
               <motion.div
@@ -345,35 +341,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="sm:hidden py-2 pb-4 space-y-2 border-t border-secondary-200 dark:border-secondary-800"
+                className="sm:hidden py-2 pb-4 space-y-3 border-t border-secondary-200 dark:border-secondary-800"
               >
-                {/* User Info (Mobile) */}
-                <div className="px-4 py-2">
-                  <div className="text-sm font-medium text-secondary-900 dark:text-white">
-                    {user?.name}
-                  </div>
-                  <div className="text-xs text-secondary-500 dark:text-secondary-400 capitalize">
-                    {user?.role}
-                  </div>
-                </div>
-
-                {/* Theme Toggle (Mobile) */}
-                <div 
-                  className="flex items-center justify-between px-4 py-2 cursor-pointer"
-                  onClick={toggleTheme}
-                >
-                  <div className="flex items-center space-x-3">
-                    {theme === "dark" ? (
-                      <Sun className="h-5 w-5 text-secondary-600 dark:text-secondary-400" />
-                    ) : (
-                      <Moon className="h-5 w-5 text-secondary-600 dark:text-secondary-400" />
-                    )}
-                    <span className="text-sm text-secondary-900 dark:text-white">
-                      {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                    </span>
-                  </div>
-                </div>
-
                 <div className="flex items-center justify-between px-4 py-2">
                   <div className="flex items-center space-x-3">
                     <Bell className="h-5 w-5 text-secondary-600 dark:text-secondary-400" />

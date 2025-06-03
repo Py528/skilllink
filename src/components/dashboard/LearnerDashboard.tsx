@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { 
   BookOpen, Clock, Compass, PlayCircle, BadgeCheck, 
   Search, Target, Flame, Brain, Trophy, ChevronRight, 
-  BarChart2, Lightbulb, Zap
+  BarChart2, Lightbulb, Zap, X, CheckCircle, Plus, Bookmark
 } from "lucide-react";
 import { Card, CardHeader, CardContent } from "../common/Card";
 import { Button } from "../common/Button";
@@ -56,12 +56,17 @@ export const LearnerDashboard: React.FC = () => {
   const { user } = useUser();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeNavItem, setActiveNavItem] = useState("home");
-  const [greeting, setGreeting] = useState<string>("Welcome back");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [filteredCourses, setFilteredCourses] = useState<Course[]>(mockLearnerCourses);
-  const [activeFilter, setActiveFilter] = useState<string>("all");
-  const [showFilters, setShowFilters] = useState<boolean>(false);
-  
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredCourses, setFilteredCourses] = useState(mockLearnerCourses);
+  const [continuelearningCourse] = useState(mockLearnerCourses[0]);
+  const [greeting] = useState(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  });
+
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
@@ -82,59 +87,20 @@ export const LearnerDashboard: React.FC = () => {
     }
   }, [user?.role]);
 
-  // Get current time for greeting
-  useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) setGreeting("Good morning");
-    else if (hour < 18) setGreeting("Good afternoon");
-    else setGreeting("Good evening");
-  }, []);
-
-  // Filter courses based on search query
   useEffect(() => {
     const filtered = mockLearnerCourses.filter(course => {
-      const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesFilter = activeFilter === "all" || 
-                           (activeFilter === "inProgress" && course.progress > 0 && course.progress < 100) ||
-                           (activeFilter === "completed" && course.progress === 100) ||
-                           (activeFilter === "notStarted" && course.progress === 0);
+      const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          course.description.toLowerCase().includes(searchQuery.toLowerCase());
       
-      return matchesSearch && matchesFilter;
+      if (activeFilter === "all") return matchesSearch;
+      if (activeFilter === "inprogress") return matchesSearch && course.progress > 0 && course.progress < 100;
+      if (activeFilter === "completed") return matchesSearch && course.progress === 100;
+      if (activeFilter === "notstarted") return matchesSearch && course.progress === 0;
+      return matchesSearch;
     });
+    
     setFilteredCourses(filtered);
   }, [searchQuery, activeFilter]);
-
-  // Get the course with the highest progress that's not complete
-  const continuelearningCourse = filteredCourses
-    .filter(course => course.progress > 0 && course.progress < 100)
-    .sort((a, b) => b.progress - a.progress)[0];
-  
-  // Calculate learning streak
-  const learningStreak = 7; // This would come from user data in a real app
-  
-  // Calculate weekly goal progress
-  const weeklyGoalHours = 5;
-  const weeklyProgress = 3.5;
-  const weeklyProgressPercentage = (weeklyProgress / weeklyGoalHours) * 100;
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: { type: "spring", stiffness: 300, damping: 24 }
-    }
-  };
 
   return (
     <div className="min-h-screen bg-secondary-50 dark:bg-secondary-900">
@@ -149,13 +115,13 @@ export const LearnerDashboard: React.FC = () => {
         <div className="p-8">
           <div className="space-y-8">
             {/* Hero Section */}
-            <div className="relative overflow-hidden rounded-2xl bg-secondary-900/40 backdrop-blur-xl dark:bg-secondary-900">
+            <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-secondary-900/40 backdrop-blur-xl">
               <div className="absolute inset-0">
-                <div className="absolute inset-0 bg-secondary-200/5 dark:bg-secondary-800/5" />
+                <div className="absolute inset-0 bg-gradient-to-r from-primary-50/50 to-secondary-50/50 dark:from-secondary-800/5 dark:to-secondary-900/5" />
                 <div className="absolute h-full w-full bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.12),transparent_40%)]" />
               </div>
               <div className="relative p-6">
-                <div className="grid md:grid-cols-3 gap-6">
+                <div className="grid md:grid-cols-2 gap-6">
                   {/* Greeting and Stats */}
                   <div className="md:col-span-2">
                     <motion.div 
@@ -176,7 +142,7 @@ export const LearnerDashboard: React.FC = () => {
                         }}
                       >
                         <motion.div 
-                          className="w-12 h-12 rounded-full bg-white/5 backdrop-blur-sm flex items-center justify-center"
+                          className="w-12 h-12 rounded-full bg-primary-100 dark:bg-white/5 backdrop-blur-sm flex items-center justify-center"
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.95 }}
                         >
@@ -188,10 +154,10 @@ export const LearnerDashboard: React.FC = () => {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.2 }}
                       >
-                        <h1 className="text-xl font-semibold text-white">
+                        <h1 className="text-xl font-semibold text-secondary-900 dark:text-white">
                           {greeting}, {user?.name || 'Learner'}
                         </h1>
-                        <p className="text-primary-100">
+                        <p className="text-secondary-600 dark:text-primary-100">
                           {new Date().toLocaleDateString('en-US', { 
                             weekday: 'long',
                             month: 'long',
@@ -203,7 +169,7 @@ export const LearnerDashboard: React.FC = () => {
 
                     <div className="grid grid-cols-2 gap-4">
                       <motion.div 
-                        className="bg-white/5 backdrop-blur-sm rounded-lg p-4 hover:bg-white/10 transition-colors"
+                        className="bg-white dark:bg-white/5 backdrop-blur-sm rounded-lg p-4 hover:bg-secondary-50 dark:hover:bg-white/10 transition-colors shadow-sm"
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.3 }}
@@ -221,11 +187,11 @@ export const LearnerDashboard: React.FC = () => {
                                 }
                               }}
                             >
-                              <Clock className="h-4 w-4 text-primary-200" />
+                              <Clock className="h-4 w-4 text-primary-600 dark:text-primary-200" />
                             </motion.div>
-                            <span className="text-sm text-primary-100">Today&apos;s Goal</span>
+                            <span className="text-sm text-secondary-700 dark:text-primary-100">Today&apos;s Goal</span>
                           </div>
-                          <Badge variant="success" className="bg-green-500/20">2/3h</Badge>
+                          <Badge variant="success" className="bg-green-100 dark:bg-green-500/20">2/3h</Badge>
                         </div>
                         <motion.div
                           initial={{ width: "0%" }}
@@ -238,11 +204,11 @@ export const LearnerDashboard: React.FC = () => {
                             className="h-1.5 mb-2"
                           />
                         </motion.div>
-                        <p className="text-xs text-primary-200">1 hour remaining to reach your daily goal</p>
+                        <p className="text-xs text-secondary-600 dark:text-primary-200">1 hour remaining to reach your daily goal</p>
                       </motion.div>
 
                       <motion.div 
-                        className="bg-white/5 backdrop-blur-sm rounded-lg p-4 hover:bg-white/10 transition-colors"
+                        className="bg-white dark:bg-white/5 backdrop-blur-sm rounded-lg p-4 hover:bg-secondary-50 dark:hover:bg-white/10 transition-colors shadow-sm"
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.4 }}
@@ -261,11 +227,11 @@ export const LearnerDashboard: React.FC = () => {
                                 }
                               }}
                             >
-                              <Flame className="h-4 w-4 text-amber-400" />
+                              <Flame className="h-4 w-4 text-amber-500 dark:text-amber-400" />
                             </motion.div>
-                            <span className="text-sm text-primary-100">Learning Streak</span>
+                            <span className="text-sm text-secondary-700 dark:text-primary-100">Learning Streak</span>
                           </div>
-                          <Badge variant="warning" className="bg-amber-500/20">7 days</Badge>
+                          <Badge variant="warning" className="bg-amber-100 dark:bg-amber-500/20">7 days</Badge>
                         </div>
                         <div className="flex items-center space-x-1">
                           {[1, 2, 3, 4, 5, 6, 7].map((day) => (
@@ -278,52 +244,9 @@ export const LearnerDashboard: React.FC = () => {
                             />
                           ))}
                         </div>
-                        <p className="text-xs text-primary-200 mt-2">Keep it up! You&apos;re on a roll</p>
+                        <p className="text-xs text-secondary-600 dark:text-primary-200 mt-2">Keep it up! You&apos;re on a roll</p>
                       </motion.div>
                     </div>
-                  </div>
-
-                  {/* Quick Actions */}
-                  <div className="space-y-3">
-                    <motion.div
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.5 }}
-                    >
-                      <Button
-                        variant="secondary"
-                        className="w-full bg-white/5 backdrop-blur-sm border-white/10 text-white hover:bg-white/10 hover:border-white/20 transition-all"
-                        leftIcon={<PlayCircle size={18} />}
-                      >
-                        Resume Latest Course
-                      </Button>
-                    </motion.div>
-                    <motion.div
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.6 }}
-                    >
-                      <Button
-                        variant="secondary"
-                        className="w-full bg-white/5 backdrop-blur-sm border-white/10 text-white hover:bg-white/10 hover:border-white/20 transition-all"
-                        leftIcon={<BookOpen size={18} />}
-                      >
-                        Continue Assignment
-                      </Button>
-                    </motion.div>
-                    <motion.div
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.7 }}
-                    >
-                      <Button
-                        variant="secondary"
-                        className="w-full bg-white/5 backdrop-blur-sm border-white/10 text-white hover:bg-white/10 hover:border-white/20 transition-all"
-                        leftIcon={<Compass size={18} />}
-                      >
-                        Browse New Courses
-                      </Button>
-                    </motion.div>
                   </div>
                 </div>
               </div>
@@ -341,9 +264,9 @@ export const LearnerDashboard: React.FC = () => {
                   <div className="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
                     <Flame className="h-6 w-6 text-primary-600 dark:text-primary-400" />
                   </div>
-                  <Badge variant="success">+2 days</Badge>
+                  <Badge variant="success" className="bg-green-100 dark:bg-green-500/20">+2 days</Badge>
                 </div>
-                <h3 className="text-2xl font-bold mb-1">7 Days</h3>
+                <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-1">7 Days</h3>
                 <p className="text-secondary-600 dark:text-secondary-400">Learning Streak</p>
               </motion.div>
 
@@ -351,15 +274,15 @@ export const LearnerDashboard: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="bg-success-100 dark:bg-success-900/20 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+                className="bg-white dark:bg-success-900/20 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-2 bg-success-100 dark:bg-success-900/20 rounded-lg">
                     <Brain className="h-6 w-6 text-success-600 dark:text-success-400" />
                   </div>
-                  <Badge variant="warning">+2.5h</Badge>
+                  <Badge variant="warning" className="bg-amber-100 dark:bg-amber-500/20">+2.5h</Badge>
                 </div>
-                <h3 className="text-2xl font-bold mb-1">34h</h3>
+                <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-1">34h</h3>
                 <p className="text-secondary-600 dark:text-secondary-400">Total Learning Time</p>
               </motion.div>
 
@@ -367,15 +290,15 @@ export const LearnerDashboard: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="bg-warning-100 dark:bg-warning-900/20 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+                className="bg-white dark:bg-warning-900/20 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-2 bg-warning-100 dark:bg-warning-900/20 rounded-lg">
                     <Trophy className="h-6 w-6 text-warning-600 dark:text-warning-400" />
                   </div>
-                  <Badge variant="success">+2 new</Badge>
+                  <Badge variant="success" className="bg-green-100 dark:bg-green-500/20">+2 new</Badge>
                 </div>
-                <h3 className="text-2xl font-bold mb-1">12</h3>
+                <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-1">12</h3>
                 <p className="text-secondary-600 dark:text-secondary-400">Certificates Earned</p>
               </motion.div>
 
@@ -383,15 +306,15 @@ export const LearnerDashboard: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="bg-error-100 dark:bg-error-900/20 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+                className="bg-white dark:bg-error-900/20 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-2 bg-error-100 dark:bg-error-900/20 rounded-lg">
                     <Target className="h-6 w-6 text-error-600 dark:text-error-400" />
                   </div>
-                  <Badge variant="error">85%</Badge>
+                  <Badge variant="error" className="bg-error-100 dark:bg-error-500/20">85%</Badge>
                 </div>
-                <h3 className="text-2xl font-bold mb-1">4/5</h3>
+                <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-1">4/5</h3>
                 <p className="text-secondary-600 dark:text-secondary-400">Weekly Goals</p>
               </motion.div>
             </div>
@@ -509,15 +432,14 @@ export const LearnerDashboard: React.FC = () => {
                         <Lightbulb className="h-5 w-5 text-warning-600 dark:text-warning-400" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-semibold">Learning Path</h2>
+                        <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Learning Path</h2>
                         <p className="text-sm text-secondary-600 dark:text-secondary-400">Your personalized learning journey</p>
                       </div>
                     </div>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-primary-600"
-                      rightIcon={<ChevronRight size={16} />}
+                      className="text-primary-600 hover:text-primary-700 hover:bg-primary-50 dark:hover:bg-primary-900/20"
                     >
                       View All
                     </Button>
@@ -552,14 +474,20 @@ export const LearnerDashboard: React.FC = () => {
 
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between mb-1">
-                                <h3 className="text-base font-medium truncate">{course.title}</h3>
+                                <h3 className="text-base font-medium text-secondary-900 dark:text-white truncate">{course.title}</h3>
                                 <Badge
                                   variant={
                                     course.progress === 100 ? "success" 
                                     : course.progress > 0 ? "warning" 
                                     : "secondary"
                                   }
-                                  className="ml-2"
+                                  className={`ml-2 ${
+                                    course.progress === 100 
+                                      ? "bg-success-100 dark:bg-success-500/20" 
+                                      : course.progress > 0 
+                                      ? "bg-warning-100 dark:bg-warning-500/20"
+                                      : "bg-secondary-100 dark:bg-secondary-700/50"
+                                  }`}
                                 >
                                   {course.progress}%
                                 </Badge>
@@ -585,59 +513,112 @@ export const LearnerDashboard: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.7 }}
               >
-                <Card>
+                <Card className="overflow-hidden backdrop-blur-xl bg-white dark:bg-secondary-900/50 border border-secondary-200 dark:border-white/10">
                   <CardHeader className="border-b border-secondary-200 dark:border-secondary-800">
                     <div className="flex items-center space-x-2">
-                      <div className="p-2 bg-success-100 dark:bg-success-900/20 rounded-lg">
-                        <Search className="h-5 w-5 text-success-600 dark:text-success-400" />
+                      <div className="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
+                        <Search className="h-5 w-5 text-primary-600 dark:text-primary-400" />
                       </div>
-                      <h2 className="text-lg font-semibold">Quick Search</h2>
+                      <div>
+                        <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Quick Search</h2>
+                        <p className="text-sm text-secondary-600 dark:text-primary-200">Find your next learning adventure</p>
+                      </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-4">
-                    <div className="space-y-4">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400" size={18} />
+                  <CardContent className="p-4 space-y-6">
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                        <Search className="h-4 w-4 text-secondary-400 dark:text-primary-400" />
+                      </div>
+                      <motion.div
+                        initial={false}
+                        whileFocus={{ scale: 1.02 }}
+                        transition={{ duration: 0.2 }}
+                      >
                         <input
                           type="text"
-                          placeholder="Search courses..."
+                          placeholder="Search courses, topics, instructors..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 rounded-lg bg-secondary-100 dark:bg-secondary-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border-none"
+                          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-secondary-50 dark:bg-secondary-800/50 
+                                   text-sm text-secondary-900 dark:text-white placeholder-secondary-500 dark:placeholder-primary-300 
+                                   border border-secondary-200 dark:border-white/10
+                                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
+                                   transition-all duration-200"
                         />
-                      </div>
+                      </motion.div>
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery("")}
+                          className="absolute inset-y-0 right-3 flex items-center text-secondary-400 hover:text-secondary-600 dark:text-primary-400 dark:hover:text-primary-300"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
 
-                      <div className="space-y-2">
-                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400">Popular Categories</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {['Web Development', 'Design', 'Business', 'Marketing'].map((category) => (
-                            <Badge
-                              key={category}
-                              variant="outline"
-                              className="cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20"
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-sm font-medium text-secondary-700 dark:text-primary-200 mb-3">Quick Filters</h3>
+                        <div className="space-y-2">
+                          {[
+                            { label: 'In Progress', icon: Clock, count: filteredCourses.filter(c => c.progress > 0 && c.progress < 100).length },
+                            { label: 'Completed', icon: CheckCircle, count: filteredCourses.filter(c => c.progress === 100).length },
+                            { label: 'Not Started', icon: Plus, count: filteredCourses.filter(c => c.progress === 0).length },
+                            { label: 'Bookmarked', icon: Bookmark, count: 5 }
+                          ].map((filter) => (
+                            <motion.button
+                              key={filter.label}
+                              whileHover={{ x: 4 }}
+                              className={`w-full flex items-center justify-between p-3 rounded-lg
+                                        ${activeFilter === filter.label.toLowerCase().replace(' ', '') 
+                                          ? 'bg-primary-50 dark:bg-primary-500/20 text-primary-900 dark:text-white' 
+                                          : 'text-secondary-700 dark:text-primary-100 hover:bg-secondary-50 dark:hover:bg-white/5'}
+                                        transition-colors duration-200 group`}
+                              onClick={() => setActiveFilter(filter.label.toLowerCase().replace(' ', ''))}
                             >
-                              {category}
-                            </Badge>
+                              <div className="flex items-center space-x-3">
+                                <filter.icon className={`h-4 w-4 
+                                  ${activeFilter === filter.label.toLowerCase().replace(' ', '')
+                                    ? 'text-primary-600 dark:text-primary-400'
+                                    : 'text-secondary-500 dark:text-primary-500/50 group-hover:text-primary-600 dark:group-hover:text-primary-400'}`} 
+                                />
+                                <span className="text-sm font-medium">{filter.label}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Badge 
+                                  variant="secondary" 
+                                  className={`${activeFilter === filter.label.toLowerCase().replace(' ', '')
+                                    ? 'bg-primary-100 dark:bg-primary-500/30' 
+                                    : 'bg-secondary-100 dark:bg-white/5'}`}
+                                >
+                                  {filter.count}
+                                </Badge>
+                                <ChevronRight className={`h-4 w-4 text-secondary-400 dark:text-primary-400/50 transform transition-transform duration-200
+                                  ${activeFilter === filter.label.toLowerCase().replace(' ', '') ? 'translate-x-0 opacity-100' : '-translate-x-2 opacity-0'}
+                                  group-hover:translate-x-0 group-hover:opacity-100`} 
+                                />
+                              </div>
+                            </motion.button>
                           ))}
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400">Quick Filters</h3>
-                        <div className="space-y-1">
-                          {[
-                            { label: 'In Progress', count: filteredCourses.filter(c => c.progress > 0 && c.progress < 100).length },
-                            { label: 'Completed', count: filteredCourses.filter(c => c.progress === 100).length },
-                            { label: 'Not Started', count: filteredCourses.filter(c => c.progress === 0).length }
-                          ].map((filter) => (
-                            <button
-                              key={filter.label}
-                              className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-secondary-100 dark:hover:bg-secondary-800 text-left"
-                              onClick={() => setActiveFilter(filter.label.toLowerCase().replace(' ', ''))}
+                      <div>
+                        <h3 className="text-sm font-medium text-secondary-700 dark:text-primary-200 mb-3">Recent Searches</h3>
+                        <div className="space-y-2">
+                          {['React Hooks', 'UI Design Basics', 'Python for ML'].map((search, index) => (
+                            <motion.button
+                              key={search}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.1 * index }}
+                              className="flex items-center space-x-2 text-sm text-secondary-600 hover:text-secondary-900 dark:text-primary-300 dark:hover:text-primary-200"
+                              onClick={() => setSearchQuery(search)}
                             >
-                              <span className="text-sm">{filter.label}</span>
-                              <Badge variant="secondary">{filter.count}</Badge>
-                            </button>
+                              <Clock className="h-3.5 w-3.5" />
+                              <span>{search}</span>
+                            </motion.button>
                           ))}
                         </div>
                       </div>
@@ -659,7 +640,7 @@ export const LearnerDashboard: React.FC = () => {
                     <Compass className="h-5 w-5 text-primary-600 dark:text-primary-400" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold">Recommended For You</h2>
+                    <h2 className="text-xl font-bold text-secondary-900 dark:text-white">Recommended For You</h2>
                     <p className="text-sm text-secondary-600 dark:text-secondary-400">
                       Courses that match your interests and goals
                     </p>
@@ -667,6 +648,7 @@ export const LearnerDashboard: React.FC = () => {
                 </div>
                 <Button
                   variant="outline"
+                  className="border-secondary-200 text-secondary-700 hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-400 dark:hover:bg-secondary-800/50"
                   rightIcon={<ChevronRight size={16} />}
                 >
                   View All
