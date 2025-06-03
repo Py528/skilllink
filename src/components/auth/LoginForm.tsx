@@ -7,6 +7,7 @@ import { Mail, Lock, Github, ArrowRight, Loader2, Sparkles } from 'lucide-react'
 import { FcGoogle } from "react-icons/fc";
 import { useAuth } from '@/components/auth/useAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AuthError } from '@supabase/supabase-js';
 
 const validateEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -26,7 +27,6 @@ export default function LoginForm() {
   const [generalError, setGeneralError] = useState('');
   
   const { login, loginWithGithub, loginWithGoogle } = useAuth();
-
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -64,11 +64,11 @@ export default function LoginForm() {
     setIsLoading(true);
     
     try {
-      await login(email, password, rememberMe);
+      await login(email, password);
       // Navigation is handled by the useAuth hook
-    } catch (error: any) {
+    } catch (error) {
       console.error('Login error:', error);
-      setGeneralError(error.message || 'Invalid email or password. Please try again.');
+      setGeneralError(error instanceof AuthError ? error.message : 'Invalid email or password. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -83,9 +83,9 @@ export default function LoginForm() {
     try {
       await loginWithGithub();
       // Redirect is handled by Supabase OAuth flow
-    } catch (error: any) {
+    } catch (error) {
       console.error('GitHub login error:', error);
-      setGeneralError(error.message || 'GitHub login failed. Please try again.');
+      setGeneralError(error instanceof AuthError ? error.message : 'GitHub login failed. Please try again.');
       setIsGithubLoading(false);
     }
   };
@@ -99,9 +99,9 @@ export default function LoginForm() {
     try {
       await loginWithGoogle();
       // Redirect is handled by Supabase OAuth flow
-    } catch (error: any) {
+    } catch (error) {
       console.error('Google login error:', error);
-      setGeneralError(error.message || 'Google login failed. Please try again.');
+      setGeneralError(error instanceof AuthError ? error.message : 'Google login failed. Please try again.');
       setIsGoogleLoading(false);
     }
   };

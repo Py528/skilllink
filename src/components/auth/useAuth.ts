@@ -142,6 +142,23 @@ export function useAuth() {
     return data;
   };
 
+  const loginWithGoogle = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        skipBrowserRedirect: false,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent'
+        }
+      }
+    });
+
+    if (error) throw error;
+    return data;
+  };
+
   const updateUserType = async (userType: 'instructor' | 'learner') => {
     if (!user) return;
 
@@ -168,6 +185,7 @@ export function useAuth() {
     register,
     logout,
     loginWithGithub,
+    loginWithGoogle,
     updateUserType,
   };
 }
