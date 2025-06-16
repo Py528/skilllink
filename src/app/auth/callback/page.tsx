@@ -39,10 +39,10 @@ export default function AuthCallback() {
         const error = params.get('error') || hash.get('error');
         if (error) {
           log(`❌ Authentication error: ${error}`);
-          router.push(`/login?error=${error}`);
+            router.push(`/login?error=${error}`);
           return;
         }
-
+        
         // Try code exchange
         const code = params.get('code');
         if (code) {
@@ -68,7 +68,7 @@ export default function AuthCallback() {
             access_token: accessToken,
             refresh_token: hash.get('refresh_token') || '',
           });
-
+            
           if (tokenError) {
             throw tokenError;
           }
@@ -84,7 +84,7 @@ export default function AuthCallback() {
         
       } catch (error) {
         log(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        router.push('/login?error=callback_failed');
+          router.push('/login?error=callback_failed');
       }
     };
 

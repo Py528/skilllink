@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { 
   BookOpen, 
   Compass, 
@@ -128,7 +129,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       { title: "JavaScript Patterns", href: "course-789", icon: <BookOpen size={14} /> },
     ]);
   }, []);
-
+  
   // Instructor navigation items
   const instructorNavItems: NavItem[] = [
     { 
@@ -313,13 +314,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Action Button */}
           <div className="p-4">
             {user?.role === "instructor" ? (
-              <Button
-                leftIcon={<Plus size={16} />}
-                className="w-full bg-primary-600 hover:bg-primary-700"
-                onClick={() => onNavItemClick("create")}
-              >
-                Create New Course
-              </Button>
+              <Link href="/courses/create" passHref>
+                <Button
+                  leftIcon={<Plus size={16} />}
+                  className="w-full bg-primary-600 hover:bg-primary-700"
+                >
+                  Create New Course
+                </Button>
+              </Link>
             ) : (
               <Button
                 leftIcon={<BookOpen size={16} />}

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { 
   Users, BookOpen, DollarSign, Award, Eye, 
   CheckCircle, MessageSquare, Star, Plus, TrendingUp,
@@ -178,14 +179,25 @@ export const InstructorDashboard: React.FC = () => {
                           </p>
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="hidden md:flex dark:border-secondary-700/50 dark:text-secondary-400 dark:hover:bg-secondary-800/50"
-                        rightIcon={<ChevronRight size={16} />}
-                      >
-                        View All Courses
-                      </Button>
+                      <div className="hidden md:flex items-center space-x-2">
+                        <Link href="/courses/create" passHref>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="dark:bg-primary-600 dark:hover:bg-primary-700"
+                          >
+                            Create New Course
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="dark:border-secondary-700/50 dark:text-secondary-400 dark:hover:bg-secondary-800/50"
+                          rightIcon={<ChevronRight size={16} />}
+                        >
+                          View All Courses
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="p-6">
@@ -304,7 +316,7 @@ export const InstructorDashboard: React.FC = () => {
                     </div>
                   </CardContent>
                 </Card>
-                
+                      
                 {/* Activity Feed */}
                 <Card className="overflow-hidden border border-secondary-200/50 dark:border-secondary-700/50">
                   <CardHeader className="border-b border-secondary-200 dark:border-secondary-700/50">

@@ -4,6 +4,7 @@ import { Progress } from "../common/Progress";
 import { Badge } from "../common/Badge";
 import { Button } from "../common/Button";
 import { BookOpen, Clock, Star, Users, TrendingUp, Settings } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface LearnerCourseCardProps {
   course: {
@@ -22,7 +23,6 @@ interface LearnerCourseCardProps {
     level: "beginner" | "intermediate" | "advanced";
     category: string;
   };
-  onClick?: () => void;
 }
 
 interface InstructorCourseCardProps {
@@ -50,7 +50,8 @@ const capitalizeString = (str: string | undefined | null): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
-export const LearnerCourseCard: React.FC<LearnerCourseCardProps> = ({ course, onClick }) => {
+export const LearnerCourseCard: React.FC<LearnerCourseCardProps> = ({ course }) => {
+  const router = useRouter();
   const levelColorMap = {
     beginner: "success" as const,
     intermediate: "warning" as const,
@@ -69,8 +70,12 @@ export const LearnerCourseCard: React.FC<LearnerCourseCardProps> = ({ course, on
   const safeRating = course.rating || 0;
   const safeProgress = course.progress || 0;
 
+  const handleCourseClick = () => {
+    router.push(`/course/${course.id}`);
+  };
+
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer" onClick={onClick}>
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer" onClick={handleCourseClick}>
       <div className="relative">
         <img
           src={safeCoverImage}
@@ -142,7 +147,7 @@ export const LearnerCourseCard: React.FC<LearnerCourseCardProps> = ({ course, on
             className="w-full"
             onClick={(e) => {
               e.stopPropagation();
-              onClick?.();
+              handleCourseClick();
             }}
           >
             {safeProgress > 0 ? "Continue Learning" : "Start Learning"}
