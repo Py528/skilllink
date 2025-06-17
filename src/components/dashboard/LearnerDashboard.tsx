@@ -9,11 +9,12 @@ import { Card, CardHeader, CardContent } from "../common/Card";
 import { Button } from "../common/Button";
 import { Progress } from "../common/Progress";
 import { Badge } from "../common/Badge";
-import { LearnerCourseCard } from "./CourseCard";
+import { CourseCard } from "./CourseCard";
 import { mockLearnerCourses as rawMockLearnerCourses, mockRecommendedCourses as rawMockRecommendedCourses } from "../../data/mockData";
 import { Navbar } from "../layout/Navbar";
 import { Sidebar } from "../layout/Sidebar";
 import { useUser } from "../../context/UserContext";
+import Image from 'next/image';
 
 interface Course {
   id: string;
@@ -347,30 +348,38 @@ export const LearnerDashboard: React.FC = () => {
                     <div className="grid md:grid-cols-3 gap-6">
                       <div className="md:col-span-2">
                         <div className="flex items-start space-x-4">
-                          <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
-                            <img
+                          <div className="relative h-48 w-full">
+                            <Image
                               src={continuelearningCourse.coverImage}
                               alt={continuelearningCourse.title}
-                              className="w-full h-full object-cover"
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                            <div className="absolute bottom-4 left-4 right-4">
+                              <div className="flex items-center gap-2">
+                                <div className="relative h-8 w-8 rounded-full overflow-hidden">
+                                  <Image
+                                    src={continuelearningCourse.instructor.avatar}
+                                    alt={continuelearningCourse.instructor.name}
+                                    fill
+                                    className="object-cover"
+                                    sizes="32px"
+                                  />
+                                </div>
+                                <span className="text-sm text-white">{continuelearningCourse.instructor.name}</span>
+                              </div>
+                            </div>
                           </div>
                           <div className="flex-1">
                             <h3 className="text-xl font-bold mb-2">{continuelearningCourse.title}</h3>
                             <div className="flex items-center space-x-4 mb-3">
                               <div className="flex items-center space-x-2">
-                                <img
-                                  src={continuelearningCourse.instructor.avatar}
-                                  alt={continuelearningCourse.instructor.name}
-                                  className="w-6 h-6 rounded-full"
-                                />
-                                <span className="text-sm text-secondary-600 dark:text-secondary-400">
-                                  {continuelearningCourse.instructor.name}
-                                </span>
+                                <Badge variant="outline">
+                                  {continuelearningCourse.category}
+                                </Badge>
                               </div>
-                              <Badge variant="outline">
-                                {continuelearningCourse.category}
-                              </Badge>
                             </div>
                             <div className="flex items-center space-x-4 text-sm text-secondary-600 dark:text-secondary-400">
                               <div className="flex items-center">
@@ -664,7 +673,7 @@ export const LearnerDashboard: React.FC = () => {
                     transition={{ delay: 0.1 * index + 0.2 }}
                     whileHover={{ y: -5 }}
                   >
-                    <LearnerCourseCard course={course} />
+                    <CourseCard course={course} />
                   </motion.div>
                 ))}
               </div>

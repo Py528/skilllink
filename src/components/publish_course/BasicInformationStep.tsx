@@ -82,7 +82,7 @@ export const BasicInformationStep: React.FC<BasicInformationStepProps> = ({
     >
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">Course Basic Information</h2>
-        <p className="text-gray-400">Let's start with the fundamentals of your course</p>
+        <p className="text-gray-400">Let&apos;s start with the fundamentals of your course</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -96,7 +96,7 @@ export const BasicInformationStep: React.FC<BasicInformationStepProps> = ({
             label="Course Title"
             placeholder="Enter your course title"
             value={formData.title || ''}
-            onChange={(e) => updateFormData({ ...formData, title: e.target.value })}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateFormData({ ...formData, title: e.target.value })}
             error={errors.title}
           />
 
@@ -105,7 +105,7 @@ export const BasicInformationStep: React.FC<BasicInformationStepProps> = ({
             placeholder="Describe what students will learn in this course"
             rows={6}
             value={formData.description || ''}
-            onChange={(e) => updateFormData({ ...formData, description: e.target.value })}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateFormData({ ...formData, description: e.target.value })}
             error={errors.description}
           />
 
@@ -114,7 +114,7 @@ export const BasicInformationStep: React.FC<BasicInformationStepProps> = ({
               label="Category"
               options={categories}
               value={formData.category || ''}
-              onChange={(e) => updateFormData({ ...formData, category: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateFormData({ ...formData, category: e.target.value })}
               error={errors.category}
             />
 
@@ -122,7 +122,7 @@ export const BasicInformationStep: React.FC<BasicInformationStepProps> = ({
               label="Difficulty Level"
               options={levels}
               value={formData.level || ''}
-              onChange={(e) => updateFormData({ ...formData, level: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateFormData({ ...formData, level: e.target.value })}
               error={errors.level}
             />
           </div>
@@ -203,8 +203,8 @@ export const BasicInformationStep: React.FC<BasicInformationStepProps> = ({
               <Input
                 placeholder="Add a tag"
                 value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTag(e.target.value)}
+                onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
                 className="flex-1"
               />
               <Button type="button" onClick={handleAddTag} size="md">
@@ -242,4 +242,4 @@ export const BasicInformationStep: React.FC<BasicInformationStepProps> = ({
       </div>
     </motion.div>
   );
-}; 
+};

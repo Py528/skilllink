@@ -8,10 +8,44 @@ import { Select } from '@/components/publish_course/Select';
 import { Card, CardContent, CardHeader } from '@/components/publish_course/Card';
 import { Textarea } from '@/components/publish_course/Textarea';
 
+interface FormData {
+  title: string;
+  description: string;
+  category: string;
+  level: string;
+  thumbnail: string | null;
+  tags: string[];
+  modules: Array<{
+    title: string;
+    description: string;
+    order_index: number;
+    lessons: Array<{
+      title: string;
+      description: string;
+      video_url: string;
+      duration: number;
+      order_index: number;
+      is_preview: boolean;
+      content: Record<string, unknown>;
+      thumbnail_url?: string;
+      resources: Record<string, unknown>[];
+      is_free: boolean;
+    }>;
+  }>;
+  pricingType: 'free' | 'paid';
+  price: string;
+  visibility: 'public' | 'private';
+  enrollmentType: 'open' | 'invite';
+  certificateEnabled: boolean;
+  prerequisites: string;
+  requirements: string;
+}
+
 interface PricingSettingsStepProps {
-  formData: any;
-  updateFormData: (data: any) => void;
-  errors: any;
+  formData: FormData;
+  updateFormData: (data: Partial<FormData>) => void;
+  errors: Record<string, string>;
+  onPublish?: () => void;
 }
 
 const visibilityOptions = [
@@ -35,7 +69,7 @@ export const PricingSettingsStep: React.FC<PricingSettingsStepProps> = ({
     updateFormData({
       ...formData,
       pricingType: type,
-      price: type === 'free' ? 0 : formData.price || ''
+      price: type === 'free' ? '0' : formData.price || ''
     });
   };
 

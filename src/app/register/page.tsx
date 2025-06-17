@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from 'next/navigation';
-import RegisterForm from '@/components/auth/RegisterForm';
+import { RegisterForm } from '@/components/auth/RegisterForm';
 import { ParticleBackground } from '@/components/hero/ParticleBackground';
 
 function getErrorMessage(error: string) {

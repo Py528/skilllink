@@ -1,9 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable experimental features
+  images: {
+    domains: ['images.unsplash.com', 'avatars.githubusercontent.com', 'lh3.googleusercontent.com', 'images.pexels.com'],
+  },
   experimental: {
-    // Allow all origins in development
-    allowedDevOrigins: ['*'],
+    serverActions: {
+      allowedOrigins: ['localhost:3000'],
+    },
   },
   // Disable strict mode for testing
   reactStrictMode: false,

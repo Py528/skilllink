@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Save } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, Check } from 'lucide-react';
+import { createBrowserClient } from '@supabase/ssr';
 import { Button } from '@/components/publish_course/Button';
 import { Progress } from '@/components/publish_course/Progress';
 import { Card, CardContent } from '@/components/publish_course/Card';
@@ -18,11 +19,27 @@ interface FormData {
   level: string;
   thumbnail: string | null;
   tags: string[];
-  modules: any[];
+  modules: Array<{
+    title: string;
+    description: string;
+    order_index: number;
+    lessons: Array<{
+      title: string;
+      description: string;
+      video_url: string;
+      duration: number;
+      order_index: number;
+      is_preview: boolean;
+      content: Record<string, unknown>;
+      thumbnail_url?: string;
+      resources: Record<string, unknown>[];
+      is_free: boolean;
+    }>;
+  }>;
   pricingType: 'free' | 'paid';
   price: string;
-  visibility: string;
-  enrollmentType: string;
+  visibility: 'public' | 'private';
+  enrollmentType: 'open' | 'invite';
   certificateEnabled: boolean;
   prerequisites: string;
   requirements: string;
@@ -36,12 +53,16 @@ const steps = [
 ];
 
 export default function CreateCourse() {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
     category: '',
-    level: '',
+    level: 'beginner',
     thumbnail: null,
     tags: [],
     modules: [],
@@ -120,20 +141,121 @@ export default function CreateCourse() {
 
   const handlePublish = async () => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      alert('Course published successfully!');
-      // Redirect to course page or dashboard
-    } catch (error) {
-      console.error('Error publishing course:', error);
-      alert('Failed to publish course. Please try again.');
-    }
-  };
+      setIsSaving(true);
+      console.log('Starting course creation with data:', formData);
 
-  const handleCancel = () => {
-    if (confirm('Are you sure you want to cancel? All unsaved changes will be lost.')) {
-      // Redirect to dashboard or course list
-      window.history.back();
+      // Get the current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        throw new Error('You must be logged in to create a course');
+      }
+
+      // 1. Create the course
+      const { data: course, error: courseError } = await supabase
+        .from('courses')
+        .insert({
+          title: formData.title,
+          description: formData.description,
+          thumbnail_url: formData.thumbnail,
+          price: formData.pricingType === 'paid' ? parseFloat(formData.price) : 0,
+          is_published: true,
+          difficulty_level: formData.level,
+          tags: formData.tags,
+          prerequisites: formData.prerequisites.split(',').map(p => p.trim()),
+          learning_objectives: formData.requirements.split(',').map(r => r.trim()),
+          category: formData.category,
+          last_published_at: new Date().toISOString(),
+          instructor_id: user.id
+        })
+        .select()
+        .single();
+
+      if (courseError) {
+        console.error('Error creating course:', courseError);
+        throw new Error(`Failed to create course: ${courseError.message}`);
+      }
+
+      console.log('Course created successfully:', course);
+
+      // 2. Create course sections (modules)
+      const sectionsToCreate = formData.modules.map((module, index) => ({
+        course_id: course.id,
+        title: module.title,
+        description: module.description,
+        order_index: index + 1
+      }));
+
+      console.log('Creating sections:', sectionsToCreate);
+
+      const { data: sections, error: sectionsError } = await supabase
+        .from('course_sections')
+        .insert(sectionsToCreate)
+        .select();
+
+      if (sectionsError) {
+        console.error('Error creating sections:', sectionsError);
+        throw new Error(`Failed to create sections: ${sectionsError.message}`);
+      }
+
+      console.log('Sections created successfully:', sections);
+
+      // 3. Create lessons for each section
+      for (let i = 0; i < formData.modules.length; i++) {
+        const courseModule = formData.modules[i];
+        const section = sections[i];
+
+        const lessonsToCreate = courseModule.lessons.map((lesson, index) => ({
+          course_id: course.id,
+          section_id: section.id,
+          title: lesson.title,
+          description: lesson.description || '',
+          video_url: lesson.video_url || '',
+          duration: typeof lesson.duration === 'string' ? parseInt(lesson.duration) || 0 : (lesson.duration || 0),
+          order_index: index + 1,
+          is_preview: lesson.is_preview || false,
+          content: lesson.content || {},
+          thumbnail_url: lesson.thumbnail_url || null,
+          resources: lesson.resources || [],
+          is_free: lesson.is_free || false
+        }));
+
+        if (lessonsToCreate.length > 0) {
+          const { error: lessonsError } = await supabase
+            .from('lessons')
+            .insert(lessonsToCreate);
+
+          if (lessonsError) {
+            console.error('Error creating lessons:', lessonsError);
+            throw new Error(`Failed to create lessons: ${lessonsError.message}`);
+          }
+        }
+      }
+
+      // 4. Update course with total lessons count
+      const totalLessons = formData.modules.reduce((acc, module) => acc + module.lessons.length, 0);
+      const { error: updateError } = await supabase
+        .from('courses')
+        .update({ total_lessons: totalLessons })
+        .eq('id', course.id);
+
+      if (updateError) {
+        console.error('Error updating course:', updateError);
+        throw new Error(`Failed to update course: ${updateError.message}`);
+      }
+
+      console.log('Course published successfully');
+      alert('Course published successfully!');
+      // TODO: Add redirect logic based on user preference
+      // Possible options:
+      // - Redirect to course page: window.location.href = `/courses/${course.id}`;
+      // - Redirect to dashboard: window.location.href = '/dashboard';
+      // - Stay on current page and show success message
+    } catch (error) {
+      console.error('Detailed error:', error);
+      alert(`Failed to publish course: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -182,47 +304,32 @@ export default function CreateCourse() {
                       <h3 className="font-semibold text-white mb-2">Progress</h3>
                       <Progress value={(currentStep / steps.length) * 100} showLabel />
                     </div>
-                    <div className="space-y-2">
-                      {steps.map((step, index) => (
-                        <motion.div
+                    <div className="space-y-3">
+                      {steps.map((step) => (
+                        <div
                           key={step.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.3 + index * 0.1 }}
-                          className={`p-3 rounded-xl border transition-all duration-200 ${
-                            currentStep === step.id
-                              ? 'border-[#0CF2A0] bg-[#0CF2A0]/10'
-                              : currentStep > step.id
-                              ? 'border-green-500/50 bg-green-600/10'
-                              : 'border-gray-800/50 bg-[#111111]/50'
-                          }`}
+                          className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 cursor-pointer
+                            ${currentStep === step.id ? 'bg-[#0CF2A0]/20 border border-[#0CF2A0]' : 'border border-transparent hover:bg-gray-700'}
+                            ${currentStep > step.id ? 'opacity-75' : ''}
+                          `}
+                          onClick={() => {
+                              setCurrentStep(step.id);
+                          }}
                         >
-                          <div className="flex items-center gap-3">
-                            <motion.div 
-                              animate={currentStep === step.id ? { scale: [1, 1.1, 1] } : {}}
-                              transition={{ duration: 0.5, repeat: currentStep === step.id ? Infinity : 0, repeatDelay: 2 }}
-                              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                                currentStep === step.id
-                                  ? 'bg-[#0CF2A0] text-[#111111]'
-                                  : currentStep > step.id
-                                  ? 'bg-green-600 text-white'
-                                  : 'bg-[#111111] text-gray-400 border border-gray-700'
-                              }`}
-                            >
-                              {currentStep > step.id ? '✓' : step.id}
-                            </motion.div>
-                            <div>
-                              <div className={`text-sm font-medium ${
-                                currentStep >= step.id ? 'text-white' : 'text-gray-400'
-                              }`}>
-                                {step.title}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {step.description}
-                              </div>
-                            </div>
+                          <div className={`size-8 rounded-full flex items-center justify-center font-bold text-sm
+                            ${currentStep === step.id ? 'bg-[#0CF2A0] text-[#111111]' : 'bg-gray-700 text-gray-300'}
+                          `}>
+                            {currentStep > step.id ? (
+                              <Check className="size-4" />
+                            ) : (
+                              step.id
+                            )}
                           </div>
-                        </motion.div>
+                          <div>
+                            <p className={`font-semibold ${currentStep === step.id ? 'text-[#0CF2A0]' : 'text-white'}`}>{step.title}</p>
+                            <p className="text-xs text-gray-400">{step.description}</p>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>

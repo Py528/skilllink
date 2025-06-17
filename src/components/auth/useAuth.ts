@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
@@ -17,7 +17,25 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  const fetchUserProfile = useCallback(async (userId: string) => {
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) throw profileError;
+
+      setProfile(profile);
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+      setError('Failed to load user profile');
+    }
+  }, []);
 
   useEffect(() => {
     // Check initial session
@@ -40,59 +58,20 @@ export function useAuth() {
     checkAuth();
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          setUser(session.user);
-          // Redirect immediately, fetch profile in background
-          router.push('/dashboard');
-          fetchUserProfile(session.user.id);
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setProfile(null);
-          router.push('/');
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        await fetchUserProfile(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setProfile(null);
+        router.push('/');
       }
-    );
+    });
 
-    return () => subscription.unsubscribe();
-  }, [router]);
-
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      let { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error && error.code === 'PGRST116') {
-        // Profile doesn't exist, create one in background
-        const { data: newProfile } = await supabase
-          .from('profiles')
-          .insert({
-            id: userId,
-            email: user?.email || '',
-            full_name: user?.user_metadata?.full_name || user?.user_metadata?.name || '',
-            user_type: 'learner',
-            onboarding_completed: false
-          })
-          .select()
-          .single();
-
-        if (newProfile) {
-          profile = newProfile;
-        }
-      }
-
-      if (profile) {
-        setProfile(profile);
-      }
-    } catch (error) {
-      console.error('Error with profile:', error);
-      // Don't block the UI if profile operations fail
-    }
-  };
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [fetchUserProfile, router]);
 
   const login = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -181,6 +160,7 @@ export function useAuth() {
     user,
     profile,
     loading,
+    error,
     login,
     register,
     logout,

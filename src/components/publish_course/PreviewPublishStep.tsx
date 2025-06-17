@@ -1,16 +1,47 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, Globe, Clock, Users, BookOpen, AlertCircle, Check } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '@/components/publish_course/Card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/publish_course/Badge';
-import { Button } from '@/components/publish_course/Button';
-import { Select } from '@/components/publish_course/Select';
+import { Button } from '@/components/ui/button';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import Image from 'next/image';
 
 interface PreviewPublishStepProps {
-  formData: any;
-  updateFormData: (data: any) => void;
-  errors: any;
-  onPublish: () => void;
+  formData: {
+    title: string;
+    description: string;
+    category: string;
+    level: string;
+    thumbnail: string | null;
+    tags: string[];
+    modules: Array<{
+      title: string;
+      description: string;
+      order_index: number;
+      lessons: Array<{
+        title: string;
+        description: string;
+        video_url: string;
+        duration: number;
+        order_index: number;
+        is_preview: boolean;
+        content: Record<string, unknown>;
+        thumbnail_url?: string;
+        resources: Record<string, unknown>[];
+        is_free: boolean;
+      }>;
+    }>;
+    pricingType: 'free' | 'paid';
+    price: string;
+    visibility: 'public' | 'private';
+    enrollmentType: 'open' | 'invite';
+    certificateEnabled: boolean;
+    prerequisites: string;
+    requirements: string;
+  };
+  updateFormData: (data: Partial<PreviewPublishStepProps['formData']>) => void;
+  onPublish?: () => Promise<void>;
 }
 
 const publishOptions = [
@@ -22,7 +53,6 @@ const publishOptions = [
 export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
   formData,
   updateFormData,
-  errors,
   onPublish
 }) => {
   const [publishType, setPublishType] = React.useState('now');
@@ -36,19 +66,19 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
     { id: 'level', label: 'Difficulty level', completed: !!formData.level },
     { id: 'thumbnail', label: 'Course thumbnail', completed: !!formData.thumbnail },
     { id: 'modules', label: 'At least one module', completed: formData.modules?.length > 0 },
-    { id: 'lessons', label: 'At least one lesson', completed: formData.modules?.some((m: any) => m.lessons?.length > 0) },
-    { id: 'pricing', label: 'Pricing configuration', completed: !!formData.pricingType }
+    { id: 'lessons', label: 'At least one lesson', completed: formData.modules?.some(m => m.lessons?.length > 0) },
+    { id: 'pricing', label: 'Pricing configuration', completed: !!formData.pricingType && (formData.pricingType === 'free' || parseFloat(formData.price) > 0) }
   ];
 
   const completedItems = checklist.filter(item => item.completed).length;
   const totalItems = checklist.length;
   const isReadyToPublish = completedItems === totalItems;
 
-  const totalLessons = formData.modules?.reduce((total: number, module: any) => 
+  const totalLessons = formData.modules?.reduce((total: number, module) => 
     total + (module.lessons?.length || 0), 0
   ) || 0;
 
-  const handlePublish = () => {
+  const handlePublishClick = () => {
     const publishData = {
       ...formData,
       publishType,
@@ -56,7 +86,7 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
       publishedAt: publishType === 'now' ? new Date().toISOString() : null
     };
     updateFormData(publishData);
-    onPublish();
+    onPublish?.();
   };
 
   return (
@@ -85,13 +115,14 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
             Course Preview
           </h3>
           
-          <Card className="overflow-hidden" hover>
+          <Card className="overflow-hidden">
             {formData.thumbnail && (
-              <div className="aspect-video bg-[#111111]">
-                <img
+              <div className="aspect-video bg-[#111111] relative">
+                <Image
                   src={formData.thumbnail}
                   alt={formData.title}
-                  className="w-full h-full object-cover"
+                  fill
+                  style={{ objectFit: 'cover' }}
                 />
               </div>
             )}
@@ -101,7 +132,7 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
                   {formData.title || 'Untitled Course'}
                 </h4>
                 <Badge variant={formData.pricingType === 'free' ? 'success' : 'primary'} className="ml-2">
-                  {formData.pricingType === 'free' ? 'Free' : `$${formData.price || '0'}`}
+                  {formData.pricingType === 'free' ? 'Free' : `$${parseFloat(formData.price || '0').toFixed(2)}`}
                 </Badge>
               </div>
               
@@ -236,12 +267,21 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select
-                label="Publishing Action"
-                options={publishOptions}
-                value={publishType}
-                onChange={(e) => setPublishType(e.target.value)}
-              />
+              <div>
+                <label htmlFor="publish-type" className="block text-sm font-medium text-gray-300 mb-1">Publishing Action</label>
+                <Select value={publishType} onValueChange={(value) => setPublishType(value)}>
+                  <SelectTrigger id="publish-type" className="w-full">
+                    <SelectValue placeholder="Select publish option" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {publishOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               
               <AnimatePresence>
                 {publishType === 'schedule' && (
@@ -251,11 +291,12 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <label className="block text-sm font-medium text-white mb-2">
+                    <label htmlFor="schedule-date" className="block text-sm font-medium text-white mb-2">
                       Schedule Date
                     </label>
                     <input
                       type="datetime-local"
+                      id="schedule-date"
                       value={scheduleDate}
                       onChange={(e) => setScheduleDate(e.target.value)}
                       className="w-full px-3 py-2 bg-[#111111] border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#0CF2A0]/50 focus:border-[#0CF2A0] hover:border-gray-600 transition-all duration-200"
@@ -266,25 +307,6 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
             </div>
           </CardContent>
         </Card>
-      </motion.div>
-
-      {/* Publish Button */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="flex justify-center"
-      >
-        <Button
-          onClick={handlePublish}
-          disabled={!isReadyToPublish && publishType !== 'draft'}
-          size="lg"
-          className="px-8"
-        >
-          {publishType === 'now' && 'Publish Course Now'}
-          {publishType === 'schedule' && 'Schedule Course'}
-          {publishType === 'draft' && 'Save as Draft'}
-        </Button>
       </motion.div>
     </motion.div>
   );

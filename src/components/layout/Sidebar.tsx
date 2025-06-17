@@ -22,6 +22,7 @@ import { Button } from "../common/Button";
 import { useUser } from "../../context/UserContext";
 import { Badge } from "../common/Badge";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 interface NavItem {
   icon: React.ReactNode;
@@ -45,6 +46,68 @@ interface SidebarProps {
   activeNavItem: string;
 }
 
+// Animation variants
+const sidebarVariants = {
+  open: {
+    x: 0,
+    opacity: 1,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 30,
+      staggerChildren: 0.1,
+      delayChildren: 0.1
+    }
+  },
+  closed: {
+    x: "-100%",
+    opacity: 0,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 30,
+      staggerChildren: 0.05,
+      staggerDirection: -1
+    }
+  }
+};
+
+const containerVariants = {
+  open: {
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1
+    }
+  },
+  closed: {
+    transition: {
+      staggerChildren: 0.05,
+      staggerDirection: -1
+    }
+  }
+};
+
+const navItemVariants = {
+  open: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 24
+    }
+  },
+  closed: {
+    opacity: 0,
+    x: -20,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 24
+    }
+  }
+};
+
 // NavGroup component to handle collapsible navigation sections
 const NavGroup: React.FC<NavGroupProps> = ({ item, onNavItemClick, depth = 0 }) => {
   const [isCollapsed, setIsCollapsed] = useState(item.collapsed || false);
@@ -55,8 +118,11 @@ const NavGroup: React.FC<NavGroupProps> = ({ item, onNavItemClick, depth = 0 }) 
   };
   
   return (
-    <div className="mb-1">
-      <button
+    <motion.div 
+      className="mb-1"
+      variants={navItemVariants}
+    >
+      <motion.button
         className={cn(
           "flex items-center justify-between w-full px-4 py-2 text-sm font-medium rounded-2xl transition-colors duration-150",
           item.active
@@ -65,25 +131,39 @@ const NavGroup: React.FC<NavGroupProps> = ({ item, onNavItemClick, depth = 0 }) 
           depth > 0 && "ml-6 text-xs"
         )}
         onClick={() => item.children ? toggleCollapse : onNavItemClick(item.href)}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
       >
         <span className="flex items-center">
-          {item.icon && <span className="mr-3">{item.icon}</span>}
+          <motion.span 
+            className="mr-3"
+            whileHover={{ rotate: 15 }}
+            transition={{ type: "spring", stiffness: 400, damping: 10 }}
+          >
+            {item.icon}
+          </motion.span>
           {item.label}
           {item.count && (
-            <Badge variant="secondary" className="ml-2">
-              {item.count}
-            </Badge>
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 10 }}
+            >
+              <Badge variant="secondary" className="ml-2">
+                {item.count}
+              </Badge>
+            </motion.div>
           )}
         </span>
         {item.children && (
           <motion.div
             animate={{ rotate: isCollapsed ? 0 : 90 }}
-            transition={{ duration: 0.2 }}
+            transition={{ type: "spring", stiffness: 200, damping: 20 }}
           >
             <ChevronRight size={16} />
           </motion.div>
         )}
-      </button>
+      </motion.button>
       
       {item.children && (
         <AnimatePresence initial={false}>
@@ -92,7 +172,10 @@ const NavGroup: React.FC<NavGroupProps> = ({ item, onNavItemClick, depth = 0 }) 
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              transition={{ 
+                height: { type: "spring", stiffness: 300, damping: 30 },
+                opacity: { duration: 0.2 }
+              }}
               className="overflow-hidden"
             >
               <div className="pt-1 pl-4">
@@ -109,7 +192,7 @@ const NavGroup: React.FC<NavGroupProps> = ({ item, onNavItemClick, depth = 0 }) 
           )}
         </AnimatePresence>
       )}
-    </div>
+    </motion.div>
   );
 };
 
@@ -120,6 +203,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user } = useUser();
   const [recentlyViewed, setRecentlyViewed] = useState<{title: string; href: string; icon: React.ReactNode}[]>([]);
+  const router = useRouter();
   
   useEffect(() => {
     // In a real app, this would come from an API or local storage
@@ -262,28 +346,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     collapsed: true
   };
 
-  // Select navigation items based on user role
-  const navItems = user?.role === "instructor" ? instructorNavItems : learnerNavItems;
-
-  const sidebarVariants = {
-    open: { 
-      x: 0,
-      transition: { 
-        type: "spring", 
-        stiffness: 300, 
-        damping: 30 
-      } 
-    },
-    closed: { 
-      x: "-100%",
-      transition: { 
-        type: "spring", 
-        stiffness: 300, 
-        damping: 30 
-      } 
-    }
-  };
-
   return (
     <>
       {/* Mobile overlay */}
@@ -301,67 +363,90 @@ export const Sidebar: React.FC<SidebarProps> = ({
       
       {/* Sidebar */}
       <motion.aside
-        variants={sidebarVariants}
+        className={cn(
+          "fixed top-16 left-0 z-30 h-[calc(100vh-4rem)] transition-transform",
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        )}
         initial="closed"
         animate={isOpen ? "open" : "closed"}
-        className={cn(
-          "fixed top-16 left-0 bottom-0 w-64 bg-white dark:bg-secondary-900 border-r border-secondary-200 dark:border-secondary-800 z-30",
-          "transform lg:translate-x-0 transition-transform duration-300 ease-in-out",
-          !isOpen && "lg:relative"
-        )}
+        variants={sidebarVariants}
       >
-        <div className="flex flex-col h-full">
-          {/* Action Button */}
-          <div className="p-4">
-            {user?.role === "instructor" ? (
-              <Link href="/courses/create" passHref>
-                <Button
-                  leftIcon={<Plus size={16} />}
-                  className="w-full bg-primary-600 hover:bg-primary-700"
+        <div className="flex flex-col h-full bg-white dark:bg-secondary-900 border-r border-secondary-200 dark:border-secondary-800">
+          <div className="flex flex-col h-full">
+            {/* Action Button */}
+            <motion.div 
+              className="p-4"
+              variants={navItemVariants}
+            >
+              {user?.role === "instructor" ? (
+                <Link href="/courses/create" passHref>
+                  <Button
+                    leftIcon={<Plus size={16} />}
+                    className="w-full bg-primary-600 hover:bg-primary-700"
+                    onClick={() => router.push("/courses/create")}
+                  >
+                    Create New Course
+                  </Button>
+                </Link>
+              ) : (
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  Create New Course
-                </Button>
-              </Link>
-            ) : (
-              <Button
-                leftIcon={<BookOpen size={16} />}
-                className="w-full bg-primary-600 hover:bg-primary-700"
-                onClick={() => onNavItemClick("resume")}
-              >
-                Resume Learning
-              </Button>
-            )}
-          </div>
-          
-          {/* Main Navigation */}
-          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-            {navItems.map((item) => (
-              <NavGroup key={item.href} item={item} onNavItemClick={onNavItemClick} />
-            ))}
-          </nav>
-          
-          {/* Recently Viewed Section */}
-          <div className="px-4 py-2">
-            <h3 className="text-xs uppercase font-semibold text-secondary-500 mb-2 px-2">Recently Viewed</h3>
-            <div className="space-y-1">
-              {recentlyViewed.map((item) => (
-                <motion.button
-                  key={item.href}
-                  className="flex items-center w-full px-2 py-1.5 text-sm text-secondary-700 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800 rounded-md"
-                  onClick={() => onNavItemClick(item.href)}
-                  whileHover={{ x: 4 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                >
-                  <span className="mr-2">{item.icon}</span>
-                  <span className="truncate">{item.title}</span>
-                </motion.button>
+                  <Button
+                    leftIcon={<BookOpen size={16} />}
+                    className="w-full bg-primary-600 hover:bg-primary-700"
+                    onClick={() => onNavItemClick("resume")}
+                  >
+                    Resume Learning
+                  </Button>
+                </motion.div>
+              )}
+            </motion.div>
+            
+            {/* Main Navigation */}
+            <motion.nav 
+              className="flex-1 px-2 py-4 space-y-1 overflow-y-auto"
+              variants={containerVariants}
+            >
+              {(user?.role === "instructor" ? instructorNavItems : learnerNavItems).map((item) => (
+                <NavGroup key={item.href} item={item} onNavItemClick={onNavItemClick} />
               ))}
+            </motion.nav>
+            
+            {/* Recently Viewed Section */}
+            <motion.div 
+              className="px-4 py-2"
+              variants={navItemVariants}
+            >
+              <h3 className="text-xs uppercase font-semibold text-secondary-500 mb-2 px-2">Recently Viewed</h3>
+              <div className="space-y-1">
+                {recentlyViewed.map((item) => (
+                  <motion.button
+                    key={item.href}
+                    className="flex items-center w-full px-2 py-1.5 text-sm text-secondary-700 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800 rounded-md"
+                    onClick={() => onNavItemClick(item.href)}
+                    whileHover={{ x: 4, scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                  >
+                    <motion.span 
+                      className="mr-2"
+                      whileHover={{ rotate: 15 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                    >
+                      {item.icon}
+                    </motion.span>
+                    <span className="truncate">{item.title}</span>
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+            
+            {/* Settings Navigation */}
+            <div className="mt-auto px-2 py-4">
+              <NavGroup item={settingsNavItem} onNavItemClick={onNavItemClick} />
             </div>
-          </div>
-          
-          {/* Settings Navigation */}
-          <div className="mt-auto px-2 py-4">
-            <NavGroup item={settingsNavItem} onNavItemClick={onNavItemClick} />
           </div>
         </div>
       </motion.aside>

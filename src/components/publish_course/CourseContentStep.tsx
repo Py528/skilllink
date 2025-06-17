@@ -1,18 +1,45 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, GripVertical, Video, FileText, HelpCircle, AlignCenter as Assignment, Trash2, Edit3 } from 'lucide-react';
-import { Button } from '@/components/publish_course/Button';
+import { Button } from "@/components/publish_course/Button";
 import { Card, CardContent, CardHeader } from '@/components/publish_course/Card';
 import { Input } from '@/components/publish_course/Input';
 import { Select } from '@/components/publish_course/Select';
 import { Badge } from '@/components/publish_course/Badge';
 
+interface Lesson {
+  id: string;
+  title: string;
+  description: string;
+  video_url: string;
+  duration: number;
+  order_index: number;
+  is_preview: boolean;
+  content: Record<string, unknown>;
+  thumbnail_url?: string;
+  resources: Record<string, unknown>[];
+  is_free: boolean;
+  type?: string;
+}
+
+interface Module {
+  id: string;
+  title: string;
+  description: string;
+  order_index: number;
+  lessons: Lesson[];
+}
+
 interface CourseContentStepProps {
-  formData: any;
-  updateFormData: (data: any) => void;
-  errors: any;
+  formData: {
+    modules: Module[];
+  };
+  updateFormData: (data: Partial<CourseContentStepProps['formData']>) => void;
+  onNext: () => void;
+  onBack: () => void;
+  errors?: Record<string, string>;
 }
 
 const contentTypes = [
@@ -23,62 +50,78 @@ const contentTypes = [
 ];
 
 export const CourseContentStep: React.FC<CourseContentStepProps> = ({
-  formData,
+  formData = {
+    modules: []
+  },
   updateFormData,
-  errors
+  onNext,
+  onBack,
+  errors = {}
 }) => {
-  const [editingModule, setEditingModule] = React.useState<number | null>(null);
-  const [editingLesson, setEditingLesson] = React.useState<{ moduleIndex: number; lessonIndex: number } | null>(null);
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+  const [editingModule, setEditingModule] = useState<number | null>(null);
+  const [editingLesson, setEditingLesson] = useState<{ moduleIndex: number; lessonIndex: number } | null>(null);
 
   const modules = formData.modules || [];
 
+  const toggleModule = (moduleId: string) => {
+    const newExpanded = new Set(expandedModules);
+    if (newExpanded.has(moduleId)) {
+      newExpanded.delete(moduleId);
+    } else {
+      newExpanded.add(moduleId);
+    }
+    setExpandedModules(newExpanded);
+  };
+
   const addModule = () => {
-    const newModule = {
+    const newModule: Module = {
+      id: Date.now().toString(),
       title: 'New Module',
       description: '',
-      lessons: []
+      order_index: formData.modules.length,
+      lessons: [],
     };
-    updateFormData({
-      ...formData,
-      modules: [...modules, newModule]
-    });
-    setEditingModule(modules.length);
+    updateFormData({ modules: [...formData.modules, newModule] });
+    setExpandedModules(new Set([...expandedModules, newModule.id]));
+    setEditingModule(formData.modules.length);
   };
 
   const updateModule = (moduleIndex: number, updatedModule: any) => {
     const updatedModules = modules.map((module: any, index: number) =>
       index === moduleIndex ? updatedModule : module
     );
-    updateFormData({
-      ...formData,
-      modules: updatedModules
-    });
+    updateFormData({ modules: updatedModules });
   };
 
   const deleteModule = (moduleIndex: number) => {
     const updatedModules = modules.filter((_: any, index: number) => index !== moduleIndex);
-    updateFormData({
-      ...formData,
-      modules: updatedModules
-    });
+    updateFormData({ modules: updatedModules });
+    const newExpanded = new Set(expandedModules);
+    newExpanded.delete(modules[moduleIndex].id);
+    setExpandedModules(newExpanded);
   };
 
   const addLesson = (moduleIndex: number) => {
-    const newLesson = {
+    const newLesson: Lesson = {
+      id: Date.now().toString(),
       title: 'New Lesson',
-      type: 'video',
-      duration: '',
-      description: ''
+      description: '',
+      video_url: '',
+      duration: 0,
+      order_index: modules[moduleIndex].lessons.length,
+      is_preview: false,
+      content: {},
+      resources: [],
+      is_free: false,
+      type: 'video'
     };
     const updatedModules = modules.map((module: any, index: number) =>
       index === moduleIndex
         ? { ...module, lessons: [...module.lessons, newLesson] }
         : module
     );
-    updateFormData({
-      ...formData,
-      modules: updatedModules
-    });
+    updateFormData({ modules: updatedModules });
     setEditingLesson({ moduleIndex, lessonIndex: modules[moduleIndex].lessons.length });
   };
 
@@ -93,10 +136,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
           }
         : module
     );
-    updateFormData({
-      ...formData,
-      modules: updatedModules
-    });
+    updateFormData({ modules: updatedModules });
   };
 
   const deleteLesson = (moduleIndex: number, lessonIndex: number) => {
@@ -108,10 +148,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
           }
         : module
     );
-    updateFormData({
-      ...formData,
-      modules: updatedModules
-    });
+    updateFormData({ modules: updatedModules });
   };
 
   const getContentTypeIcon = (type: string) => {
@@ -215,7 +252,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                   <div className="space-y-3">
                     <AnimatePresence>
                       {module.lessons?.map((lesson: any, lessonIndex: number) => {
-                        const IconComponent = getContentTypeIcon(lesson.type);
+                        const IconComponent = getContentTypeIcon(lesson.type || 'video');
                         return (
                           <motion.div
                             key={lessonIndex}
@@ -243,7 +280,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                                   />
                                   <Select
                                     options={contentTypes.map(ct => ({ value: ct.value, label: ct.label }))}
-                                    value={lesson.type}
+                                    value={lesson.type || 'video'}
                                     onChange={(e) => updateLesson(moduleIndex, lessonIndex, { ...lesson, type: e.target.value })}
                                   />
                                   <Input
@@ -258,7 +295,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                                   <h4 className="text-sm font-medium text-white">{lesson.title}</h4>
                                   <div className="flex items-center gap-2 mt-1">
                                     <Badge variant="secondary" size="sm">
-                                      {lesson.type}
+                                      {lesson.type || 'video'}
                                     </Badge>
                                     {lesson.duration && (
                                       <span className="text-xs text-gray-400">{lesson.duration}</span>
@@ -315,4 +352,4 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
       </div>
     </motion.div>
   );
-}; 
+};

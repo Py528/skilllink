@@ -1,10 +1,11 @@
-import React from "react";
+import React from 'react';
+import Image from 'next/image';
 import { cn } from "../../lib/utils";
 
 interface AvatarProps {
   src: string;
   alt: string;
-  size?: "xs" | "sm" | "md" | "lg" | "xl";
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
   status?: "online" | "offline" | "away" | "busy";
 }
@@ -12,16 +13,14 @@ interface AvatarProps {
 export const Avatar: React.FC<AvatarProps> = ({
   src,
   alt,
-  size = "md",
-  className,
+  size = 'md',
+  className = '',
   status,
 }) => {
-  const sizeMap = {
-    xs: "w-6 h-6",
-    sm: "w-8 h-8",
-    md: "w-10 h-10",
-    lg: "w-12 h-12",
-    xl: "w-16 h-16",
+  const sizeClasses = {
+    sm: 'w-8 h-8',
+    md: 'w-10 h-10',
+    lg: 'w-12 h-12'
   };
 
   const statusColorMap = {
@@ -32,28 +31,19 @@ export const Avatar: React.FC<AvatarProps> = ({
   };
 
   const statusSizeMap = {
-    xs: "w-1.5 h-1.5",
     sm: "w-2 h-2",
     md: "w-2.5 h-2.5",
     lg: "w-3 h-3",
-    xl: "w-4 h-4",
   };
 
   return (
-    <div className={cn("relative inline-block", className)}>
-      <img
+    <div className={`relative rounded-full overflow-hidden ${sizeClasses[size]} ${className}`}>
+      <Image
         src={src}
         alt={alt}
-        className={cn(
-          sizeMap[size],
-          "rounded-full object-cover border-2 border-secondary-200 dark:border-secondary-700"
-        )}
-        onError={(e) => {
-          // Fallback to initials if image fails to load
-          const target = e.target as HTMLImageElement;
-          target.style.display = "none";
-          // We'd normally create an element with initials here
-        }}
+        fill
+        className="object-cover"
+        sizes={`(max-width: 768px) ${size === 'sm' ? '32px' : size === 'md' ? '40px' : '48px'}`}
       />
       
       {status && (
