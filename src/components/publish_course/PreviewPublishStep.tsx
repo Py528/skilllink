@@ -13,6 +13,7 @@ interface UploadedFile {
   size: number;
   type: string;
   url: string;
+  key: string;
 }
 
 interface Lesson {
@@ -210,11 +211,36 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
   const isReadyToPublish = completedItems === totalItems;
 
   const handlePublish = async () => {
+    // Transform modules/lessons for Supabase
+    const transformedModules = (formData.modules || []).map((mod) => ({
+      ...mod,
+      lessons: (mod.lessons || []).map((lesson) => ({
+        ...lesson,
+        resources: (lesson.resourceFiles || []).map((file) => ({
+          key: file.key,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          url: file.url,
+        })),
+        videoFile: undefined,
+        resourceFiles: undefined,
+      })),
+    }));
+    // Data to send to Supabase (no UI-only fields)
     const publishData = {
       ...formData,
+      modules: transformedModules,
+      thumbnail_url: formData.thumbnail,
       publishType,
       scheduleDate: publishType === 'schedule' ? scheduleDate : null,
       publishedAt: publishType === 'now' ? new Date().toISOString() : null
+    };
+    // Data to update form state (keep thumbnail for UI)
+    const formStateData = {
+      ...formData,
+      modules: transformedModules,
+      // keep 'thumbnail' for UI
     };
     console.log('[PUBLISH] Starting course creation with data:', publishData);
     if (publishData.modules) {
@@ -245,7 +271,7 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
     } catch (err) {
       console.error('[PUBLISH] Exception during publish:', err);
     }
-    updateFormData(publishData);
+    updateFormData(formStateData);
     onPublish();
   };
 

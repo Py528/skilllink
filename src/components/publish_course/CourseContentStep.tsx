@@ -16,7 +16,7 @@ interface UploadedFile {
   size: number;
   type: string;
   url: string;
-  key?: string;
+  key: string;
   uploadProgress?: number;
   duration?: number;
 }
@@ -173,47 +173,21 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
   // Upload file to S3 for videos, simulate for others
   const uploadFile = async (file: File, isVideo: boolean = false, progressCallback?: (progress: { percentage: number }) => void): Promise<UploadedFile> => {
     const fileId = generateFileId();
-    if (isVideo) {
-      console.log('[S3 UPLOAD] Starting upload for video:', file.type, file.size);
-      try {
-        // Generate a hash-based filename (keep extension)
-        const hash = await getFileHash(file);
-        const ext = file.name.split('.').pop();
-        const safeName = ext ? `${hash}.${ext}` : hash;
-        const hashedFile = new window.File([file], safeName, { type: file.type });
-        const result = await s3Service.uploadFile(hashedFile, 'videos', progressCallback);
-        console.log('[S3 UPLOAD] Upload result:', result);
-        return {
-          id: fileId,
-          name: safeName, // Only show hash name in UI if needed
-          size: file.size,
-          type: file.type,
-          url: result.url,
-          key: result.key,
-        };
-      } catch (err) {
-        console.error('[S3 UPLOAD] Upload error:', err);
-        throw err;
-      }
-    } else {
-      // Simulate upload for non-videos
-      return new Promise((resolve) => {
-        let progress = 0;
-        const interval = setInterval(() => {
-          progress += Math.random() * 30;
-          if (progress >= 100) {
-            clearInterval(interval);
-            resolve({
-              id: fileId,
-              name: file.name,
-              size: file.size,
-              type: file.type,
-              url: URL.createObjectURL(file),
-            });
-          }
-        }, 200);
-      });
-    }
+    // Hash the file name for privacy
+    const hash = await getFileHash(file);
+    const ext = file.name.split('.').pop();
+    const safeName = ext ? `${hash}.${ext}` : hash;
+    const folder = isVideo ? 'videos' : 'resources';
+    const hashedFile = new window.File([file], safeName, { type: file.type });
+    const result = await s3Service.uploadFile(hashedFile, folder, progressCallback);
+    return {
+      id: fileId,
+      name: file.name, // Show original name in UI
+      size: file.size,
+      type: file.type,
+      url: result.url,
+      key: result.key,
+    };
   };
 
   // Handle file upload for lessons
