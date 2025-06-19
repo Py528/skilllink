@@ -86,18 +86,19 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
     total + (module.lessons?.length || 0), 0
   );
   
-  const totalVideoDuration = modules.reduce((total: number, module: Module) => {
+  // Calculate total video duration in seconds
+  const totalVideoDurationSeconds = modules.reduce((total: number, module: Module) => {
     return total + (module.lessons?.reduce((lessonTotal: number, lesson: Lesson) => {
       if (lesson.type === 'video' && lesson.duration) {
         if (typeof lesson.duration === 'string') {
-          const duration = lesson.duration.toLowerCase();
-          if (duration.includes(':')) {
-            const [minutes, seconds] = duration.split(':').map(Number);
-            return lessonTotal + minutes + (seconds / 60);
-          } else if (duration.includes('min')) {
-            return lessonTotal + parseInt(duration);
-          } else if (!isNaN(Number(duration))) {
-            return lessonTotal + Number(duration);
+          // mm:ss or seconds string
+          if (lesson.duration.includes(':')) {
+            const [mm, ss] = lesson.duration.split(':').map(Number);
+            return lessonTotal + mm * 60 + (ss || 0);
+          } else if (lesson.duration.toLowerCase().includes('min')) {
+            return lessonTotal + parseInt(lesson.duration) * 60;
+          } else if (!isNaN(Number(lesson.duration))) {
+            return lessonTotal + Number(lesson.duration);
           }
         } else if (typeof lesson.duration === 'number') {
           return lessonTotal + lesson.duration;
@@ -113,14 +114,31 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
     }, 0) || 0);
   }, 0);
 
-  // Format duration for display
-  const formatDuration = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.round(minutes % 60);
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
+  // Format duration with units (e.g., 1m 00s, 2h 03m 15s, 45s)
+  const formatDuration = (secondsOrString: number | string | undefined): string => {
+    let seconds = 0;
+    if (typeof secondsOrString === 'number') {
+      seconds = secondsOrString;
+    } else if (typeof secondsOrString === 'string') {
+      // If string is in mm:ss format
+      if (secondsOrString.includes(':')) {
+        const [mm, ss] = secondsOrString.split(':').map(Number);
+        seconds = mm * 60 + (ss || 0);
+      } else if (secondsOrString.toLowerCase().includes('min')) {
+        seconds = parseInt(secondsOrString) * 60;
+      } else if (!isNaN(Number(secondsOrString))) {
+        seconds = Number(secondsOrString);
+      }
     }
-    return `${mins}m`;
+    if (isNaN(seconds) || seconds <= 0) return '0s';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.round(seconds % 60);
+    let result = '';
+    if (h > 0) result += `${h}h `;
+    if (m > 0 || h > 0) result += `${m}m `;
+    result += `${s.toString().padStart(2, '0')}s`;
+    return result.trim();
   };
 
   // Format file size
@@ -236,7 +254,7 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
                   {contentType?.label}
                 </Badge>
                 {lesson.duration && (
-                  <span className="text-xs text-gray-400">{lesson.duration}</span>
+                  <span className="text-xs text-gray-400">{formatDuration(lesson.duration)}</span>
                 )}
               </div>
             </div>
@@ -429,7 +447,7 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-[#0CF2A0]">
-                  {totalVideoDuration > 0 ? formatDuration(totalVideoDuration) : '0m'}
+                  {formatDuration(totalVideoDurationSeconds)}
                 </div>
                 <div className="text-sm text-gray-400">Video Content</div>
               </div>

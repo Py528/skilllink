@@ -16,6 +16,7 @@ interface UploadedFile {
   type: string;
   url: string;
   uploadProgress?: number;
+  duration?: number;
 }
 
 interface Lesson {
@@ -95,6 +96,30 @@ const fileTypeConfig = {
     icon: File,
     color: 'text-gray-400'
   }
+};
+
+// Utility to get video duration from a File
+const getVideoDuration = (file: File): Promise<number> => {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      window.URL.revokeObjectURL(video.src);
+      resolve(video.duration);
+    };
+    video.onerror = () => {
+      reject(new Error('Failed to load video metadata'));
+    };
+    video.src = URL.createObjectURL(file);
+  });
+};
+
+// Utility to format seconds as mm:ss
+const formatDuration = (seconds: number | undefined) => {
+  if (!seconds || isNaN(seconds)) return '';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
 export const CourseContentStep: React.FC<CourseContentStepProps> = ({
@@ -180,7 +205,14 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
           throw new Error(`File ${file.name} is too large. Maximum size is ${formatFileSize(config.maxSize)}`);
         }
 
-        return await uploadFile(file);
+        // If video, get duration
+        let duration: number | undefined = undefined;
+        if (isVideo) {
+          duration = await getVideoDuration(file);
+        }
+
+        const uploaded = await uploadFile(file);
+        return { ...uploaded, duration };
       });
 
       const uploadedFiles = await Promise.all(uploadPromises);
@@ -195,7 +227,10 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                   ? {
                       ...lesson,
                       ...(isVideo 
-                        ? { videoFile: uploadedFiles[0] } // Only one video per lesson
+                        ? { 
+                            videoFile: uploadedFiles[0], // Only one video per lesson
+                            duration: uploadedFiles[0].duration ? Math.round(uploadedFiles[0].duration) : lesson.duration // set duration if available
+                          } 
                         : { resourceFiles: [...(lesson.resourceFiles || []), ...uploadedFiles] }
                       )
                     }
@@ -669,7 +704,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                                 </motion.div>
                                 <IconComponent className="w-5 h-5 text-[#0CF2A0]" />
                                 {isEditingThisLesson ? (
-                                  <div className="flex gap-2 flex-wrap">
+                                  <div className="flex gap-2 flex-wrap items-center">
                                     <Input
                                       value={lesson.title}
                                       onChange={(e) => updateLesson(moduleIndex, lessonIndex, { ...lesson, title: e.target.value })}
@@ -681,12 +716,19 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                                       value={lesson.type}
                                       onChange={(e) => updateLesson(moduleIndex, lessonIndex, { ...lesson, type: e.target.value })}
                                     />
-                                    <Input
-                                      value={lesson.duration.toString()}
-                                      onChange={(e) => updateLesson(moduleIndex, lessonIndex, { ...lesson, duration: parseInt(e.target.value) || 0 })}
-                                      placeholder="Duration"
-                                      className="w-24"
-                                    />
+                                    {/* Only show duration input for non-video lessons */}
+                                    {lesson.type !== 'video' && (
+                                      <Input
+                                        value={lesson.duration.toString()}
+                                        onChange={(e) => updateLesson(moduleIndex, lessonIndex, { ...lesson, duration: parseInt(e.target.value) || 0 })}
+                                        placeholder="Duration"
+                                        className="w-24"
+                                      />
+                                    )}
+                                    {/* Show video duration for video lessons if available */}
+                                    {lesson.type === 'video' && lesson.duration && (
+                                      <span className="text-sm text-gray-400 ml-2">Duration: {formatDuration(lesson.duration)}</span>
+                                    )}
                                   </div>
                                 ) : (
                                   <div>
@@ -695,8 +737,9 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                                       <Badge variant="secondary" size="sm">
                                         {contentTypes.find(ct => ct.value === lesson.type)?.label}
                                       </Badge>
-                                      {lesson.duration && (
-                                        <span className="text-sm text-gray-400">{lesson.duration}</span>
+                                      {/* Show video duration for video lessons if available */}
+                                      {lesson.type === 'video' && lesson.duration && (
+                                        <span className="text-sm text-gray-400">{formatDuration(lesson.duration)}</span>
                                       )}
                                       {/* File indicators */}
                                       {lesson.videoFile && (
