@@ -1,9 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// No AWS SDK needed in the browser for pre-signed URL upload
 
 export interface UploadProgress {
   loaded: number;
@@ -18,36 +13,46 @@ export interface UploadResult {
 
 export const s3Service = {
   async uploadFile(file: File, folder: string, onProgress?: (progress: UploadProgress) => void): Promise<UploadResult> {
-    const filePath = `${folder}/${file.name}`;
-    
-    const { data, error } = await supabase.storage.from('course-content').upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: true,
-      onUploadProgress: (event) => {
-        if (onProgress) {
-          const percentage = (event.loaded / event.total) * 100;
-          onProgress({ loaded: event.loaded, total: event.total, percentage });
+    // 1. Get pre-signed URL from your API
+    const presignRes = await fetch('/api/s3-presign-upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileType: file.type,
+        folder,
+      }),
+    });
+    if (!presignRes.ok) throw new Error('Failed to get pre-signed URL');
+    const { url, key, publicUrl } = await presignRes.json();
+
+    // 2. Upload to S3 using XHR for progress
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', url);
+      xhr.setRequestHeader('Content-Type', file.type);
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) {
+          onProgress({
+            loaded: event.loaded,
+            total: event.total,
+            percentage: (event.loaded / event.total) * 100,
+          });
         }
-      },
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error('Upload failed with status ' + xhr.status));
+        }
+      };
+      xhr.onerror = () => reject(new Error('XHR upload failed'));
+      xhr.send(file);
     });
 
-    if (error) {
-      throw error;
-    }
-
-    const { data: publicUrlData } = supabase.storage.from('course-content').getPublicUrl(filePath);
-
-    if (!publicUrlData) {
-        throw new Error('Failed to get public URL for uploaded file');
-    }
-
-    return { url: publicUrlData.publicUrl, key: filePath };
+    return { url: publicUrl, key };
   },
 
-  async deleteFile(key: string): Promise<void> {
-    const { error } = await supabase.storage.from('course-content').remove([key]);
-    if (error) {
-      throw error;
-    }
-  },
+  // Delete is not implemented for S3 in this client.
 }; 

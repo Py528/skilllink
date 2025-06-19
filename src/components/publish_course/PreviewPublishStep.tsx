@@ -209,13 +209,42 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
   const totalItems = checklist.length;
   const isReadyToPublish = completedItems === totalItems;
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     const publishData = {
       ...formData,
       publishType,
       scheduleDate: publishType === 'schedule' ? scheduleDate : null,
       publishedAt: publishType === 'now' ? new Date().toISOString() : null
     };
+    console.log('[PUBLISH] Starting course creation with data:', publishData);
+    if (publishData.modules) {
+      console.log('[PUBLISH] Modules:', publishData.modules);
+      publishData.modules.forEach((mod, i) => {
+        console.log(`[PUBLISH] Module ${i}:`, mod);
+        if (mod.lessons) {
+          mod.lessons.forEach((lesson, j) => {
+            console.log(`[PUBLISH] Module ${i} Lesson ${j}:`, lesson);
+          });
+        }
+      });
+    }
+    try {
+      // Replace this with your actual save logic
+      // Example: const { data, error } = await supabase.from('courses').insert([publishData]);
+      // For now, just simulate:
+      console.log('[PUBLISH] Simulating save to Supabase...');
+      // await new Promise(res => setTimeout(res, 1000));
+      // Simulate response:
+      const data = { id: 123, ...publishData };
+      const error = null;
+      if (error) {
+        console.error('[PUBLISH] Error saving course:', error);
+      } else {
+        console.log('[PUBLISH] Course saved successfully:', data);
+      }
+    } catch (err) {
+      console.error('[PUBLISH] Exception during publish:', err);
+    }
     updateFormData(publishData);
     onPublish();
   };

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader } from '@/components/publish_course/Card'
 import { Input } from '@/components/publish_course/Input';
 import { Select } from '@/components/publish_course/Select';
 import { Badge } from '@/components/publish_course/Badge';
+import { s3Service } from '@/services/s3Upload';
 
 interface UploadedFile {
   id: string;
@@ -15,6 +16,7 @@ interface UploadedFile {
   size: number;
   type: string;
   url: string;
+  key?: string;
   uploadProgress?: number;
   duration?: number;
 }
@@ -122,6 +124,15 @@ const formatDuration = (seconds: number | undefined) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
+// Utility to generate a SHA-256 hash for a file
+const getFileHash = async (file: File): Promise<string> => {
+  const buffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+};
+
 export const CourseContentStep: React.FC<CourseContentStepProps> = ({
   formData,
   updateFormData
@@ -129,7 +140,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [editingModule, setEditingModule] = useState<number | null>(null);
   const [editingLesson, setEditingLesson] = useState<{ moduleIndex: number; lessonIndex: number } | null>(null);
-  const [uploadingFiles, setUploadingFiles] = useState<Record<string, boolean>>({});
+  const [uploadingFiles, setUploadingFiles] = useState<Record<string, number>>({});
   const [dragOver, setDragOver] = useState<string | null>(null);
 
   const modules = formData.modules || [];
@@ -159,28 +170,50 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Simulate file upload (replace with actual upload logic)
-  const uploadFile = async (file: File): Promise<UploadedFile> => {
-    return new Promise((resolve) => {
-      // Simulate upload progress
-      const fileId = generateFileId();
-      let progress = 0;
-      
-      const interval = setInterval(() => {
-        progress += Math.random() * 30;
-        if (progress >= 100) {
-          clearInterval(interval);
-          // Simulate successful upload
-          resolve({
-            id: fileId,
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            url: URL.createObjectURL(file), // In production, this would be the actual uploaded file URL
-          });
-        }
-      }, 200);
-    });
+  // Upload file to S3 for videos, simulate for others
+  const uploadFile = async (file: File, isVideo: boolean = false, progressCallback?: (progress: { percentage: number }) => void): Promise<UploadedFile> => {
+    const fileId = generateFileId();
+    if (isVideo) {
+      console.log('[S3 UPLOAD] Starting upload for video:', file.type, file.size);
+      try {
+        // Generate a hash-based filename (keep extension)
+        const hash = await getFileHash(file);
+        const ext = file.name.split('.').pop();
+        const safeName = ext ? `${hash}.${ext}` : hash;
+        const hashedFile = new window.File([file], safeName, { type: file.type });
+        const result = await s3Service.uploadFile(hashedFile, 'videos', progressCallback);
+        console.log('[S3 UPLOAD] Upload result:', result);
+        return {
+          id: fileId,
+          name: safeName, // Only show hash name in UI if needed
+          size: file.size,
+          type: file.type,
+          url: result.url,
+          key: result.key,
+        };
+      } catch (err) {
+        console.error('[S3 UPLOAD] Upload error:', err);
+        throw err;
+      }
+    } else {
+      // Simulate upload for non-videos
+      return new Promise((resolve) => {
+        let progress = 0;
+        const interval = setInterval(() => {
+          progress += Math.random() * 30;
+          if (progress >= 100) {
+            clearInterval(interval);
+            resolve({
+              id: fileId,
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              url: URL.createObjectURL(file),
+            });
+          }
+        }, 200);
+      });
+    }
   };
 
   // Handle file upload for lessons
@@ -193,7 +226,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
     const fileArray = Array.from(files);
     const uploadKey = `${moduleIndex}-${lessonIndex}`;
     
-    setUploadingFiles(prev => ({ ...prev, [uploadKey]: true }));
+    setUploadingFiles(prev => ({ ...prev, [uploadKey]: 0 }));
 
     try {
       const uploadPromises = fileArray.map(async (file) => {
@@ -202,20 +235,27 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
 
         // Validate file size
         if (file.size > config.maxSize) {
+          console.error('[UPLOAD] File too large:', file.name, file.size, 'Max:', config.maxSize);
           throw new Error(`File ${file.name} is too large. Maximum size is ${formatFileSize(config.maxSize)}`);
         }
 
         // If video, get duration
         let duration: number | undefined = undefined;
         if (isVideo) {
+          console.log('[VIDEO] Extracting duration for:', file.name);
           duration = await getVideoDuration(file);
+          console.log('[VIDEO] Duration (seconds):', duration);
         }
 
-        const uploaded = await uploadFile(file);
+        const uploaded = await uploadFile(file, isVideo, isVideo ? (progress) => {
+          setUploadingFiles(prev => ({ ...prev, [uploadKey]: progress.percentage }));
+        } : undefined);
+        console.log('[UPLOAD] Final uploaded file object:', uploaded);
         return { ...uploaded, duration };
       });
 
       const uploadedFiles = await Promise.all(uploadPromises);
+      console.log('[UPLOAD] All uploaded files:', uploadedFiles);
       
       // Update lesson with uploaded files
       const updatedModules = modules.map((module: Module, mIndex: number) =>
@@ -228,8 +268,9 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                       ...lesson,
                       ...(isVideo 
                         ? { 
-                            videoFile: uploadedFiles[0], // Only one video per lesson
-                            duration: uploadedFiles[0].duration ? Math.round(uploadedFiles[0].duration) : lesson.duration // set duration if available
+                            videoFile: uploadedFiles[0], // For UI
+                            video_url: uploadedFiles[0].key || '', // Store S3 key for secure playback, always a string
+                            duration: uploadedFiles[0].duration ? Math.round(uploadedFiles[0].duration) : lesson.duration
                           } 
                         : { resourceFiles: [...(lesson.resourceFiles || []), ...uploadedFiles] }
                       )
@@ -245,7 +286,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
       console.error('Upload failed:', error);
       alert(error instanceof Error ? error.message : 'Upload failed. Please try again.');
     } finally {
-      setUploadingFiles(prev => ({ ...prev, [uploadKey]: false }));
+      setUploadingFiles(prev => ({ ...prev, [uploadKey]: 0 }));
     }
   };
 
@@ -303,7 +344,8 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
   ) => {
     const uploadKey = `${moduleIndex}-${lessonIndex}`;
     const lessonKey = `${uploadKey}-${isVideo ? 'video' : 'resources'}`;
-    const isUploading = uploadingFiles[uploadKey];
+    const uploadProgress = uploadingFiles[uploadKey] || 0;
+    const isUploading = uploadProgress > 0 && uploadProgress < 100;
     const isDragOver = dragOver === lessonKey;
 
     return (
@@ -365,7 +407,10 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                     >
                       <Upload className="w-8 h-8 text-[#0CF2A0] mb-2" />
                     </motion.div>
-                    <p className="text-[#0CF2A0]">Uploading video...</p>
+                    <div className="w-full bg-gray-800 rounded-full h-2 mb-2 overflow-hidden">
+                      <div className="bg-[#0CF2A0] h-2 transition-all" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                    <p className="text-[#0CF2A0]">Uploading video... {Math.round(uploadProgress)}%</p>
                   </div>
                 ) : (
                   <>
