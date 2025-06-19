@@ -20,10 +20,12 @@ interface FormData {
   thumbnail: string | null;
   tags: string[];
   modules: Array<{
+    id: string;
     title: string;
     description: string;
     order_index: number;
     lessons: Array<{
+      id: string;
       title: string;
       description: string;
       video_url: string;
@@ -38,8 +40,8 @@ interface FormData {
   }>;
   pricingType: 'free' | 'paid';
   price: string;
-  visibility: 'public' | 'private';
-  enrollmentType: 'open' | 'invite';
+  visibility: 'public' | 'private' | 'draft';
+  enrollmentType: 'open' | 'approval' | 'invite';
   certificateEnabled: boolean;
   prerequisites: string;
   requirements: string;

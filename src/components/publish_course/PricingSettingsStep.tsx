@@ -34,8 +34,8 @@ interface FormData {
   }>;
   pricingType: 'free' | 'paid';
   price: string;
-  visibility: 'public' | 'private';
-  enrollmentType: 'open' | 'invite';
+  visibility: 'public' | 'private' | 'draft';
+  enrollmentType: 'open' | 'approval' | 'invite';
   certificateEnabled: boolean;
   prerequisites: string;
   requirements: string;
@@ -104,12 +104,11 @@ export const PricingSettingsStep: React.FC<PricingSettingsStepProps> = ({
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 400, damping: 15 }}
+              className={`cursor-pointer transition-all duration-200 ${formData.pricingType === 'free' ? 'ring-2 ring-[#0CF2A0] bg-[#0CF2A0]/10' : ''}`}
+              onClick={() => handlePricingTypeChange('free')}
             >
               <Card 
-                className={`cursor-pointer transition-all duration-200 ${
-                  formData.pricingType === 'free' ? 'ring-2 ring-[#0CF2A0] bg-[#0CF2A0]/10' : ''
-                }`}
-                onClick={() => handlePricingTypeChange('free')}
+                className="w-full"
               >
                 <CardContent className="p-4 text-center">
                   <div className="flex items-center justify-center w-12 h-12 bg-green-600 rounded-full mx-auto mb-2">
@@ -127,12 +126,11 @@ export const PricingSettingsStep: React.FC<PricingSettingsStepProps> = ({
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 400, damping: 15 }}
+              className={`cursor-pointer transition-all duration-200 ${formData.pricingType === 'paid' ? 'ring-2 ring-[#0CF2A0] bg-[#0CF2A0]/10' : ''}`}
+              onClick={() => handlePricingTypeChange('paid')}
             >
               <Card 
-                className={`cursor-pointer transition-all duration-200 ${
-                  formData.pricingType === 'paid' ? 'ring-2 ring-[#0CF2A0] bg-[#0CF2A0]/10' : ''
-                }`}
-                onClick={() => handlePricingTypeChange('paid')}
+                className="w-full"
               >
                 <CardContent className="p-4 text-center">
                   <div className="flex items-center justify-center w-12 h-12 bg-[#0CF2A0] rounded-full mx-auto mb-2">
@@ -183,7 +181,7 @@ export const PricingSettingsStep: React.FC<PricingSettingsStepProps> = ({
             label="Course Visibility"
             options={visibilityOptions}
             value={formData.visibility || 'public'}
-            onChange={(e) => updateFormData({ ...formData, visibility: e.target.value })}
+            onChange={(e) => updateFormData({ ...formData, visibility: e.target.value as 'public' | 'private' | 'draft' })}
             error={errors.visibility}
           />
 
@@ -191,7 +189,7 @@ export const PricingSettingsStep: React.FC<PricingSettingsStepProps> = ({
             label="Enrollment Type"
             options={enrollmentOptions}
             value={formData.enrollmentType || 'open'}
-            onChange={(e) => updateFormData({ ...formData, enrollmentType: e.target.value })}
+            onChange={(e) => updateFormData({ ...formData, enrollmentType: e.target.value as 'open' | 'approval' | 'invite' })}
             error={errors.enrollmentType}
           />
 

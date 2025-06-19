@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, Globe, Clock, Users, BookOpen, AlertCircle, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/publish_course/Badge';
-import { Button } from '@/components/ui/button';
+// import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import Image from 'next/image';
 
@@ -40,8 +40,8 @@ interface PreviewPublishStepProps {
     prerequisites: string;
     requirements: string;
   };
-  updateFormData: (data: Partial<PreviewPublishStepProps['formData']>) => void;
-  onPublish?: () => Promise<void>;
+  // updateFormData: (data: Partial<PreviewPublishStepProps['formData']>) => void;
+  // onPublish?: () => Promise<void>;
 }
 
 const publishOptions = [
@@ -52,8 +52,8 @@ const publishOptions = [
 
 export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
   formData,
-  updateFormData,
-  onPublish
+  // updateFormData,
+  // onPublish
 }) => {
   const [publishType, setPublishType] = React.useState('now');
   const [scheduleDate, setScheduleDate] = React.useState('');
@@ -78,16 +78,16 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
     total + (module.lessons?.length || 0), 0
   ) || 0;
 
-  const handlePublishClick = () => {
-    const publishData = {
-      ...formData,
-      publishType,
-      scheduleDate: publishType === 'schedule' ? scheduleDate : null,
-      publishedAt: publishType === 'now' ? new Date().toISOString() : null
-    };
-    updateFormData(publishData);
-    onPublish?.();
-  };
+  // const handlePublishClick = () => {
+  //   const publishData = {
+  //     ...formData,
+  //     publishType,
+  //     scheduleDate: publishType === 'schedule' ? scheduleDate : null,
+  //     publishedAt: publishType === 'now' ? new Date().toISOString() : null
+  //   };
+  //   updateFormData(publishData);
+  //   onPublish?.();
+  // };
 
   return (
     <motion.div 

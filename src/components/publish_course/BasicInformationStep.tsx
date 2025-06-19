@@ -7,12 +7,21 @@ import { Input } from '@/components/publish_course/Input';
 import { Textarea } from '@/components/publish_course/Textarea';
 import { Select } from '@/components/publish_course/Select';
 import { Button } from '@/components/publish_course/Button';
-import { Badge } from '@/components/publish_course/Badge';
+import { Badge } from './Badge';
+
+interface FormData {
+  title: string;
+  description: string;
+  category: string;
+  level: string;
+  thumbnail: string | null;
+  tags: string[];
+}
 
 interface BasicInformationStepProps {
-  formData: any;
-  updateFormData: (data: any) => void;
-  errors: any;
+  formData: FormData;
+  updateFormData: (data: Partial<FormData>) => void;
+  errors: Record<string, string>;
 }
 
 const categories = [
@@ -65,7 +74,7 @@ export const BasicInformationStep: React.FC<BasicInformationStepProps> = ({
       reader.onloadend = () => {
         updateFormData({
           ...formData,
-          thumbnail: reader.result
+          thumbnail: reader.result as string
         });
       };
       reader.readAsDataURL(file);
