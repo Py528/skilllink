@@ -799,7 +799,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                                       <div className="w-full space-y-2">
                                         {lesson.type === 'text' && (
                                           <textarea
-                                            value={typeof lesson.content === 'object' && typeof lesson.content.text === 'string' ? lesson.content.text : ''}
+                                        value={typeof lesson.content === 'object' && typeof lesson.content.text === 'string' ? lesson.content.text : ''}
                                             onChange={e => updateLesson(moduleIndex, lessonIndex, { 
                                               content: { 
                                                 type: 'text',

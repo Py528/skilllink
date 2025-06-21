@@ -1,5 +1,6 @@
 import { Github, Mail, ExternalLink, Twitter } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import Link from "next/link";
 
 const currentYear = new Date().getFullYear();
 
@@ -30,7 +31,7 @@ export function Footer() {
                 { name: "Terms of Service", href: "#" },
                 { name: "Help Center", href: "#" },
               ].map((link, i) => (
-                <a
+                <Link
                   key={i}
                   href={link.href}
                   className="footer-link hover:text-primary inline-flex items-center group transition-all duration-200 ease-in-out"
@@ -40,7 +41,7 @@ export function Footer() {
                     size={14}
                     className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                   />
-                </a>
+                </Link>
               ))}
             </div>
           </div>

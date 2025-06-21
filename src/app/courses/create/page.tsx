@@ -295,16 +295,16 @@ export default function CreateCourse() {
           }
 
           return {
-            course_id: course.id,
-            section_id: section.id,
-            title: lesson.title,
-            description: lesson.description || '',
-            video_url: lesson.video_url || '',
-            duration: typeof lesson.duration === 'string' ? parseInt(lesson.duration) || 0 : (lesson.duration || 0),
-            order_index: index + 1,
-            is_preview: lesson.is_preview || false,
+          course_id: course.id,
+          section_id: section.id,
+          title: lesson.title,
+          description: lesson.description || '',
+          video_url: lesson.video_url || '',
+          duration: typeof lesson.duration === 'string' ? parseInt(lesson.duration) || 0 : (lesson.duration || 0),
+          order_index: index + 1,
+          is_preview: lesson.is_preview || false,
             content: lessonContent,
-            thumbnail_url: lesson.thumbnail_url || null,
+          thumbnail_url: lesson.thumbnail_url || null,
             resources: resources,
             is_free: isLessonFree
           };

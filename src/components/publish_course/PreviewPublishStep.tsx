@@ -238,8 +238,8 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
           is_preview: lesson.is_preview || false,
           content: (lesson.type === 'text' || lesson.type === 'quiz' || lesson.type === 'assignment') ? lesson.content : {},
           resources: resources,
-          videoFile: undefined,
-          resourceFiles: undefined,
+        videoFile: undefined,
+        resourceFiles: undefined,
         };
       }),
     }));

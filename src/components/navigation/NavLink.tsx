@@ -1,4 +1,5 @@
 // components/navigation/NavLink.tsx
+import Link from "next/link";
 import { NavLinkProps,DropdownMenuProps,DropdownItemProps } from "@/types";
 
 export const NavLink = ({
@@ -9,7 +10,7 @@ export const NavLink = ({
   onClick,
 }: NavLinkProps) => {
   return (
-    <a
+    <Link
       href={href}
       onClick={onClick}
       className={`text-gray-300 hover:text-[#0CF2A0] transition-colors duration-200 font-medium relative ${
@@ -32,7 +33,7 @@ export const NavLink = ({
           />
         </svg>
       )}
-    </a>
+    </Link>
   );
 };
 
@@ -58,12 +59,12 @@ export const DropdownMenu = ({ isOpen, children }: DropdownMenuProps) => {
 
 export const DropdownItem = ({ href, icon, children }: DropdownItemProps) => {
   return (
-    <a
+    <Link
       href={href}
       className="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-[#0CF2A0] hover:bg-gray-800/50"
     >
       {icon && <span className="mr-2">{icon}</span>}
       {children}
-    </a>
+    </Link>
   );
 };

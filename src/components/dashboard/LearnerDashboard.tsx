@@ -115,6 +115,7 @@ export const LearnerDashboard: React.FC = () => {
       <main className={`pt-16 transition-all duration-300 ${isSidebarOpen ? 'lg:pl-64' : ''}`}>
         <div className="p-8">
           <div className="space-y-8">
+             
             {/* Hero Section */}
             <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-secondary-900/40 backdrop-blur-xl">
               <div className="absolute inset-0">
@@ -254,7 +255,7 @@ export const LearnerDashboard: React.FC = () => {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -318,7 +319,7 @@ export const LearnerDashboard: React.FC = () => {
                 <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-1">4/5</h3>
                 <p className="text-secondary-600 dark:text-secondary-400">Weekly Goals</p>
               </motion.div>
-            </div>
+            </div> */}
 
             {/* Active Course */}
             {continuelearningCourse && (
@@ -427,7 +428,7 @@ export const LearnerDashboard: React.FC = () => {
             )}
 
             {/* Learning Path and Search */}
-            <div className="grid lg:grid-cols-3 gap-6">
+            {/* <div className="grid lg:grid-cols-3 gap-6">
               <motion.div 
                 className="lg:col-span-2"
                 initial={{ opacity: 0, y: 20 }}
@@ -635,7 +636,7 @@ export const LearnerDashboard: React.FC = () => {
                   </CardContent>
                 </Card>
               </motion.div>
-            </div>
+            </div>   */}
 
             {/* Recommended Courses */}
             <motion.div
