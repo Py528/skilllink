@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Save, Check } from 'lucide-react';
-import { createBrowserClient } from '@supabase/ssr';
 import { Button } from '@/components/publish_course/Button';
 import { Progress } from '@/components/publish_course/Progress';
 import { Card, CardContent } from '@/components/publish_course/Card';
@@ -11,50 +10,55 @@ import { BasicInformationStep } from '@/components/publish_course/BasicInformati
 import { CourseContentStep } from '@/components/publish_course/CourseContentStep';
 import { PricingSettingsStep } from '@/components/publish_course/PricingSettingsStep';
 import { PreviewPublishStep } from '@/components/publish_course/PreviewPublishStep';
+import { s3Service } from '@/services/s3Upload';
+import { toast } from '@/components/ui/sonner';
+import { useSupabase } from '@/providers/SupabaseProvider';
+
+interface UploadedFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  url: string;
+  key: string;
+}
+
+interface Lesson {
+  id: string;
+  title: string;
+  description: string;
+  video_url: string;
+  duration: number;
+  order_index: number;
+  is_preview: boolean;
+  content: Record<string, unknown>;
+  thumbnail_url?: string;
+  resources: Record<string, unknown>[];
+  is_free: boolean;
+  type?: string;
+  videoFile?: File | UploadedFile;
+  videoPreview?: string;
+  resourceFiles: (File | UploadedFile)[];
+  resourcePreviews?: string[];
+}
+
+interface Module {
+  id: string;
+  title: string;
+  description: string;
+  order_index: number;
+  lessons: Lesson[];
+}
 
 interface FormData {
   title: string;
   description: string;
   category: string;
   level: string;
-  thumbnail: string | null;
+  thumbnail: File | string | null;
+  thumbnailPreview?: string;
   tags: string[];
-  modules: Array<{
-    id: string;
-    title: string;
-    description: string;
-    order_index: number;
-    lessons: Array<{
-      id: string;
-      title: string;
-      description: string;
-      video_url: string;
-      duration: number;
-      order_index: number;
-      is_preview: boolean;
-      content: Record<string, unknown>;
-      thumbnail_url?: string;
-      resources: Record<string, unknown>[];
-      is_free: boolean;
-      type?: string;
-      videoFile?: {
-        id: string;
-        name: string;
-        size: number;
-        type: string;
-        url: string;
-        key: string;
-      };
-      resourceFiles?: Array<{
-        id: string;
-        name: string;
-        size: number;
-        type: string;
-        url: string;
-        key: string;
-      }>;
-    }>;
-  }>;
+  modules: Module[];
   pricingType: 'free' | 'paid';
   price: string;
   visibility: 'public' | 'private' | 'draft';
@@ -71,11 +75,21 @@ const steps = [
   { id: 4, title: 'Preview & Publish', description: 'Review and go live' }
 ];
 
+function isFile(obj: any): obj is File {
+  return obj && typeof obj === 'object' && typeof obj.arrayBuffer === 'function';
+}
+
+// Helper to generate unique id
+function generateId() {
+  return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+}
+
+function isUploadedFile(file: any): file is UploadedFile {
+  return file && typeof file === 'object' && typeof file.url === 'string';
+}
+
 export default function CreateCourse() {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const { supabase, session, user } = useSupabase();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -161,12 +175,83 @@ export default function CreateCourse() {
   const handlePublish = async () => {
     try {
       setIsSaving(true);
+      toast.loading('Uploading course files...');
       console.log('Starting course creation with data:', formData);
 
-      // Get the current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      // 1. Upload thumbnail if it's a File
+      let thumbnailUrl = formData.thumbnail;
+      if (formData.thumbnail && typeof formData.thumbnail !== 'string') {
+        const result = await s3Service.uploadFile(formData.thumbnail, 'thumbnails');
+        thumbnailUrl = result.url;
+      }
+
+      // 2. Upload all lesson files (videos/resources) if they are File objects
+      const modulesWithUploads = await Promise.all(formData.modules.map(async (module) => {
+        const lessonsWithUploads = await Promise.all(module.lessons.map(async (lesson) => {
+          const lessonId = lesson.id || generateId();
+          // Video upload
+          let video_url = lesson.video_url;
+          let videoFileMeta = lesson.videoFile;
+          if (lesson.videoFile && isFile(lesson.videoFile)) {
+            const result = await s3Service.uploadFile(lesson.videoFile, 'videos');
+            video_url = result.key;
+            videoFileMeta = {
+              id: result.key,
+              name: lesson.videoFile.name,
+              size: lesson.videoFile.size,
+              type: lesson.videoFile.type,
+              url: result.url,
+              key: result.key
+            };
+          }
+          // Resource files upload
+          let resourceFilesMeta: (File | UploadedFile)[] = Array.isArray(lesson.resourceFiles) ? lesson.resourceFiles : [];
+          if (resourceFilesMeta.length > 0) {
+            resourceFilesMeta = await Promise.all(resourceFilesMeta.map(async (file) => {
+              if (isFile(file)) {
+                const result = await s3Service.uploadFile(file, 'resources');
+                const uploaded: UploadedFile = {
+                  id: result.key,
+                  name: file.name,
+                  size: file.size,
+                  type: file.type,
+                  url: result.url,
+                  key: result.key
+                };
+                return uploaded;
+              } else {
+                return file;
+              }
+            }));
+          }
+          return {
+            ...lesson,
+            id: lessonId,
+            video_url,
+            videoFile: videoFileMeta,
+            resourceFiles: resourceFilesMeta
+          };
+        }));
+        const moduleId = module.id || generateId();
+        return {
+          ...module,
+          id: moduleId,
+          lessons: lessonsWithUploads
+        };
+      }));
+
+      // 3. Prepare new formData for Supabase
+      const finalFormData = {
+        ...formData,
+        thumbnail: thumbnailUrl,
+        modules: modulesWithUploads
+      };
+
+      toast.loading('Uploading course data to Supabase...');
       
-      if (userError || !user) {
+      // Check if user is logged in using the context
+      if (!user) {
+        toast.error('You must be logged in to create a course');
         throw new Error('You must be logged in to create a course');
       }
 
@@ -174,16 +259,16 @@ export default function CreateCourse() {
       const { data: course, error: courseError } = await supabase
         .from('courses')
         .insert({
-          title: formData.title,
-          description: formData.description,
-          thumbnail_url: formData.thumbnail,
-          price: formData.pricingType === 'paid' ? parseFloat(formData.price) : 0,
+          title: finalFormData.title,
+          description: finalFormData.description,
+          thumbnail_url: typeof thumbnailUrl === 'string' ? thumbnailUrl : null,
+          price: finalFormData.pricingType === 'paid' ? parseFloat(finalFormData.price) : 0,
           is_published: true,
-          difficulty_level: formData.level,
-          tags: formData.tags,
-          prerequisites: formData.prerequisites.split(',').map(p => p.trim()),
-          learning_objectives: formData.requirements.split(',').map(r => r.trim()),
-          category: formData.category,
+          difficulty_level: finalFormData.level,
+          tags: finalFormData.tags,
+          prerequisites: finalFormData.prerequisites.split(',').map(p => p.trim()),
+          learning_objectives: finalFormData.requirements.split(',').map(r => r.trim()),
+          category: finalFormData.category,
           last_published_at: new Date().toISOString(),
           instructor_id: user.id
         })
@@ -191,6 +276,7 @@ export default function CreateCourse() {
         .single();
 
       if (courseError) {
+        toast.error('Failed to create course: ' + courseError.message);
         console.error('Error creating course:', courseError);
         throw new Error(`Failed to create course: ${courseError.message}`);
       }
@@ -198,7 +284,7 @@ export default function CreateCourse() {
       console.log('Course created successfully:', course);
 
       // 2. Create course sections (modules)
-      const sectionsToCreate = formData.modules.map((module, index) => ({
+      const sectionsToCreate = finalFormData.modules.map((module, index) => ({
         course_id: course.id,
         title: module.title,
         description: module.description,
@@ -213,6 +299,7 @@ export default function CreateCourse() {
         .select();
 
       if (sectionsError) {
+        toast.error('Failed to create sections: ' + sectionsError.message);
         console.error('Error creating sections:', sectionsError);
         throw new Error(`Failed to create sections: ${sectionsError.message}`);
       }
@@ -220,24 +307,24 @@ export default function CreateCourse() {
       console.log('Sections created successfully:', sections);
 
       // 3. Create lessons for each section
-      for (let i = 0; i < formData.modules.length; i++) {
-        const courseModule = formData.modules[i];
+      for (let i = 0; i < finalFormData.modules.length; i++) {
+        const courseModule = finalFormData.modules[i];
         const section = sections[i];
 
         const lessonsToCreate = courseModule.lessons.map((lesson, index) => {
           // Transform resourceFiles to resources format for Supabase
-          const resources = (lesson as any).resourceFiles && Array.isArray((lesson as any).resourceFiles)
-            ? (lesson as any).resourceFiles.map((file: any) => ({
-                key: file.key,
+          const resources = lesson.resourceFiles && Array.isArray(lesson.resourceFiles)
+            ? lesson.resourceFiles.map((file: any) => ({
+                key: isUploadedFile(file) ? file.key : undefined,
                 name: file.name,
                 type: file.type,
                 size: file.size,
-                url: file.url,
+                url: isUploadedFile(file) ? file.url : undefined,
               }))
             : (lesson.resources || []);
 
           // Determine if lesson is free based on course pricing type and lesson settings
-          const isLessonFree = formData.pricingType === 'free' || lesson.is_free || false;
+          const isLessonFree = finalFormData.pricingType === 'free' || lesson.is_free || false;
 
           // Prepare content based on lesson type
           let lessonContent = lesson.content || {};
@@ -286,25 +373,31 @@ export default function CreateCourse() {
               default:
                 lessonContent = {
                   type: 'video',
-                  transcript: '',
-                  chapters: [],
-                  notes: lesson.description || ''
+                  video_url: lesson.video_url || '',
+                  duration: typeof lesson.duration === 'string' ? parseInt(lesson.duration) || 0 : (lesson.duration || 0),
+                  description: lesson.description || '',
+                  thumbnail_url: lesson.thumbnail_url || null,
+                  settings: {
+                    allowDownload: false,
+                    showProgress: true,
+                    autoplay: false
+                  }
                 };
                 break;
             }
           }
 
           return {
-          course_id: course.id,
-          section_id: section.id,
-          title: lesson.title,
-          description: lesson.description || '',
-          video_url: lesson.video_url || '',
-          duration: typeof lesson.duration === 'string' ? parseInt(lesson.duration) || 0 : (lesson.duration || 0),
-          order_index: index + 1,
-          is_preview: lesson.is_preview || false,
+            course_id: course.id,
+            section_id: section.id,
+            title: lesson.title,
+            description: lesson.description || '',
+            video_url: lesson.video_url || '',
+            duration: typeof lesson.duration === 'string' ? parseInt(lesson.duration) || 0 : (lesson.duration || 0),
+            order_index: index + 1,
+            is_preview: lesson.is_preview || false,
             content: lessonContent,
-          thumbnail_url: lesson.thumbnail_url || null,
+            thumbnail_url: lesson.thumbnail_url || null,
             resources: resources,
             is_free: isLessonFree
           };
@@ -317,6 +410,7 @@ export default function CreateCourse() {
             .insert(lessonsToCreate);
 
           if (lessonsError) {
+            toast.error('Failed to create lessons: ' + lessonsError.message);
             console.error('Error creating lessons:', lessonsError);
             throw new Error(`Failed to create lessons: ${lessonsError.message}`);
           }
@@ -324,18 +418,20 @@ export default function CreateCourse() {
       }
 
       // 4. Update course with total lessons count
-      const totalLessons = formData.modules.reduce((acc, module) => acc + module.lessons.length, 0);
+      const totalLessons = finalFormData.modules.reduce((acc, module) => acc + module.lessons.length, 0);
       const { error: updateError } = await supabase
         .from('courses')
         .update({ total_lessons: totalLessons })
         .eq('id', course.id);
 
       if (updateError) {
+        toast.error('Failed to update course: ' + updateError.message);
         console.error('Error updating course:', updateError);
         throw new Error(`Failed to update course: ${updateError.message}`);
       }
 
       console.log('Course published successfully');
+      toast.success('Course published successfully!');
       alert('Course published successfully!');
       // TODO: Add redirect logic based on user preference
       // Possible options:
@@ -344,6 +440,7 @@ export default function CreateCourse() {
       // - Stay on current page and show success message
     } catch (error) {
       console.error('Detailed error:', error);
+      toast.error('Failed to publish course: ' + (error instanceof Error ? error.message : 'Unknown error'));
       alert(`Failed to publish course: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
@@ -364,8 +461,8 @@ export default function CreateCourse() {
 
     return (
       <StepComponent
-        formData={formData}
-        updateFormData={updateFormData}
+        formData={formData as FormData}
+        updateFormData={updateFormData as (data: Partial<FormData>) => void}
         errors={errors}
         onPublish={currentStep === 4 ? handlePublish : undefined}
       />

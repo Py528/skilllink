@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { SupabaseProvider } from './SupabaseProvider';
 import { ThemeProvider } from '../context/ThemeContext';
 import { UserProvider } from '../context/UserContext';
 
@@ -9,10 +10,12 @@ interface ProvidersProps {
 
 export const Providers: React.FC<ProvidersProps> = ({ children }) => {
   return (
-    <ThemeProvider>
-      <UserProvider>
-        {children}
-      </UserProvider>
-    </ThemeProvider>
+    <SupabaseProvider>
+      <ThemeProvider>
+        <UserProvider>
+          {children}
+        </UserProvider>
+      </ThemeProvider>
+    </SupabaseProvider>
   );
 }; 

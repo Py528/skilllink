@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import supabase from '@/lib/supabaseClient';
+import { useSupabase } from '@/providers/SupabaseProvider';
 import { User } from '@supabase/supabase-js';
 
 interface UserProfile {
@@ -19,6 +19,7 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { supabase } = useSupabase();
 
   const fetchUserProfile = useCallback(async (userId: string) => {
     try {
@@ -35,7 +36,7 @@ export function useAuth() {
       console.error('Error fetching user profile:', err);
       setError('Failed to load user profile');
     }
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     // Check initial session
@@ -71,7 +72,7 @@ export function useAuth() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [fetchUserProfile, router]);
+  }, [fetchUserProfile, router, supabase]);
 
   const login = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({

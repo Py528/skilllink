@@ -8,14 +8,14 @@ import { Textarea } from '@/components/publish_course/Textarea';
 import { Select } from '@/components/publish_course/Select';
 import { Button } from '@/components/publish_course/Button';
 import { Badge } from './Badge';
-import { s3Service } from '@/services/s3Upload';
 
 interface FormData {
   title: string;
   description: string;
   category: string;
   level: string;
-  thumbnail: string | null;
+  thumbnail: File | string | null;
+  thumbnailPreview?: string;
   tags: string[];
 }
 
@@ -44,22 +44,12 @@ const levels = [
   { value: 'advanced', label: 'Advanced' }
 ];
 
-// Utility to generate a SHA-256 hash for a file (copied from CourseContentStep.tsx)
-const getFileHash = async (file: File): Promise<string> => {
-  const buffer = await file.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-};
-
 export const BasicInformationStep: React.FC<BasicInformationStepProps> = ({
   formData,
   updateFormData,
   errors
 }) => {
   const [newTag, setNewTag] = React.useState('');
-  const [thumbnailUploadProgress, setThumbnailUploadProgress] = React.useState<number>(0);
 
   const handleAddTag = () => {
     if (newTag.trim() && !formData.tags?.includes(newTag.trim())) {
@@ -78,28 +68,15 @@ export const BasicInformationStep: React.FC<BasicInformationStepProps> = ({
     });
   };
 
-  const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleThumbnailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setThumbnailUploadProgress(0);
-      try {
-        // Hash the file name for privacy
-        const hash = await getFileHash(file);
-        const ext = file.name.split('.').pop();
-        const safeName = ext ? `${hash}.${ext}` : hash;
-        const hashedFile = new window.File([file], safeName, { type: file.type });
-        const result = await s3Service.uploadFile(hashedFile, 'thumbnails', (progress) => {
-          setThumbnailUploadProgress(progress.percentage);
-        });
-        updateFormData({
-          ...formData,
-          thumbnail: result.url
-        });
-      } catch {
-        alert('Thumbnail upload failed. Please try again.');
-      } finally {
-        setThumbnailUploadProgress(0);
-      }
+      const previewUrl = URL.createObjectURL(file);
+      updateFormData({
+        ...formData,
+        thumbnail: file,
+        thumbnailPreview: previewUrl || undefined
+      });
     }
   };
 
@@ -183,20 +160,15 @@ export const BasicInformationStep: React.FC<BasicInformationStepProps> = ({
                     className="relative"
                   >
                     <img
-                      src={formData.thumbnail}
+                      src={typeof formData.thumbnail === 'string' ? formData.thumbnail : formData.thumbnailPreview}
                       alt="Course thumbnail"
                       className="w-full h-48 object-cover rounded-xl"
                     />
-                    {thumbnailUploadProgress > 0 && thumbnailUploadProgress < 100 && (
-                      <div className="w-full bg-gray-800 rounded-full h-2 mt-2 overflow-hidden">
-                        <div className="bg-[#0CF2A0] h-2 transition-all" style={{ width: `${thumbnailUploadProgress}%` }} />
-                      </div>
-                    )}
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       type="button"
-                      onClick={() => updateFormData({ ...formData, thumbnail: null })}
+                      onClick={() => updateFormData({ ...formData, thumbnail: null, thumbnailPreview: undefined })}
                       className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
                     >
                       <X className="w-4 h-4" />
@@ -215,15 +187,10 @@ export const BasicInformationStep: React.FC<BasicInformationStepProps> = ({
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={handleThumbnailUpload}
+                      onChange={handleThumbnailChange}
                       className="hidden"
                       id="thumbnail-upload"
                     />
-                    {thumbnailUploadProgress > 0 && thumbnailUploadProgress < 100 && (
-                      <div className="w-full bg-gray-800 rounded-full h-2 mt-2 overflow-hidden">
-                        <div className="bg-[#0CF2A0] h-2 transition-all" style={{ width: `${thumbnailUploadProgress}%` }} />
-                      </div>
-                    )}
                     <label
                       htmlFor="thumbnail-upload"
                       className="inline-flex items-center px-4 py-2 bg-[#0CF2A0] text-[#111111] rounded-xl hover:bg-[#0CF2A0]/90 transition-colors cursor-pointer font-semibold"

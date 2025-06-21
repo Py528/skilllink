@@ -17,37 +17,48 @@ interface UploadedFile {
 }
 
 interface Lesson {
+  id: string;
   title: string;
   type: string;
-  duration: string;
+  duration: string | number;
   description: string;
-  videoFile?: UploadedFile;
-  resourceFiles?: UploadedFile[];
+  videoFile?: File | UploadedFile;
+  videoPreview?: string;
+  resourceFiles: (File | UploadedFile)[];
+  resourcePreviews?: string[];
   is_free?: boolean;
   is_preview?: boolean;
   content?: Record<string, unknown>;
 }
 
 interface Module {
+  id: string;
   title: string;
   description?: string;
   lessons: Lesson[];
 }
 
+interface FormData {
+  title: string;
+  description: string;
+  category: string;
+  level: string;
+  thumbnail: File | string | null;
+  thumbnailPreview?: string;
+  tags: string[];
+  modules: Module[];
+  pricingType: 'free' | 'paid';
+  price: string;
+  visibility: 'public' | 'private' | 'draft';
+  enrollmentType: 'open' | 'approval' | 'invite';
+  certificateEnabled: boolean;
+  prerequisites: string;
+  requirements: string;
+}
+
 interface PreviewPublishStepProps {
-  formData: {
-    modules: Module[];
-    tags?: string[];
-    title?: string;
-    description?: string;
-    category?: string;
-    level?: string;
-    thumbnail?: string;
-    pricingType?: string;
-    price?: string;
-    [key: string]: unknown;
-  };
-  updateFormData: (data: Partial<{ modules: Module[] }>) => void;
+  formData: FormData;
+  updateFormData: (data: Partial<FormData>) => void;
   onPublish: () => void;
 }
 
@@ -72,6 +83,11 @@ const fileTypeIcons = {
   code: { icon: FileCode, color: 'text-yellow-400' },
   other: { icon: File, color: 'text-gray-400' }
 };
+
+// Type guard for UploadedFile
+function isUploadedFile(file: File | UploadedFile): file is UploadedFile {
+  return (file as UploadedFile).url !== undefined;
+}
 
 export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
   formData,
@@ -134,7 +150,7 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
         seconds = Number(secondsOrString);
       }
     }
-    if (isNaN(seconds) || seconds <= 0) return '0s';
+    if (!seconds || isNaN(seconds) || seconds < 0) return '0s';
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = Math.round(seconds % 60);
@@ -222,13 +238,25 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
       lessons: (mod.lessons || []).map((lesson) => {
         // Transform resourceFiles to resources format for Supabase
         const resources = Array.isArray(lesson.resourceFiles)
-          ? lesson.resourceFiles.map((file) => ({
-              key: file.key,
-              name: file.name,
-              type: file.type,
-              size: file.size,
-              url: file.url,
-            }))
+          ? lesson.resourceFiles.map((file, idx) => {
+              if (isUploadedFile(file)) {
+                return {
+                  key: file.key,
+                  name: file.name,
+                  type: file.type,
+                  size: file.size,
+                  url: file.url,
+                };
+              } else {
+                return {
+                  key: undefined,
+                  name: file.name,
+                  type: file.type,
+                  size: file.size,
+                  url: lesson.resourcePreviews && lesson.resourcePreviews[idx] ? lesson.resourcePreviews[idx] : undefined,
+                };
+              }
+            })
           : [];
         
         return {
@@ -287,7 +315,15 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
     } catch (err) {
       console.error('[PUBLISH] Exception during publish:', err);
     }
-    updateFormData(formStateData);
+    // Ensure all modules/lessons have resourceFiles as array
+    const safeModules = (formStateData.modules || []).map((mod) => ({
+      ...mod,
+      lessons: (mod.lessons || []).map((lesson) => ({
+        ...lesson,
+        resourceFiles: Array.isArray(lesson.resourceFiles) ? lesson.resourceFiles : [],
+      })),
+    }));
+    updateFormData({ ...formStateData, modules: safeModules });
     onPublish();
   };
 
@@ -382,7 +418,7 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => window.open(lesson.videoFile!.url, '_blank')}
+                          onClick={() => isUploadedFile(lesson.videoFile!) ? window.open(lesson.videoFile!.url, '_blank') : (lesson.videoPreview ? window.open(lesson.videoPreview, '_blank') : undefined)}
                         >
                           <Play className="w-4 h-4 mr-2" />
                           Preview
@@ -406,7 +442,7 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
 
                         return (
                           <motion.div
-                            key={file.id}
+                            key={isUploadedFile(file) ? file.id : `file-${fileIndex}`}
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: fileIndex * 0.05 }}
@@ -423,7 +459,7 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => window.open(file.url, '_blank')}
+                                onClick={() => isUploadedFile(file) ? window.open(file.url, '_blank') : (lesson.resourcePreviews && lesson.resourcePreviews[fileIndex] ? window.open(lesson.resourcePreviews[fileIndex], '_blank') : undefined)}
                               >
                                 <ExternalLink className="w-3 h-3" />
                               </Button>
@@ -547,7 +583,7 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
               {formData.thumbnail && (
                 <div className="aspect-video bg-[#111111]">
                   <img
-                    src={formData.thumbnail}
+                    src={typeof formData.thumbnail === 'string' ? formData.thumbnail : formData.thumbnailPreview || undefined}
                     alt={formData.title || 'Untitled Course'}
                     className="w-full h-full object-cover"
                   />

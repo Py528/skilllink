@@ -13,25 +13,10 @@ interface FormData {
   description: string;
   category: string;
   level: string;
-  thumbnail: string | null;
+  thumbnail: File | string | null;
+  thumbnailPreview?: string;
   tags: string[];
-  modules: Array<{
-    title: string;
-    description: string;
-    order_index: number;
-    lessons: Array<{
-      title: string;
-      description: string;
-      video_url: string;
-      duration: number;
-      order_index: number;
-      is_preview: boolean;
-      content: Record<string, unknown>;
-      thumbnail_url?: string;
-      resources: Record<string, unknown>[];
-      is_free: boolean;
-    }>;
-  }>;
+  modules: Array<any>;
   pricingType: 'free' | 'paid';
   price: string;
   visibility: 'public' | 'private' | 'draft';

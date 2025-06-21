@@ -17,8 +17,6 @@ interface UploadedFile {
   type: string;
   url: string;
   key: string;
-  uploadProgress?: number;
-  duration?: number;
 }
 
 interface Lesson {
@@ -34,8 +32,10 @@ interface Lesson {
   resources: Record<string, unknown>[];
   is_free: boolean;
   type?: string;
-  videoFile?: UploadedFile;
-  resourceFiles: UploadedFile[];
+  videoFile?: File | UploadedFile;
+  videoPreview?: string;
+  resourceFiles: (File | UploadedFile)[];
+  resourcePreviews?: string[];
 }
 
 interface Module {
@@ -50,7 +50,7 @@ interface CourseContentStepProps {
   formData: {
     modules: Module[];
   };
-  updateFormData: (data: Partial<CourseContentStepProps['formData']>) => void;
+  updateFormData: (data: Partial<{ modules: Module[] }>) => void;
 }
 
 const contentTypes = [
@@ -133,6 +133,11 @@ const getFileHash = async (file: File): Promise<string> => {
     .join('');
 };
 
+// Type guard for UploadedFile
+function isUploadedFile(file: File | UploadedFile): file is UploadedFile {
+  return (file as UploadedFile).url !== undefined;
+}
+
 export const CourseContentStep: React.FC<CourseContentStepProps> = ({
   formData,
   updateFormData
@@ -191,47 +196,16 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
   };
 
   // Handle file upload for lessons
-  const handleFileUpload = async (
-    moduleIndex: number, 
-    lessonIndex: number, 
-    files: FileList | File[], 
+  const handleFileSelect = async (
+    moduleIndex: number,
+    lessonIndex: number,
+    files: FileList | File[],
     isVideo: boolean = false
   ) => {
     const fileArray = Array.from(files);
-    const uploadKey = `${moduleIndex}-${lessonIndex}`;
-    
-    setUploadingFiles(prev => ({ ...prev, [uploadKey]: 0 }));
-
-    try {
-      const uploadPromises = fileArray.map(async (file) => {
-        const fileCategory = getFileTypeCategory(file);
-        const config = fileTypeConfig[fileCategory];
-
-        // Validate file size
-        if (file.size > config.maxSize) {
-          console.error('[UPLOAD] File too large:', file.name, file.size, 'Max:', config.maxSize);
-          throw new Error(`File ${file.name} is too large. Maximum size is ${formatFileSize(config.maxSize)}`);
-        }
-
-        // If video, get duration
-        let duration: number | undefined = undefined;
-        if (isVideo) {
-          console.log('[VIDEO] Extracting duration for:', file.name);
-          duration = await getVideoDuration(file);
-          console.log('[VIDEO] Duration (seconds):', duration);
-        }
-
-        const uploaded = await uploadFile(file, isVideo, isVideo ? (progress) => {
-          setUploadingFiles(prev => ({ ...prev, [uploadKey]: progress.percentage }));
-        } : undefined);
-        console.log('[UPLOAD] Final uploaded file object:', uploaded);
-        return { ...uploaded, duration };
-      });
-
-      const uploadedFiles = await Promise.all(uploadPromises);
-      console.log('[UPLOAD] All uploaded files:', uploadedFiles);
-      
-      // Update lesson with uploaded files
+    if (isVideo && fileArray[0]) {
+      // Extract video duration
+      const duration = await getVideoDuration(fileArray[0]);
       const updatedModules = modules.map((module: Module, mIndex: number) =>
         mIndex === moduleIndex
           ? {
@@ -240,28 +214,39 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                 lIndex === lessonIndex
                   ? {
                       ...lesson,
-                      ...(isVideo 
-                        ? { 
-                            videoFile: uploadedFiles[0], // For UI
-                            video_url: uploadedFiles[0].key || '', // Store S3 key for secure playback, always a string
-                            duration: uploadedFiles[0].duration ? Math.round(uploadedFiles[0].duration) : lesson.duration
-                          } 
-                        : { resourceFiles: [...(lesson.resourceFiles || []), ...uploadedFiles] }
-                      )
+                      videoFile: fileArray[0],
+                      videoPreview: URL.createObjectURL(fileArray[0]),
+                      duration: Math.round(duration),
                     }
                   : lesson
               )
             }
           : module
       );
-
       updateFormData({ ...formData, modules: updatedModules });
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert(error instanceof Error ? error.message : 'Upload failed. Please try again.');
-    } finally {
-      setUploadingFiles(prev => ({ ...prev, [uploadKey]: 0 }));
+      return;
     }
+    // Resource file logic
+    const updatedModules = modules.map((module: Module, mIndex: number) =>
+      mIndex === moduleIndex
+        ? {
+            ...module,
+            lessons: module.lessons.map((lesson: Lesson, lIndex: number) =>
+              lIndex === lessonIndex
+                ? {
+                    ...lesson,
+                    resourceFiles: [...(lesson.resourceFiles || []), ...fileArray],
+                    resourcePreviews: [
+                      ...(lesson.resourcePreviews || []),
+                      ...fileArray.map(f => URL.createObjectURL(f))
+                    ]
+                  }
+                : lesson
+            )
+          }
+        : module
+    );
+    updateFormData({ ...formData, modules: updatedModules });
   };
 
   // Remove uploaded file
@@ -305,7 +290,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
     
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      handleFileUpload(moduleIndex, lessonIndex, files, isVideo);
+      handleFileSelect(moduleIndex, lessonIndex, files, isVideo);
     }
   };
 
@@ -339,22 +324,22 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                 <div className="flex items-center gap-3">
                   <FileVideo className="w-5 h-5 text-purple-400" />
                   <div>
-                    <p className="text-white font-medium">{lesson.videoFile.name}</p>
-                    <p className="text-sm text-gray-400">{formatFileSize(lesson.videoFile.size)}</p>
+                    <p className="text-white font-medium">{lesson.videoFile.name || lesson.videoFile?.name}</p>
+                    <p className="text-sm text-gray-400">{lesson.videoFile.size ? formatFileSize(lesson.videoFile.size) : ''}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => window.open(lesson.videoFile!.url, '_blank')}
+                    onClick={() => lesson.videoPreview && window.open(lesson.videoPreview, '_blank')}
                   >
                     <Eye className="w-4 h-4" />
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => removeFile(moduleIndex, lessonIndex, lesson.videoFile!.id, true)}
+                    onClick={() => isUploadedFile(lesson.videoFile!) ? removeFile(moduleIndex, lessonIndex, lesson.videoFile!.id, true) : removeFile(moduleIndex, lessonIndex, '', true)}
                     className="text-red-400 hover:text-red-300"
                   >
                     <X className="w-4 h-4" />
@@ -371,43 +356,30 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                 } bg-[#111111]/50`}
                 onDragOver={(e) => handleDragOver(e, lessonKey)}
                 onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, moduleIndex, lessonIndex, true)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(null);
+                  handleFileSelect(moduleIndex, lessonIndex, e.dataTransfer.files, true);
+                }}
               >
-                {isUploading ? (
-                  <div className="flex flex-col items-center">
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    >
-                      <Upload className="w-8 h-8 text-[#0CF2A0] mb-2" />
-                    </motion.div>
-                    <div className="w-full bg-gray-800 rounded-full h-2 mb-2 overflow-hidden">
-                      <div className="bg-[#0CF2A0] h-2 transition-all" style={{ width: `${uploadProgress}%` }} />
-                    </div>
-                    <p className="text-[#0CF2A0]">Uploading video... {Math.round(uploadProgress)}%</p>
-                  </div>
-                ) : (
-                  <>
-                    <FileVideo className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-400 mb-2">Drop video file here or click to upload</p>
-                    <p className="text-xs text-gray-500 mb-3">
-                      Supported: MP4, MOV, AVI (Max: 500MB)
-                    </p>
-                    <input
-                      type="file"
-                      accept={fileTypeConfig.video.accept}
-                      onChange={(e) => e.target.files && handleFileUpload(moduleIndex, lessonIndex, e.target.files, true)}
-                      className="hidden"
-                      id={`video-upload-${lessonKey}`}
-                    />
-                    <label
-                      htmlFor={`video-upload-${lessonKey}`}
-                      className="inline-flex items-center px-4 py-2 bg-[#0CF2A0] text-[#111111] rounded-xl hover:bg-[#0CF2A0]/90 transition-colors cursor-pointer font-semibold"
-                    >
-                      Choose Video
-                    </label>
-                  </>
-                )}
+                <FileVideo className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-400 mb-2">Drop video file here or click to upload</p>
+                <p className="text-xs text-gray-500 mb-3">
+                  Supported: MP4, MOV, AVI (Max: 500MB)
+                </p>
+                <input
+                  type="file"
+                  accept={fileTypeConfig.video.accept}
+                  onChange={(e) => e.target.files && handleFileSelect(moduleIndex, lessonIndex, e.target.files, true)}
+                  className="hidden"
+                  id={`video-upload-${lessonKey}`}
+                />
+                <label
+                  htmlFor={`video-upload-${lessonKey}`}
+                  className="inline-flex items-center px-4 py-2 bg-[#0CF2A0] text-[#111111] rounded-xl hover:bg-[#0CF2A0]/90 transition-colors cursor-pointer font-semibold"
+                >
+                  Choose Video
+                </label>
               </motion.div>
             )}
           </div>
@@ -443,20 +415,23 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                         <div>
                           <p className="text-white font-medium">{file.name}</p>
                           <p className="text-sm text-gray-400">{formatFileSize(file.size)}</p>
+                          {!isUploadedFile(file) && lesson.resourcePreviews && lesson.resourcePreviews[index] && (
+                            <a href={lesson.resourcePreviews[index]} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 underline">Preview</a>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => window.open(file.url, '_blank')}
+                          onClick={() => isUploadedFile(file) && window.open(file.url, '_blank')}
                         >
                           <Download className="w-4 h-4" />
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => removeFile(moduleIndex, lessonIndex, file.id, false)}
+                          onClick={() => isUploadedFile(file) ? removeFile(moduleIndex, lessonIndex, file.id, false) : removeFile(moduleIndex, lessonIndex, '', false)}
                           className="text-red-400 hover:text-red-300"
                         >
                           <X className="w-4 h-4" />
@@ -502,7 +477,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                   type="file"
                   multiple
                   accept=".pdf,.doc,.docx,.txt,.py,.tsx,.jsx,.js,.ts,.env,.sql,.json,.xml,.html,.css,image/*"
-                  onChange={(e) => e.target.files && handleFileUpload(moduleIndex, lessonIndex, e.target.files, false)}
+                  onChange={(e) => e.target.files && handleFileSelect(moduleIndex, lessonIndex, e.target.files, false)}
                   className="hidden"
                   id={`resource-upload-${lessonKey}`}
                 />
