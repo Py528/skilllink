@@ -558,7 +558,12 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
       duration: 0,
       order_index: modules[moduleIndex].lessons.length,
       is_preview: false,
-      content: {},
+      content: {
+        type: 'video',
+        transcript: '',
+        chapters: [],
+        notes: ''
+      },
       resources: [],
       is_free: false,
       type: 'video',
@@ -791,12 +796,91 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                                     </label>
                                     {/* Content input for text/quiz/assignment */}
                                     {(lesson.type === 'text' || lesson.type === 'quiz' || lesson.type === 'assignment') && (
-                                      <Input
-                                        value={typeof lesson.content === 'object' && typeof lesson.content.text === 'string' ? lesson.content.text : ''}
-                                        onChange={e => updateLesson(moduleIndex, lessonIndex, { content: { ...lesson.content, text: e.target.value } })}
-                                        placeholder="Lesson content (for text/quiz/assignment)"
-                                        className="w-64"
-                                      />
+                                      <div className="w-full space-y-2">
+                                        {lesson.type === 'text' && (
+                                          <textarea
+                                            value={typeof lesson.content === 'object' && typeof lesson.content.text === 'string' ? lesson.content.text : ''}
+                                            onChange={e => updateLesson(moduleIndex, lessonIndex, { 
+                                              content: { 
+                                                type: 'text',
+                                                text: e.target.value,
+                                                sections: [],
+                                                formatting: { allowHtml: true, allowMarkdown: true }
+                                              } 
+                                            })}
+                                            placeholder="Enter the text content for this lesson..."
+                                            className="w-full p-3 bg-[#111111] border border-gray-700 rounded-lg text-white resize-none"
+                                            rows={4}
+                                          />
+                                        )}
+                                        
+                                        {lesson.type === 'quiz' && (
+                                          <div className="space-y-2">
+                                            <input
+                                              value={typeof lesson.content === 'object' && typeof lesson.content.title === 'string' ? lesson.content.title : ''}
+                                              onChange={e => updateLesson(moduleIndex, lessonIndex, { 
+                                                content: { 
+                                                  ...lesson.content,
+                                                  type: 'quiz',
+                                                  title: e.target.value,
+                                                  questions: lesson.content?.questions || []
+                                                } 
+                                              })}
+                                              placeholder="Quiz title"
+                                              className="w-full p-2 bg-[#111111] border border-gray-700 rounded-lg text-white"
+                                            />
+                                            <textarea
+                                              value={typeof lesson.content === 'object' && typeof lesson.content.description === 'string' ? lesson.content.description : ''}
+                                              onChange={e => updateLesson(moduleIndex, lessonIndex, { 
+                                                content: { 
+                                                  ...lesson.content,
+                                                  type: 'quiz',
+                                                  description: e.target.value
+                                                } 
+                                              })}
+                                              placeholder="Quiz description"
+                                              className="w-full p-2 bg-[#111111] border border-gray-700 rounded-lg text-white resize-none"
+                                              rows={2}
+                                            />
+                                            <div className="text-xs text-gray-400">
+                                              Quiz questions can be configured after lesson creation
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        {lesson.type === 'assignment' && (
+                                          <div className="space-y-2">
+                                            <input
+                                              value={typeof lesson.content === 'object' && typeof lesson.content.title === 'string' ? lesson.content.title : ''}
+                                              onChange={e => updateLesson(moduleIndex, lessonIndex, { 
+                                                content: { 
+                                                  ...lesson.content,
+                                                  type: 'assignment',
+                                                  title: e.target.value
+                                                } 
+                                              })}
+                                              placeholder="Assignment title"
+                                              className="w-full p-2 bg-[#111111] border border-gray-700 rounded-lg text-white"
+                                            />
+                                            <textarea
+                                              value={typeof lesson.content === 'object' && typeof lesson.content.instructions === 'string' ? lesson.content.instructions : ''}
+                                              onChange={e => updateLesson(moduleIndex, lessonIndex, { 
+                                                content: { 
+                                                  ...lesson.content,
+                                                  type: 'assignment',
+                                                  instructions: e.target.value
+                                                } 
+                                              })}
+                                              placeholder="Assignment instructions"
+                                              className="w-full p-2 bg-[#111111] border border-gray-700 rounded-lg text-white resize-none"
+                                              rows={3}
+                                            />
+                                            <div className="text-xs text-gray-400">
+                                              Assignment details can be configured after lesson creation
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
                                     )}
                                   </div>
                                 ) : (

@@ -236,6 +236,64 @@ export default function CreateCourse() {
               }))
             : (lesson.resources || []);
 
+          // Determine if lesson is free based on course pricing type and lesson settings
+          const isLessonFree = formData.pricingType === 'free' || lesson.is_free || false;
+
+          // Prepare content based on lesson type
+          let lessonContent = lesson.content || {};
+          
+          // If content is empty or doesn't have a type, set default content based on lesson type
+          if (!lessonContent || Object.keys(lessonContent).length === 0) {
+            switch (lesson.type) {
+              case 'text':
+                lessonContent = {
+                  type: 'text',
+                  text: lesson.description || '',
+                  sections: [],
+                  formatting: { allowHtml: true, allowMarkdown: true }
+                };
+                break;
+              case 'quiz':
+                lessonContent = {
+                  type: 'quiz',
+                  title: lesson.title,
+                  description: lesson.description || '',
+                  questions: [],
+                  settings: {
+                    timeLimit: 600,
+                    passingScore: 70,
+                    allowRetake: true,
+                    showResults: true
+                  }
+                };
+                break;
+              case 'assignment':
+                lessonContent = {
+                  type: 'assignment',
+                  title: lesson.title,
+                  description: lesson.description || '',
+                  instructions: lesson.description || '',
+                  requirements: [],
+                  rubric: [],
+                  submission: {
+                    type: 'file_upload',
+                    allowedFormats: ['zip', 'rar', 'github_link'],
+                    maxFileSize: '10MB'
+                  }
+                };
+                break;
+              case 'video':
+              default:
+                lessonContent = {
+                  type: 'video',
+                  transcript: '',
+                  chapters: [],
+                  notes: lesson.description || ''
+                };
+                break;
+            }
+          }
+
           return {
             course_id: course.id,
             section_id: section.id,
@@ -245,10 +303,10 @@ export default function CreateCourse() {
             duration: typeof lesson.duration === 'string' ? parseInt(lesson.duration) || 0 : (lesson.duration || 0),
             order_index: index + 1,
             is_preview: lesson.is_preview || false,
-            content: lesson.content || {},
+            content: lessonContent,
             thumbnail_url: lesson.thumbnail_url || null,
             resources: resources,
-            is_free: lesson.is_free || false
+            is_free: isLessonFree
           };
         });
 
