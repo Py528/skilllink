@@ -385,6 +385,61 @@ export const RegisterForm: React.FC = () => {
           </Button>
         </form>
         
+        {/* Divider */}
+        <div className="relative flex items-center justify-center mt-8">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-700"></div>
+          </div>
+          <div className="relative z-10 px-4 bg-[#1a1a1a]">
+            <span className="text-sm text-gray-400">Or continue with</span>
+          </div>
+        </div>
+        
+        {/* Social Login Buttons */}
+        <div className="space-y-3 mt-6">
+          <motion.button
+            type="button"
+            onClick={handleGithubLogin}
+            disabled={isAnyLoading}
+            className="w-full flex items-center justify-center gap-2 bg-[#24292F] text-white rounded-lg py-3 font-medium hover:bg-[#24292F]/90 transition-colors duration-200 disabled:opacity-70 relative overflow-hidden group"
+            whileHover={{ scale: isAnyLoading ? 1 : 1.02 }}
+            whileTap={{ scale: isAnyLoading ? 1 : 0.98 }}
+          >
+            <motion.div
+              className="absolute inset-0 bg-white/10 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
+            />
+            {loginWithGithub.isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Github className="h-5 w-5" />
+            )}
+            <span className="relative z-10">
+              {loginWithGithub.isLoading ? 'Connecting...' : 'Continue with GitHub'}
+            </span>
+          </motion.button>
+
+          <motion.button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={isAnyLoading}
+            className="w-full flex items-center justify-center gap-2 bg-white text-gray-900 rounded-lg py-3 font-medium hover:bg-gray-50 transition-colors duration-200 disabled:opacity-70 relative overflow-hidden group"
+            whileHover={{ scale: isAnyLoading ? 1 : 1.02 }}
+            whileTap={{ scale: isAnyLoading ? 1 : 0.98 }}
+          >
+            <motion.div
+              className="absolute inset-0 bg-gray-100/50 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
+            />
+            {loginWithGoogle.isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin text-gray-600" />
+            ) : (
+              <FcGoogle className="h-5 w-5" />
+            )}
+            <span className="relative z-10">
+              {loginWithGoogle.isLoading ? 'Connecting...' : 'Continue with Google'}
+            </span>
+          </motion.button>
+        </div>
+        
         {/* Sign in link */}
         <div className="mt-8 text-center">
           <p className="text-gray-400">
