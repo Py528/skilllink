@@ -579,9 +579,24 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
       index === moduleIndex
         ? {
             ...module,
-            lessons: module.lessons.map((lesson: Lesson, lIndex: number) =>
-              lIndex === lessonIndex ? { ...lesson, ...updatedLesson } : lesson
-            )
+            lessons: module.lessons.map((lesson: Lesson, lIndex: number) => {
+              if (lIndex !== lessonIndex) return lesson;
+              // Only update the changed fields
+              const newLesson = { ...lesson };
+              if (updatedLesson.content !== undefined) newLesson.content = updatedLesson.content;
+              if (updatedLesson.is_free !== undefined) newLesson.is_free = updatedLesson.is_free;
+              if (updatedLesson.is_preview !== undefined) newLesson.is_preview = updatedLesson.is_preview;
+              if (updatedLesson.title !== undefined) newLesson.title = updatedLesson.title;
+              if (updatedLesson.description !== undefined) newLesson.description = updatedLesson.description;
+              if (updatedLesson.type !== undefined) newLesson.type = updatedLesson.type;
+              if (updatedLesson.duration !== undefined) newLesson.duration = updatedLesson.duration;
+              if (updatedLesson.videoFile !== undefined) newLesson.videoFile = updatedLesson.videoFile;
+              if (updatedLesson.video_url !== undefined) newLesson.video_url = updatedLesson.video_url;
+              if (updatedLesson.resourceFiles !== undefined) newLesson.resourceFiles = updatedLesson.resourceFiles;
+              if (updatedLesson.resources !== undefined) newLesson.resources = updatedLesson.resources;
+              if (updatedLesson.order_index !== undefined) newLesson.order_index = updatedLesson.order_index;
+              return newLesson;
+            })
           }
         : module
     );
@@ -730,6 +745,12 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                                       placeholder="Lesson title"
                                       className="w-48"
                                     />
+                                    <Input
+                                      value={lesson.description}
+                                      onChange={(e) => updateLesson(moduleIndex, lessonIndex, { ...lesson, description: e.target.value })}
+                                      placeholder="Lesson description"
+                                      className="w-64"
+                                    />
                                     <Select
                                       options={contentTypes.map(ct => ({ value: ct.value, label: ct.label }))}
                                       value={lesson.type}
@@ -748,10 +769,42 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                                     {lesson.type === 'video' && lesson.duration && (
                                       <span className="text-sm text-gray-400 ml-2">Duration: {formatDuration(lesson.duration)}</span>
                                     )}
+                                    {/* is_free toggle */}
+                                    <label className="flex items-center gap-1 text-xs text-white">
+                                      <input
+                                        type="checkbox"
+                                        checked={lesson.is_free}
+                                        onChange={e => updateLesson(moduleIndex, lessonIndex, { ...lesson, is_free: e.target.checked })}
+                                        className="mr-1"
+                                      />
+                                      Free Lesson
+                                    </label>
+                                    {/* is_preview toggle */}
+                                    <label className="flex items-center gap-1 text-xs text-white">
+                                      <input
+                                        type="checkbox"
+                                        checked={lesson.is_preview}
+                                        onChange={e => updateLesson(moduleIndex, lessonIndex, { ...lesson, is_preview: e.target.checked })}
+                                        className="mr-1"
+                                      />
+                                      Previewable
+                                    </label>
+                                    {/* Content input for text/quiz/assignment */}
+                                    {(lesson.type === 'text' || lesson.type === 'quiz' || lesson.type === 'assignment') && (
+                                      <Input
+                                        value={typeof lesson.content === 'object' && typeof lesson.content.text === 'string' ? lesson.content.text : ''}
+                                        onChange={e => updateLesson(moduleIndex, lessonIndex, { content: { ...lesson.content, text: e.target.value } })}
+                                        placeholder="Lesson content (for text/quiz/assignment)"
+                                        className="w-64"
+                                      />
+                                    )}
                                   </div>
                                 ) : (
                                   <div>
                                     <span className="text-white font-medium">{lesson.title}</span>
+                                    {lesson.description && (
+                                      <p className="text-sm text-gray-400 mt-1">{lesson.description}</p>
+                                    )}
                                     <div className="flex items-center gap-2 mt-1">
                                       <Badge variant="secondary" size="sm">
                                         {contentTypes.find(ct => ct.value === lesson.type)?.label}

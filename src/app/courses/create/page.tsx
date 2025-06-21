@@ -36,6 +36,23 @@ interface FormData {
       thumbnail_url?: string;
       resources: Record<string, unknown>[];
       is_free: boolean;
+      type?: string;
+      videoFile?: {
+        id: string;
+        name: string;
+        size: number;
+        type: string;
+        url: string;
+        key: string;
+      };
+      resourceFiles?: Array<{
+        id: string;
+        name: string;
+        size: number;
+        type: string;
+        url: string;
+        key: string;
+      }>;
     }>;
   }>;
   pricingType: 'free' | 'paid';
@@ -207,22 +224,36 @@ export default function CreateCourse() {
         const courseModule = formData.modules[i];
         const section = sections[i];
 
-        const lessonsToCreate = courseModule.lessons.map((lesson, index) => ({
-          course_id: course.id,
-          section_id: section.id,
-          title: lesson.title,
-          description: lesson.description || '',
-          video_url: lesson.video_url || '',
-          duration: typeof lesson.duration === 'string' ? parseInt(lesson.duration) || 0 : (lesson.duration || 0),
-          order_index: index + 1,
-          is_preview: lesson.is_preview || false,
-          content: lesson.content || {},
-          thumbnail_url: lesson.thumbnail_url || null,
-          resources: lesson.resources || [],
-          is_free: lesson.is_free || false
-        }));
+        const lessonsToCreate = courseModule.lessons.map((lesson, index) => {
+          // Transform resourceFiles to resources format for Supabase
+          const resources = (lesson as any).resourceFiles && Array.isArray((lesson as any).resourceFiles)
+            ? (lesson as any).resourceFiles.map((file: any) => ({
+                key: file.key,
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                url: file.url,
+              }))
+            : (lesson.resources || []);
+
+          return {
+            course_id: course.id,
+            section_id: section.id,
+            title: lesson.title,
+            description: lesson.description || '',
+            video_url: lesson.video_url || '',
+            duration: typeof lesson.duration === 'string' ? parseInt(lesson.duration) || 0 : (lesson.duration || 0),
+            order_index: index + 1,
+            is_preview: lesson.is_preview || false,
+            content: lesson.content || {},
+            thumbnail_url: lesson.thumbnail_url || null,
+            resources: resources,
+            is_free: lesson.is_free || false
+          };
+        });
 
         if (lessonsToCreate.length > 0) {
+          console.log('Creating lessons for section:', section.id, lessonsToCreate);
           const { error: lessonsError } = await supabase
             .from('lessons')
             .insert(lessonsToCreate);

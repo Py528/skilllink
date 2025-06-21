@@ -23,6 +23,9 @@ interface Lesson {
   description: string;
   videoFile?: UploadedFile;
   resourceFiles?: UploadedFile[];
+  is_free?: boolean;
+  is_preview?: boolean;
+  content?: Record<string, unknown>;
 }
 
 interface Module {
@@ -211,21 +214,34 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
   const isReadyToPublish = completedItems === totalItems;
 
   const handlePublish = async () => {
+    // Debug log to check modules and resourceFiles before transformation
+    console.log('[DEBUG] Modules before publish:', JSON.stringify(formData.modules, null, 2));
     // Transform modules/lessons for Supabase
     const transformedModules = (formData.modules || []).map((mod) => ({
       ...mod,
-      lessons: (mod.lessons || []).map((lesson) => ({
-        ...lesson,
-        resources: (lesson.resourceFiles || []).map((file) => ({
-          key: file.key,
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          url: file.url,
-        })),
-        videoFile: undefined,
-        resourceFiles: undefined,
-      })),
+      lessons: (mod.lessons || []).map((lesson) => {
+        // Transform resourceFiles to resources format for Supabase
+        const resources = Array.isArray(lesson.resourceFiles)
+          ? lesson.resourceFiles.map((file) => ({
+              key: file.key,
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              url: file.url,
+            }))
+          : [];
+        
+        return {
+          ...lesson,
+          description: lesson.description || '',
+          is_free: lesson.is_free || false,
+          is_preview: lesson.is_preview || false,
+          content: (lesson.type === 'text' || lesson.type === 'quiz' || lesson.type === 'assignment') ? lesson.content : {},
+          resources: resources,
+          videoFile: undefined,
+          resourceFiles: undefined,
+        };
+      }),
     }));
     // Data to send to Supabase (no UI-only fields)
     const publishData = {
