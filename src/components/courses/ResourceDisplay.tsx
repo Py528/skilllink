@@ -35,7 +35,6 @@ export const ResourceDisplay: React.FC<ResourceDisplayProps> = ({ lessonId }) =>
         }
       } catch (err) {
         setError('Error loading lesson');
-        console.error('Error loading lesson:', err);
       } finally {
         setLoading(false);
       }

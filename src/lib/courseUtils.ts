@@ -32,13 +32,11 @@ export async function fetchLessonWithResources(lessonId: string): Promise<Lesson
       .single();
 
     if (error) {
-      console.error('Error fetching lesson:', error);
       return null;
     }
 
     return lesson;
   } catch (error) {
-    console.error('Error fetching lesson with resources:', error);
     return null;
   }
 }
@@ -53,7 +51,6 @@ export async function fetchCourseLessonsWithResources(courseId: string): Promise
       .eq('course_id', courseId);
 
     if (sectionsError) {
-      console.error('Error fetching sections:', sectionsError);
       return [];
     }
 
@@ -70,13 +67,11 @@ export async function fetchCourseLessonsWithResources(courseId: string): Promise
       .order('order_index');
 
     if (lessonsError) {
-      console.error('Error fetching lessons:', lessonsError);
       return [];
     }
 
     return lessons || [];
   } catch (error) {
-    console.error('Error fetching course lessons with resources:', error);
     return [];
   }
 }

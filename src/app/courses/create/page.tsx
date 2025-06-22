@@ -176,7 +176,7 @@ export default function CreateCourse() {
     try {
       setIsSaving(true);
       toast.loading('Uploading course files...');
-      console.log('Starting course creation with data:', formData);
+      toast.loading('Uploading course data to Supabase...');
 
       // 1. Upload thumbnail if it's a File
       let thumbnailUrl = formData.thumbnail;
@@ -193,16 +193,20 @@ export default function CreateCourse() {
           let video_url = lesson.video_url;
           let videoFileMeta = lesson.videoFile;
           if (lesson.videoFile && isFile(lesson.videoFile)) {
-            const result = await s3Service.uploadFile(lesson.videoFile, 'videos');
-            video_url = result.key;
-            videoFileMeta = {
-              id: result.key,
-              name: lesson.videoFile.name,
-              size: lesson.videoFile.size,
-              type: lesson.videoFile.type,
-              url: result.url,
-              key: result.key
-            };
+            try {
+              const result = await s3Service.uploadFile(lesson.videoFile, 'videos');
+              video_url = result.key;
+              videoFileMeta = {
+                id: result.key,
+                name: lesson.videoFile.name,
+                size: lesson.videoFile.size,
+                type: lesson.videoFile.type,
+                url: result.url,
+                key: result.key
+              };
+            } catch (err) {
+              throw err;
+            }
           }
           // Resource files upload
           let resourceFilesMeta: (File | UploadedFile)[] = Array.isArray(lesson.resourceFiles) ? lesson.resourceFiles : [];
@@ -247,8 +251,6 @@ export default function CreateCourse() {
         modules: modulesWithUploads
       };
 
-      toast.loading('Uploading course data to Supabase...');
-      
       // Check if user is logged in using the context
       if (!user) {
         toast.error('You must be logged in to create a course');
@@ -277,11 +279,8 @@ export default function CreateCourse() {
 
       if (courseError) {
         toast.error('Failed to create course: ' + courseError.message);
-        console.error('Error creating course:', courseError);
         throw new Error(`Failed to create course: ${courseError.message}`);
       }
-
-      console.log('Course created successfully:', course);
 
       // 2. Create course sections (modules)
       const sectionsToCreate = finalFormData.modules.map((module, index) => ({
@@ -290,9 +289,6 @@ export default function CreateCourse() {
         description: module.description,
         order_index: index + 1
       }));
-
-      console.log('Creating sections:', sectionsToCreate);
-
       const { data: sections, error: sectionsError } = await supabase
         .from('course_sections')
         .insert(sectionsToCreate)
@@ -300,17 +296,13 @@ export default function CreateCourse() {
 
       if (sectionsError) {
         toast.error('Failed to create sections: ' + sectionsError.message);
-        console.error('Error creating sections:', sectionsError);
         throw new Error(`Failed to create sections: ${sectionsError.message}`);
       }
-
-      console.log('Sections created successfully:', sections);
 
       // 3. Create lessons for each section
       for (let i = 0; i < finalFormData.modules.length; i++) {
         const courseModule = finalFormData.modules[i];
         const section = sections[i];
-
         const lessonsToCreate = courseModule.lessons.map((lesson, index) => {
           // Transform resourceFiles to resources format for Supabase
           const resources = lesson.resourceFiles && Array.isArray(lesson.resourceFiles)
@@ -402,16 +394,12 @@ export default function CreateCourse() {
             is_free: isLessonFree
           };
         });
-
         if (lessonsToCreate.length > 0) {
-          console.log('Creating lessons for section:', section.id, lessonsToCreate);
           const { error: lessonsError } = await supabase
             .from('lessons')
             .insert(lessonsToCreate);
-
           if (lessonsError) {
             toast.error('Failed to create lessons: ' + lessonsError.message);
-            console.error('Error creating lessons:', lessonsError);
             throw new Error(`Failed to create lessons: ${lessonsError.message}`);
           }
         }
@@ -426,20 +414,13 @@ export default function CreateCourse() {
 
       if (updateError) {
         toast.error('Failed to update course: ' + updateError.message);
-        console.error('Error updating course:', updateError);
         throw new Error(`Failed to update course: ${updateError.message}`);
       }
 
-      console.log('Course published successfully');
       toast.success('Course published successfully!');
       alert('Course published successfully!');
       // TODO: Add redirect logic based on user preference
-      // Possible options:
-      // - Redirect to course page: window.location.href = `/courses/${course.id}`;
-      // - Redirect to dashboard: window.location.href = '/dashboard';
-      // - Stay on current page and show success message
     } catch (error) {
-      console.error('Detailed error:', error);
       toast.error('Failed to publish course: ' + (error instanceof Error ? error.message : 'Unknown error'));
       alert(`Failed to publish course: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {

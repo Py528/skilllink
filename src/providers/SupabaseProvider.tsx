@@ -17,12 +17,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
   // Memoize the client so it's not recreated on every render
   const supabase = useMemo(() => {
-    console.log('SupabaseProvider: Creating client...');
-    console.log('SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log('SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '***exists***' : '***missing***');
-    
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      console.error('SupabaseProvider: Missing environment variables!');
       throw new Error('Missing Supabase environment variables');
     }
     
@@ -31,20 +26,15 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         process.env.NEXT_PUBLIC_SUPABASE_URL,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
       );
-      console.log('SupabaseProvider: Client created successfully');
       return client;
     } catch (error) {
-      console.error('SupabaseProvider: Error creating client:', error);
       throw error;
     }
   }, []);
 
   useEffect(() => {
-    console.log('SupabaseProvider: Initializing session...');
-    
     // Add a timeout to prevent infinite hanging
     const timeout = setTimeout(() => {
-      console.error('SupabaseProvider: Session initialization timeout');
       setIsInitialized(true);
     }, 5000); // 5 seconds
 
@@ -52,10 +42,9 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession()
       .then(({ data: { session }, error }) => {
         clearTimeout(timeout);
-        console.log('SupabaseProvider: getSession completed', { session: !!session, error });
         
         if (error) {
-          console.error('SupabaseProvider: Session error:', error);
+          setIsInitialized(true);
         }
         
         setSession(session ?? null);
@@ -64,13 +53,11 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       })
       .catch((error) => {
         clearTimeout(timeout);
-        console.error('SupabaseProvider: getSession failed:', error);
         setIsInitialized(true);
       });
 
     // Listen for auth changes
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('SupabaseProvider: Auth state changed:', event, { session: !!session });
       setSession(session ?? null);
       setUser(session?.user ?? null);
     });

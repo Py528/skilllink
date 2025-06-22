@@ -14,28 +14,17 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuth = async () => {
       try {
-        console.log('Auth callback: Starting authentication process...');
-        console.log('Supabase client:', supabase);
-        console.log('SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-        console.log('SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '***exists***' : '***missing***');
-        
         // Try to get the session first
-        console.log('Auth callback: About to call getSession()...');
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        console.log('Auth callback: getSession() completed');
         
         if (sessionError) {
-          console.error('Session error:', sessionError);
           throw sessionError;
         }
         
         if (session) {
-          console.log('Auth callback: Session found, redirecting to dashboard...');
           router.push('/dashboard');
           return;
         }
-
-        console.log('Auth callback: No session found, checking URL parameters...');
 
         // If no session, try to handle the URL parameters
         const params = new URLSearchParams(window.location.search);
@@ -44,7 +33,6 @@ export default function AuthCallback() {
         // Check for error first
         const error = params.get('error') || hash.get('error');
         if (error) {
-          console.error('Auth callback: Error in URL:', error);
           setError(error);
           return;
         }
@@ -52,16 +40,13 @@ export default function AuthCallback() {
         // Try code exchange
         const code = params.get('code');
         if (code) {
-          console.log('Auth callback: Found code, attempting exchange...');
           const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           
           if (exchangeError) {
-            console.error('Auth callback: Exchange error:', exchangeError);
             throw exchangeError;
           }
           
           if (data.session) {
-            console.log('Auth callback: Session created, redirecting to dashboard...');
             router.push('/dashboard');
             return;
           }
@@ -70,28 +55,23 @@ export default function AuthCallback() {
         // Try access token from hash
         const accessToken = hash.get('access_token');
         if (accessToken) {
-          console.log('Auth callback: Found access token, setting session...');
           const { error: tokenError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: hash.get('refresh_token') || '',
           });
             
           if (tokenError) {
-            console.error('Auth callback: Token error:', tokenError);
             throw tokenError;
           }
 
-          console.log('Auth callback: Session set, redirecting to dashboard...');
           router.push('/dashboard');
           return;
         }
 
         // If we get here, no valid auth data was found
-        console.error('Auth callback: No valid authentication data found');
         setError('No valid authentication data found');
         
       } catch (error) {
-        console.error('Auth callback: Unexpected error:', error);
         setError(error instanceof Error ? error.message : 'Unknown error');
       } finally {
         setIsProcessing(false);
@@ -100,7 +80,6 @@ export default function AuthCallback() {
 
     // Add a timeout to prevent infinite loading
     const timeout = setTimeout(() => {
-      console.error('Auth callback: Timeout reached');
       setError('Authentication timeout. Please try again.');
       setIsProcessing(false);
     }, 10000); // 10 seconds

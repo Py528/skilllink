@@ -6,6 +6,7 @@ import { Badge } from '@/components/publish_course/Badge';
 import { Button } from '@/components/publish_course/Button';
 import { Select } from '@/components/publish_course/Select';
 import { Input } from '@/components/publish_course/Input';
+import { toast } from '@/components/ui/sonner';
 
 interface UploadedFile {
   id: string;
@@ -99,6 +100,7 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
   const [expandedLessons, setExpandedLessons] = React.useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = React.useState('');
   const [filterType, setFilterType] = React.useState('all');
+  const [publishStatus, setPublishStatus] = React.useState<'idle' | 'success' | 'error'>('idle');
 
   // Calculate course statistics
   const modules: Module[] = formData.modules || [];
@@ -229,9 +231,25 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
   const totalItems = checklist.length;
   const isReadyToPublish = completedItems === totalItems;
 
+  React.useEffect(() => {
+    if (publishStatus === 'success') {
+      setTimeout(() => {
+        toast('Course published!', {
+          description: 'Your course was published successfully.',
+          duration: 5000,
+        });
+      }, 800);
+    } else if (publishStatus === 'error') {
+      setTimeout(() => {
+        toast('Publish failed', {
+          description: 'There was an error publishing your course.',
+          duration: 5000,
+        });
+      }, 800);
+    }
+  }, [publishStatus]);
+
   const handlePublish = async () => {
-    // Debug log to check modules and resourceFiles before transformation
-    console.log('[DEBUG] Modules before publish:', JSON.stringify(formData.modules, null, 2));
     // Transform modules/lessons for Supabase
     const transformedModules = (formData.modules || []).map((mod) => ({
       ...mod,
@@ -286,34 +304,15 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
       modules: transformedModules,
       // keep 'thumbnail' for UI
     };
-    console.log('[PUBLISH] Starting course creation with data:', publishData);
-    if (publishData.modules) {
-      console.log('[PUBLISH] Modules:', publishData.modules);
-      publishData.modules.forEach((mod, i) => {
-        console.log(`[PUBLISH] Module ${i}:`, mod);
-        if (mod.lessons) {
-          mod.lessons.forEach((lesson, j) => {
-            console.log(`[PUBLISH] Module ${i} Lesson ${j}:`, lesson);
-          });
-        }
-      });
-    }
     try {
       // Replace this with your actual save logic
       // Example: const { data, error } = await supabase.from('courses').insert([publishData]);
       // For now, just simulate:
-      console.log('[PUBLISH] Simulating save to Supabase...');
-      // await new Promise(res => setTimeout(res, 1000));
       // Simulate response:
-      const data = { id: 123, ...publishData };
-      const error = null;
-      if (error) {
-        console.error('[PUBLISH] Error saving course:', error);
-      } else {
-        console.log('[PUBLISH] Course saved successfully:', data);
-      }
+      setPublishStatus('success');
     } catch (err) {
       console.error('[PUBLISH] Exception during publish:', err);
+      setPublishStatus('error');
     }
     // Ensure all modules/lessons have resourceFiles as array
     const safeModules = (formStateData.modules || []).map((mod) => ({

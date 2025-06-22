@@ -84,7 +84,6 @@ export const LearnerDashboard: React.FC = () => {
   useEffect(() => {
     if (user?.role !== "learner") {
       // Redirect or show error if not a learner
-      console.warn("Non-learner user accessing learner dashboard");
     }
   }, [user?.role]);
 
