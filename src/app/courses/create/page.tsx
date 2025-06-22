@@ -163,20 +163,51 @@ export default function CreateCourse() {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      alert('Course saved as draft successfully!');
+      toast.success('Course saved as draft successfully!');
     } catch (error) {
       console.error('Error saving draft:', error);
-      alert('Failed to save draft. Please try again.');
+      toast.error('Failed to save draft. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handlePublish = async () => {
+    let toastId: string | number | undefined;
     try {
       setIsSaving(true);
-      toast.loading('Uploading course files...');
-      toast.loading('Uploading course data to Supabase...');
+      // Show S3 upload toast with Progress component
+      let s3Progress = 0;
+      toastId = toast.loading(
+        <div className="flex flex-col gap-2">
+          <span className="font-semibold text-primary">Uploading files to AWS S3...</span>
+          <Progress value={0} />
+          <span className="text-xs text-muted-foreground">This may take a while for large files.</span>
+        </div>,
+        { duration: Infinity }
+      );
+
+      // Simulate S3 upload progress (replace with real progress if available)
+      for (let i = 1; i <= 100; i += 10) {
+        s3Progress = i;
+        toast.loading(
+          <div className="flex flex-col gap-2">
+            <span className="font-semibold text-primary">Uploading files to AWS S3... {s3Progress}%</span>
+            <Progress value={s3Progress} />
+            <span className="text-xs text-muted-foreground">This may take a while for large files.</span>
+          </div>,
+          { id: toastId, duration: Infinity }
+        );
+        await new Promise(res => setTimeout(res, 50)); // Simulate progress
+      }
+
+      // After S3 upload, update toast to Supabase upload
+      toast.loading(
+        <div className="flex flex-col gap-2">
+          <span className="font-semibold text-primary">Saving course data to Supabase...</span>
+        </div>,
+        { id: toastId, duration: Infinity }
+      );
 
       // 1. Upload thumbnail if it's a File
       let thumbnailUrl = formData.thumbnail;
@@ -417,12 +448,12 @@ export default function CreateCourse() {
         throw new Error(`Failed to update course: ${updateError.message}`);
       }
 
+      // After everything is successful
+      toast.dismiss(toastId);
       toast.success('Course published successfully!');
-      alert('Course published successfully!');
-      // TODO: Add redirect logic based on user preference
     } catch (error) {
+      toast.dismiss(toastId);
       toast.error('Failed to publish course: ' + (error instanceof Error ? error.message : 'Unknown error'));
-      alert(`Failed to publish course: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }

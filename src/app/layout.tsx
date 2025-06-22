@@ -1,6 +1,7 @@
 import { ThemeProvider as NextThemeProvider } from "next-themes";
 import { Providers } from "../providers/Providers";
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function RootLayout({
   children,
@@ -18,6 +19,7 @@ export default function RootLayout({
         >
           <Providers>
             {children}
+            <Toaster />
           </Providers>
         </NextThemeProvider>
       </body>

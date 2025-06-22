@@ -233,12 +233,13 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
 
   React.useEffect(() => {
     if (publishStatus === 'success') {
-      setTimeout(() => {
-        toast('Course published!', {
-          description: 'Your course was published successfully.',
-          duration: 5000,
-        });
-      }, 800);
+      // Remove this toast
+      // setTimeout(() => {
+      //   toast('Course published!', {
+      //     description: 'Your course was published successfully.',
+      //     duration: 5000,
+      //   });
+      // }, 800);
     } else if (publishStatus === 'error') {
       setTimeout(() => {
         toast('Publish failed', {
