@@ -1,3 +1,5 @@
+import supabase from './supabaseClient'
+
 // Types for course resources
 export interface CourseResource {
   key: string;

@@ -1,7 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['images.unsplash.com', 'avatars.githubusercontent.com', 'lh3.googleusercontent.com', 'images.pexels.com'],
+    domains: [
+      'images.unsplash.com', 
+      'avatars.githubusercontent.com', 
+      'lh3.googleusercontent.com', 
+      'images.pexels.com',
+      'course-skilllearn.s3.us-east-1.amazonaws.com'
+    ],
   },
   experimental: {
     serverActions: {
