@@ -46,6 +46,16 @@ export default function CourseDetailPage() {
       if (data.thumbnail_s3_key && !thumbnailUrl) {
         thumbnailUrl = `https://course-skilllearn.s3.us-east-1.amazonaws.com/${data.thumbnail_s3_key}`
       }
+      
+      // Handle relative thumbnail paths
+      if (thumbnailUrl && !thumbnailUrl.startsWith('http://') && !thumbnailUrl.startsWith('https://')) {
+        if (thumbnailUrl.startsWith('thumbnails/') || thumbnailUrl.startsWith('images/')) {
+          thumbnailUrl = `https://course-skilllearn.s3.us-east-1.amazonaws.com/${thumbnailUrl}`
+        } else {
+          // If it's just a filename, assume it's in the thumbnails folder
+          thumbnailUrl = `https://course-skilllearn.s3.us-east-1.amazonaws.com/thumbnails/${thumbnailUrl}`
+        }
+      }
 
       setCourse({
         ...data,

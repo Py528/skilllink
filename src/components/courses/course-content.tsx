@@ -114,7 +114,10 @@ export function CourseContent({ course, currentLesson, lessons = [], progress = 
                     transition={{ duration: 0.2 }}
                   >
                     <TabsContent value="video" className="pt-4">
-                      <VideoPlayer videoUrl={currentLesson?.video_url} />
+                      <VideoPlayer 
+                        videoUrl={currentLesson?.video_url} 
+                        thumbnailUrl={currentLesson?.thumbnail_url}
+                      />
                     </TabsContent>
                     <TabsContent value="transcript" className="pt-4 h-[280px] overflow-y-auto">
                       <motion.div 
