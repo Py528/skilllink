@@ -115,8 +115,9 @@ export function CourseContent({ course, currentLesson, lessons = [], progress = 
                   >
                     <TabsContent value="video" className="pt-4">
                       <VideoPlayer 
-                        videoUrl={currentLesson?.video_url} 
-                        thumbnailUrl={currentLesson?.thumbnail_url}
+                        src={currentLesson?.video_url || ''} 
+                        poster={currentLesson?.thumbnail_url || ''}
+                        title={currentLesson?.title || ''}
                       />
                     </TabsContent>
                     <TabsContent value="transcript" className="pt-4 h-[280px] overflow-y-auto">

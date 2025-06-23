@@ -118,4 +118,16 @@ export function openResourceInNewTab(resource: CourseResource) {
 export function canPreviewResource(resource: CourseResource): boolean {
   const category = getFileTypeCategory(resource.name, resource.type);
   return category === 'image' || category === 'pdf' || category === 'video';
+}
+
+// S3 public bucket base URL
+export const S3_BASE_URL = 'https://course-skilllearn.s3.us-east-1.amazonaws.com/';
+
+// Helper to construct a full S3 URL from a key or relative path
+export function getS3Url(pathOrUrl?: string): string | undefined {
+  if (!pathOrUrl) return undefined;
+  // If already a full URL (http/https), return as is
+  if (/^https?:\/\//.test(pathOrUrl)) return pathOrUrl;
+  // Otherwise, treat as S3 key or relative path
+  return S3_BASE_URL + pathOrUrl.replace(/^\/+/, '');
 } 
