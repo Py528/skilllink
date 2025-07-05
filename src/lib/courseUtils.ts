@@ -1,5 +1,3 @@
-import supabase from './supabaseClient'
-
 // Types for course resources
 export interface CourseResource {
   key: string;
@@ -27,54 +25,71 @@ export interface Lesson {
 // Function to fetch a lesson with its resources
 export async function fetchLessonWithResources(lessonId: string): Promise<Lesson | null> {
   try {
-    const { data: lesson, error } = await supabase
-      .from('lessons')
-      .select('*')
-      .eq('id', lessonId)
-      .single();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-    if (error) {
-      return null;
+    const response = await fetch(`${supabaseUrl}/rest/v1/lessons?id=eq.${lessonId}&select=*`, {
+      headers: {
+        'apikey': supabaseKey!,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      return null
     }
 
-    return lesson;
+    const data = await response.json()
+    return data && data.length > 0 ? data[0] : null
   } catch (error) {
-    return null;
+    return null
   }
 }
 
 // Function to fetch all lessons for a course with resources
 export async function fetchCourseLessonsWithResources(courseId: string): Promise<Lesson[]> {
   try {
-    // First get all sections for the course
-    const { data: sections, error: sectionsError } = await supabase
-      .from('course_sections')
-      .select('id')
-      .eq('course_id', courseId);
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-    if (sectionsError) {
-      return [];
+    // First get all sections for the course
+    const sectionsResponse = await fetch(`${supabaseUrl}/rest/v1/course_sections?course_id=eq.${courseId}&select=id`, {
+      headers: {
+        'apikey': supabaseKey!,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!sectionsResponse.ok) {
+      return []
     }
 
+    const sections = await sectionsResponse.json()
+
     if (!sections || sections.length === 0) {
-      return [];
+      return []
     }
 
     // Get all lessons for all sections
-    const sectionIds = sections.map(section => section.id);
-    const { data: lessons, error: lessonsError } = await supabase
-      .from('lessons')
-      .select('*')
-      .in('section_id', sectionIds)
-      .order('order_index');
+    const sectionIds = sections.map((section: any) => section.id)
+    const lessonsResponse = await fetch(`${supabaseUrl}/rest/v1/lessons?section_id=in.(${sectionIds.join(',')})&select=*&order=order_index.asc`, {
+      headers: {
+        'apikey': supabaseKey!,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json'
+      }
+    })
 
-    if (lessonsError) {
-      return [];
+    if (!lessonsResponse.ok) {
+      return []
     }
 
-    return lessons || [];
+    const lessons = await lessonsResponse.json()
+    return lessons || []
   } catch (error) {
-    return [];
+    return []
   }
 }
 

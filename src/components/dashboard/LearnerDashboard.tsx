@@ -1,66 +1,39 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { 
-  BookOpen, Clock, Compass, PlayCircle, BadgeCheck, 
-  Search, Target, Flame, Brain, Trophy, ChevronRight, 
-  BarChart2, Lightbulb, Zap, X, CheckCircle, Plus, Bookmark
-} from "lucide-react";
-import { Card, CardHeader, CardContent } from "../common/Card";
+import { Clock, Compass, Flame, ChevronRight } from "lucide-react";
 import { Button } from "../common/Button";
 import { Progress } from "../common/Progress";
 import { Badge } from "../common/Badge";
 import { CourseCard } from "./CourseCard";
-import { mockLearnerCourses as rawMockLearnerCourses, mockRecommendedCourses as rawMockRecommendedCourses } from "../../data/mockData";
+
 import { Navbar } from "../layout/Navbar";
 import { Sidebar } from "../layout/Sidebar";
 import { useUser } from "../../context/UserContext";
-import Image from 'next/image';
 
 interface Course {
   id: string;
   title: string;
   description: string;
-  coverImage: string;
+  thumbnail_url: string;
   instructor: {
     name: string;
     avatar: string;
   };
-  duration: string;
-  progress: number;
-  prevProgress?: number;
-  rating: number;
-  lessons: number;
-  lessonsCompleted?: number;
-  level: "beginner" | "intermediate" | "advanced";
+  estimated_duration?: number;
+  total_enrollments?: number;
+  level: string;
   category: string;
-  xp?: number;
+  price?: number;
+  rating?: number;
+  lessons?: number;
 }
-
-// Transform mock data to match our Course interface
-const mockLearnerCourses: Course[] = rawMockLearnerCourses.map(course => ({
-  ...course,
-  level: course.level.toLowerCase() as "beginner" | "intermediate" | "advanced",
-  lessonsCompleted: Math.floor(course.progress * course.lessons / 100),
-  prevProgress: course.progress - Math.floor(Math.random() * 10),
-  xp: Math.floor(Math.random() * 1000)
-}));
-
-const mockRecommendedCourses: Course[] = rawMockRecommendedCourses.map(course => ({
-  ...course,
-  level: course.level.toLowerCase() as "beginner" | "intermediate" | "advanced",
-  lessonsCompleted: Math.floor(course.progress * course.lessons / 100),
-  prevProgress: course.progress - Math.floor(Math.random() * 10),
-  xp: Math.floor(Math.random() * 1000)
-}));
 
 export const LearnerDashboard: React.FC = () => {
   const { user } = useUser();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeNavItem, setActiveNavItem] = useState("home");
-  const [activeFilter, setActiveFilter] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filteredCourses, setFilteredCourses] = useState(mockLearnerCourses);
-  const [continuelearningCourse] = useState(mockLearnerCourses[0]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
   const [greeting] = useState(() => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
@@ -80,27 +53,72 @@ export const LearnerDashboard: React.FC = () => {
     }
   };
 
-  // Use user role for sidebar display
   useEffect(() => {
-    if (user?.role !== "learner") {
-      // Redirect or show error if not a learner
-    }
-  }, [user?.role]);
-
-  useEffect(() => {
-    const filtered = mockLearnerCourses.filter(course => {
-      const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          course.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const fetchCourses = async () => {
+      setLoading(true);
       
-      if (activeFilter === "all") return matchesSearch;
-      if (activeFilter === "inprogress") return matchesSearch && course.progress > 0 && course.progress < 100;
-      if (activeFilter === "completed") return matchesSearch && course.progress === 100;
-      if (activeFilter === "notstarted") return matchesSearch && course.progress === 0;
-      return matchesSearch;
-    });
-    
-    setFilteredCourses(filtered);
-  }, [searchQuery, activeFilter]);
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+      try {
+        // Fetch published courses with instructor info
+        const response = await fetch(`${supabaseUrl}/rest/v1/courses?is_published=eq.true&select=id,title,description,thumbnail_url,estimated_duration,total_enrollments,difficulty_level,category,price,rating,instructor_id&order=created_at.desc`, {
+          headers: {
+            'apikey': supabaseKey!,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          setCourses([]);
+          setLoading(false);
+          return;
+        }
+
+        const data = await response.json();
+
+        // Map to CourseCard format
+        const mappedCourses: Course[] = (data || []).map((course: {
+          id: string;
+          title: string;
+          description: string;
+          thumbnail_url?: string;
+          estimated_duration?: number;
+          total_enrollments?: number;
+          difficulty_level?: string;
+          category?: string;
+          price?: number;
+          rating?: number;
+          instructor_id?: string;
+          total_lessons?: number;
+        }) => ({
+          id: course.id,
+          title: course.title,
+          description: course.description,
+          thumbnail_url: course.thumbnail_url || '/default-cover.jpg',
+          instructor: {
+            name: 'Unknown Instructor', // We'll need to fetch instructor data separately if needed
+            avatar: '/default-avatar.png',
+          },
+          estimated_duration: course.estimated_duration,
+          total_enrollments: course.total_enrollments,
+          level: course.difficulty_level || 'Beginner',
+          category: course.category || 'Uncategorized',
+          price: course.price,
+          rating: course.rating,
+          lessons: course.total_lessons || 0,
+        }));
+        setCourses(mappedCourses);
+      } catch (error) {
+        console.error('Error fetching courses:', error);
+        setCourses([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCourses();
+  }, []);
 
   return (
     <div className="min-h-screen bg-secondary-50 dark:bg-secondary-900">
@@ -110,11 +128,9 @@ export const LearnerDashboard: React.FC = () => {
         onNavItemClick={handleNavItemClick}
         activeNavItem={activeNavItem}
       />
-      
       <main className={`pt-16 transition-all duration-300 ${isSidebarOpen ? 'lg:pl-64' : ''}`}>
         <div className="p-8">
           <div className="space-y-8">
-             
             {/* Hero Section */}
             <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-secondary-900/40 backdrop-blur-xl">
               <div className="absolute inset-0">
@@ -253,390 +269,6 @@ export const LearnerDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Stats */}
-            {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-white dark:bg-secondary-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
-                    <Flame className="h-6 w-6 text-primary-600 dark:text-primary-400" />
-                  </div>
-                  <Badge variant="success" className="bg-green-100 dark:bg-green-500/20">+2 days</Badge>
-                </div>
-                <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-1">7 Days</h3>
-                <p className="text-secondary-600 dark:text-secondary-400">Learning Streak</p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white dark:bg-success-900/20 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-success-100 dark:bg-success-900/20 rounded-lg">
-                    <Brain className="h-6 w-6 text-success-600 dark:text-success-400" />
-                  </div>
-                  <Badge variant="warning" className="bg-amber-100 dark:bg-amber-500/20">+2.5h</Badge>
-                </div>
-                <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-1">34h</h3>
-                <p className="text-secondary-600 dark:text-secondary-400">Total Learning Time</p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-white dark:bg-warning-900/20 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-warning-100 dark:bg-warning-900/20 rounded-lg">
-                    <Trophy className="h-6 w-6 text-warning-600 dark:text-warning-400" />
-                  </div>
-                  <Badge variant="success" className="bg-green-100 dark:bg-green-500/20">+2 new</Badge>
-                </div>
-                <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-1">12</h3>
-                <p className="text-secondary-600 dark:text-secondary-400">Certificates Earned</p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-white dark:bg-error-900/20 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-error-100 dark:bg-error-900/20 rounded-lg">
-                    <Target className="h-6 w-6 text-error-600 dark:text-error-400" />
-                  </div>
-                  <Badge variant="error" className="bg-error-100 dark:bg-error-500/20">85%</Badge>
-                </div>
-                <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-1">4/5</h3>
-                <p className="text-secondary-600 dark:text-secondary-400">Weekly Goals</p>
-              </motion.div>
-            </div> */}
-
-            {/* Active Course */}
-            {continuelearningCourse && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                <Card className="overflow-hidden border-none shadow-lg bg-gradient-to-br from-white to-primary-50 dark:from-secondary-800 dark:to-primary-900/20">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center space-x-2">
-                        <div className="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
-                          <BarChart2 className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                        </div>
-                        <h2 className="text-lg font-semibold">Currently Learning</h2>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-primary-600 hover:text-primary-700 hover:bg-primary-100 dark:hover:bg-primary-900/20"
-                      >
-                        View All Courses
-                      </Button>
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-6">
-                      <div className="md:col-span-2">
-                        <div className="flex items-start space-x-4">
-                          <div className="relative h-48 w-full">
-                            <Image
-                              src={continuelearningCourse.coverImage}
-                              alt={continuelearningCourse.title}
-                              fill
-                              className="object-cover"
-                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                            <div className="absolute bottom-4 left-4 right-4">
-                              <div className="flex items-center gap-2">
-                                <div className="relative h-8 w-8 rounded-full overflow-hidden">
-                                  <Image
-                                    src={continuelearningCourse.instructor.avatar}
-                                    alt={continuelearningCourse.instructor.name}
-                                    fill
-                                    className="object-cover"
-                                    sizes="32px"
-                                  />
-                                </div>
-                                <span className="text-sm text-white">{continuelearningCourse.instructor.name}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="text-xl font-bold mb-2">{continuelearningCourse.title}</h3>
-                            <div className="flex items-center space-x-4 mb-3">
-                              <div className="flex items-center space-x-2">
-                                <Badge variant="outline">
-                                  {continuelearningCourse.category}
-                                </Badge>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-4 text-sm text-secondary-600 dark:text-secondary-400">
-                              <div className="flex items-center">
-                                <Clock size={14} className="mr-1" />
-                                {continuelearningCourse.duration}
-                              </div>
-                              <div className="flex items-center">
-                                <BookOpen size={14} className="mr-1" />
-                                {continuelearningCourse.lessonsCompleted} / {continuelearningCourse.lessons} lessons
-                              </div>
-                              <div className="flex items-center">
-                                <Zap size={14} className="mr-1" />
-                                {continuelearningCourse.xp} XP
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col justify-center">
-                        <div className="mb-4">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-secondary-600 dark:text-secondary-400">Course Progress</span>
-                            <span className="text-sm font-medium">{continuelearningCourse.progress}%</span>
-                          </div>
-                          <Progress 
-                            value={continuelearningCourse.progress} 
-                            max={100}
-                            size="lg"
-                            className="h-3"
-                          />
-                        </div>
-                        <Button
-                          variant="primary"
-                          className="w-full"
-                          leftIcon={<PlayCircle size={18} />}
-                        >
-                          Continue Learning
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
-            )}
-
-            {/* Learning Path and Search */}
-            {/* <div className="grid lg:grid-cols-3 gap-6">
-              <motion.div 
-                className="lg:col-span-2"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-              >
-                <Card>
-                  <CardHeader className="flex justify-between items-center border-b border-secondary-200 dark:border-secondary-800">
-                    <div className="flex items-center space-x-2">
-                      <div className="p-2 bg-warning-100 dark:bg-warning-900/20 rounded-lg">
-                        <Lightbulb className="h-5 w-5 text-warning-600 dark:text-warning-400" />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Learning Path</h2>
-                        <p className="text-sm text-secondary-600 dark:text-secondary-400">Your personalized learning journey</p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-primary-600 hover:text-primary-700 hover:bg-primary-50 dark:hover:bg-primary-900/20"
-                    >
-                      View All
-                    </Button>
-                  </CardHeader>
-
-                  <CardContent className="p-0">
-                    <div className="divide-y divide-secondary-100 dark:divide-secondary-800">
-                      {filteredCourses.slice(0, 4).map((course, index) => (
-                        <motion.div
-                          key={course.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="p-4 hover:bg-secondary-50 dark:hover:bg-secondary-800/50 group"
-                        >
-                          <div className="flex items-center space-x-4">
-                            <div className={`
-                              relative flex-shrink-0 w-10 h-10 rounded-lg 
-                              ${course.progress === 100 
-                                ? "bg-success-500" 
-                                : course.progress > 0 
-                                ? "bg-warning-500" 
-                                : "bg-secondary-200 dark:bg-secondary-700"}
-                              flex items-center justify-center
-                            `}>
-                              {course.progress === 100 ? (
-                                <BadgeCheck className="w-6 h-6 text-white" />
-                              ) : (
-                                <span className="text-lg font-bold text-white">{index + 1}</span>
-                              )}
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between mb-1">
-                                <h3 className="text-base font-medium text-secondary-900 dark:text-white truncate">{course.title}</h3>
-                                <Badge
-                                  variant={
-                                    course.progress === 100 ? "success" 
-                                    : course.progress > 0 ? "warning" 
-                                    : "secondary"
-                                  }
-                                  className={`ml-2 ${
-                                    course.progress === 100 
-                                      ? "bg-success-100 dark:bg-success-500/20" 
-                                      : course.progress > 0 
-                                      ? "bg-warning-100 dark:bg-warning-500/20"
-                                      : "bg-secondary-100 dark:bg-secondary-700/50"
-                                  }`}
-                                >
-                                  {course.progress}%
-                                </Badge>
-                              </div>
-                              <div className="flex items-center text-sm text-secondary-600 dark:text-secondary-400">
-                                <Clock size={14} className="mr-1" />
-                                {course.duration}
-                                <span className="mx-2">•</span>
-                                <BookOpen size={14} className="mr-1" />
-                                {course.lessons} lessons
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 }}
-              >
-                <Card className="overflow-hidden backdrop-blur-xl bg-white dark:bg-secondary-900/50 border border-secondary-200 dark:border-white/10">
-                  <CardHeader className="border-b border-secondary-200 dark:border-secondary-800">
-                    <div className="flex items-center space-x-2">
-                      <div className="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
-                        <Search className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Quick Search</h2>
-                        <p className="text-sm text-secondary-600 dark:text-primary-200">Find your next learning adventure</p>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 space-y-6">
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                        <Search className="h-4 w-4 text-secondary-400 dark:text-primary-400" />
-                      </div>
-                      <motion.div
-                        initial={false}
-                        whileFocus={{ scale: 1.02 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <input
-                          type="text"
-                          placeholder="Search courses, topics, instructors..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-secondary-50 dark:bg-secondary-800/50 
-                                   text-sm text-secondary-900 dark:text-white placeholder-secondary-500 dark:placeholder-primary-300 
-                                   border border-secondary-200 dark:border-white/10
-                                   focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
-                                   transition-all duration-200"
-                        />
-                      </motion.div>
-                      {searchQuery && (
-                        <button
-                          onClick={() => setSearchQuery("")}
-                          className="absolute inset-y-0 right-3 flex items-center text-secondary-400 hover:text-secondary-600 dark:text-primary-400 dark:hover:text-primary-300"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="text-sm font-medium text-secondary-700 dark:text-primary-200 mb-3">Quick Filters</h3>
-                        <div className="space-y-2">
-                          {[
-                            { label: 'In Progress', icon: Clock, count: filteredCourses.filter(c => c.progress > 0 && c.progress < 100).length },
-                            { label: 'Completed', icon: CheckCircle, count: filteredCourses.filter(c => c.progress === 100).length },
-                            { label: 'Not Started', icon: Plus, count: filteredCourses.filter(c => c.progress === 0).length },
-                            { label: 'Bookmarked', icon: Bookmark, count: 5 }
-                          ].map((filter) => (
-                            <motion.button
-                              key={filter.label}
-                              whileHover={{ x: 4 }}
-                              className={`w-full flex items-center justify-between p-3 rounded-lg
-                                        ${activeFilter === filter.label.toLowerCase().replace(' ', '') 
-                                          ? 'bg-primary-50 dark:bg-primary-500/20 text-primary-900 dark:text-white' 
-                                          : 'text-secondary-700 dark:text-primary-100 hover:bg-secondary-50 dark:hover:bg-white/5'}
-                                        transition-colors duration-200 group`}
-                              onClick={() => setActiveFilter(filter.label.toLowerCase().replace(' ', ''))}
-                            >
-                              <div className="flex items-center space-x-3">
-                                <filter.icon className={`h-4 w-4 
-                                  ${activeFilter === filter.label.toLowerCase().replace(' ', '')
-                                    ? 'text-primary-600 dark:text-primary-400'
-                                    : 'text-secondary-500 dark:text-primary-500/50 group-hover:text-primary-600 dark:group-hover:text-primary-400'}`} 
-                                />
-                                <span className="text-sm font-medium">{filter.label}</span>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <Badge 
-                                  variant="secondary" 
-                                  className={`${activeFilter === filter.label.toLowerCase().replace(' ', '')
-                                    ? 'bg-primary-100 dark:bg-primary-500/30' 
-                                    : 'bg-secondary-100 dark:bg-white/5'}`}
-                                >
-                                  {filter.count}
-                                </Badge>
-                                <ChevronRight className={`h-4 w-4 text-secondary-400 dark:text-primary-400/50 transform transition-transform duration-200
-                                  ${activeFilter === filter.label.toLowerCase().replace(' ', '') ? 'translate-x-0 opacity-100' : '-translate-x-2 opacity-0'}
-                                  group-hover:translate-x-0 group-hover:opacity-100`} 
-                                />
-                              </div>
-                            </motion.button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <h3 className="text-sm font-medium text-secondary-700 dark:text-primary-200 mb-3">Recent Searches</h3>
-                        <div className="space-y-2">
-                          {['React Hooks', 'UI Design Basics', 'Python for ML'].map((search, index) => (
-                            <motion.button
-                              key={search}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.1 * index }}
-                              className="flex items-center space-x-2 text-sm text-secondary-600 hover:text-secondary-900 dark:text-primary-300 dark:hover:text-primary-200"
-                              onClick={() => setSearchQuery(search)}
-                            >
-                              <Clock className="h-3.5 w-3.5" />
-                              <span>{search}</span>
-                            </motion.button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </div>   */}
-
             {/* Recommended Courses */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -663,20 +295,36 @@ export const LearnerDashboard: React.FC = () => {
                   View All
                 </Button>
               </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {mockRecommendedCourses.slice(0, 4).map((course, index) => (
-                  <motion.div
-                    key={course.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * index + 0.2 }}
-                    whileHover={{ y: -5 }}
-                  >
-                    <CourseCard course={course} />
-                  </motion.div>
-                ))}
-              </div>
+              {loading ? (
+                <div className="text-center text-gray-400 py-12">Loading courses...</div>
+              ) : courses.length === 0 ? (
+                <div className="text-center text-gray-400 py-12">No courses found.</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {courses.slice(0, 4).map((course: Course, index) => (
+                    <motion.div
+                      key={course.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 * index + 0.2 }}
+                      whileHover={{ y: -5 }}
+                    >
+                      <CourseCard course={{
+                        id: course.id,
+                        title: course.title,
+                        description: course.description,
+                        thumbnail: course.thumbnail_url,
+                        instructor: course.instructor,
+                        duration: course.estimated_duration || 0,
+                        students: course.total_enrollments || 0,
+                        level: course.level,
+                        category: course.category,
+                        status: 'published',
+                      }} />
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           </div>
         </div>

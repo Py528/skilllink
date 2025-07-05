@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLeft, Clock, Users, Star, Play } from 'lucide-react'
-import supabase from '@/lib/supabaseClient'
 import { Course } from '@/types/index'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -20,62 +19,91 @@ export default function CourseDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  console.log('Environment variables:', {
+    url: supabaseUrl,
+    keyExists: !!supabaseKey
+  })
+
   useEffect(() => {
+    console.log('useEffect triggered with courseId:', courseId)
     if (courseId) {
       fetchCourse()
     }
   }, [courseId])
 
   const fetchCourse = async () => {
+    console.log('fetchCourse called')
     try {
       setIsLoading(true)
       setError(null)
 
-      const { data, error: supabaseError } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('id', courseId)
-        .single()
-
-      if (supabaseError) {
-        throw supabaseError
-      }
-
-      // Process S3 thumbnail if needed
-      let thumbnailUrl = data.thumbnail_url
-      if (data.thumbnail_s3_key && !thumbnailUrl) {
-        thumbnailUrl = `https://course-skilllearn.s3.us-east-1.amazonaws.com/${data.thumbnail_s3_key}`
-      }
+      console.log('Making direct fetch for courseId:', courseId)
       
-      // Handle relative thumbnail paths
-      if (thumbnailUrl && !thumbnailUrl.startsWith('http://') && !thumbnailUrl.startsWith('https://')) {
-        if (thumbnailUrl.startsWith('thumbnails/') || thumbnailUrl.startsWith('images/')) {
-          thumbnailUrl = `https://course-skilllearn.s3.us-east-1.amazonaws.com/${thumbnailUrl}`
-        } else {
-          // If it's just a filename, assume it's in the thumbnails folder
-          thumbnailUrl = `https://course-skilllearn.s3.us-east-1.amazonaws.com/thumbnails/${thumbnailUrl}`
+      const response = await fetch(`${supabaseUrl}/rest/v1/courses?id=eq.${courseId}&select=*`, {
+        headers: {
+          'apikey': supabaseKey!,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
         }
+      })
+
+      console.log('Direct fetch response status:', response.status)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      setCourse({
-        ...data,
-        thumbnail_url: thumbnailUrl,
-        // Ensure instructor_name has a fallback
-        instructor_name: data.instructor_name || 'Unknown Instructor',
-        // Map schema fields to component expectations
-        student_count: data.total_enrollments || 0,
-        rating: data.average_rating || 0,
-        duration: data.estimated_duration ? `${Math.floor(data.estimated_duration / 60)}h ${data.estimated_duration % 60}m` : 'Not specified',
-        level: data.difficulty_level || 'Beginner',
-        category: data.category || 'Uncategorized',
-        price: data.price || 0,
-        created_at: data.created_at,
-        updated_at: data.updated_at
-      })
+      const data = await response.json()
+      console.log('Direct fetch response:', data)
+
+      if (data && data.length > 0) {
+        const courseData = data[0]
+        console.log('Setting course data:', courseData)
+        
+        // Process S3 thumbnail if needed
+        let thumbnailUrl = courseData.thumbnail_url
+        if (courseData.thumbnail_s3_key && !thumbnailUrl) {
+          thumbnailUrl = `https://course-skilllearn.s3.us-east-1.amazonaws.com/${courseData.thumbnail_s3_key}`
+        }
+        
+        // Handle relative thumbnail paths
+        if (thumbnailUrl && !thumbnailUrl.startsWith('http://') && !thumbnailUrl.startsWith('https://')) {
+          if (thumbnailUrl.startsWith('thumbnails/') || thumbnailUrl.startsWith('images/')) {
+            thumbnailUrl = `https://course-skilllearn.s3.us-east-1.amazonaws.com/${thumbnailUrl}`
+          } else {
+            // If it's just a filename, assume it's in the thumbnails folder
+            thumbnailUrl = `https://course-skilllearn.s3.us-east-1.amazonaws.com/thumbnails/${thumbnailUrl}`
+          }
+        }
+
+        const processedCourse = {
+          ...courseData,
+          thumbnail_url: thumbnailUrl,
+          // Ensure instructor_name has a fallback
+          instructor_name: courseData.instructor_name || 'Unknown Instructor',
+          // Map schema fields to component expectations
+          student_count: courseData.total_enrollments || 0,
+          rating: courseData.average_rating || 0,
+          duration: courseData.estimated_duration ? `${Math.floor(courseData.estimated_duration / 60)}h ${courseData.estimated_duration % 60}m` : 'Not specified',
+          level: courseData.difficulty_level || 'Beginner',
+          category: courseData.category || 'Uncategorized',
+          price: courseData.price || 0,
+          created_at: courseData.created_at,
+          updated_at: courseData.updated_at
+        }
+
+        setCourse(processedCourse)
+      } else {
+        throw new Error('Course not found')
+      }
     } catch (err) {
       console.error('Error fetching course:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch course')
     } finally {
+      console.log('Setting isLoading to false')
       setIsLoading(false)
     }
   }
@@ -139,7 +167,6 @@ export default function CourseDetailPage() {
   return (
     <div className="min-h-screen bg-[#111111]">
       <div className="container mx-auto px-4 py-8">
-        {/* Back Button */}
         <Link href="/courses">
           <Button variant="ghost" className="mb-6 text-zinc-400 hover:text-white">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -148,9 +175,7 @@ export default function CourseDetailPage() {
         </Link>
 
         <div className="grid gap-8 lg:grid-cols-3">
-          {/* Main Content */}
           <div className="lg:col-span-2">
-            {/* Course Video/Image */}
             <div className="relative mb-6 aspect-video overflow-hidden rounded-lg">
               {course.thumbnail_url ? (
                 <Image
@@ -174,12 +199,10 @@ export default function CourseDetailPage() {
               </div>
             </div>
 
-            {/* Course Title */}
             <h1 className="mb-4 text-3xl font-bold text-white lg:text-4xl">
               {course.title}
             </h1>
 
-            {/* Course Description */}
             <div className="mb-6">
               <h2 className="mb-3 text-xl font-semibold text-white">About this course</h2>
               <p className="text-zinc-400 leading-relaxed">
@@ -187,7 +210,6 @@ export default function CourseDetailPage() {
               </p>
             </div>
 
-            {/* Instructor */}
             <div className="mb-6">
               <h2 className="mb-3 text-xl font-semibold text-white">Instructor</h2>
               <div className="flex items-center gap-4">
@@ -214,11 +236,9 @@ export default function CourseDetailPage() {
             </div>
           </div>
 
-          {/* Sidebar */}
           <div>
             <Card className="sticky top-8 border-zinc-800 bg-[#1a1a1a]">
               <CardContent className="p-6">
-                {/* Price */}
                 {course.price && course.price > 0 && (
                   <div className="mb-6">
                     <div className="text-3xl font-bold text-[#0CF2A0]">
@@ -227,12 +247,10 @@ export default function CourseDetailPage() {
                   </div>
                 )}
 
-                {/* Enroll Button */}
                 <Button className="mb-6 w-full bg-[#0CF2A0] text-black hover:bg-[#0CF2A0]/80">
                   {course.price && course.price > 0 ? 'Enroll Now' : 'Start Free Course'}
                 </Button>
 
-                {/* Course Info */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-zinc-400">Level</span>

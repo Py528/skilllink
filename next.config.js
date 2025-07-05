@@ -6,7 +6,8 @@ const nextConfig = {
       'avatars.githubusercontent.com', 
       'lh3.googleusercontent.com', 
       'images.pexels.com',
-      'course-skilllearn.s3.us-east-1.amazonaws.com'
+      'course-skilllearn.s3.us-east-1.amazonaws.com',
+      'courses-skilllearn.s3.us-east-1.amazonaws.com'
     ],
   },
   experimental: {
