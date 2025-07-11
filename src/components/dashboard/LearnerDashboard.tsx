@@ -15,6 +15,7 @@ import { Sidebar } from "../layout/Sidebar";
 import { useUser } from "../../context/UserContext";
 import { coursesService, CourseWithInstructor } from "../../services/coursesService";
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 interface Course {
   id: string;
@@ -64,6 +65,8 @@ export const LearnerDashboard: React.FC = () => {
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
   const [coursesError, setCoursesError] = useState<string | null>(null);
 
+  const router = useRouter();
+
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
@@ -102,6 +105,17 @@ export const LearnerDashboard: React.FC = () => {
     };
 
     fetchCourses();
+
+    // Refetch when page becomes visible (e.g., navigating back)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchCourses();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   useEffect(() => {
@@ -310,6 +324,7 @@ export const LearnerDashboard: React.FC = () => {
                         transition={{ delay: 0.1 * index + 0.2 }}
                         whileHover={{ y: -5 }}
                         className="bg-white dark:bg-secondary-800 rounded-xl border border-secondary-200 dark:border-secondary-700 p-6 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                        onClick={() => router.push(`/courses/${course.id}/learn`)}
                       >
                         <div className="flex items-start space-x-4">
                           <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
@@ -396,6 +411,8 @@ export const LearnerDashboard: React.FC = () => {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.1 }}
                           className="p-4 hover:bg-secondary-50 dark:hover:bg-secondary-800/50 group"
+                          onClick={() => router.push(`/courses/${course.id}/learn`)}
+                          style={{ cursor: 'pointer' }}
                         >
                           <div className="flex items-center space-x-4">
                             <div className={`
@@ -649,7 +666,7 @@ export const LearnerDashboard: React.FC = () => {
                       transition={{ delay: 0.1 * index + 0.2 }}
                       whileHover={{ y: -5 }}
                     >
-                      <CourseCard course={course} />
+                      <CourseCard course={course} onClick={() => router.push(`/courses/${course.id}/learn`)} />
                     </motion.div>
                   ))}
                 </div>
