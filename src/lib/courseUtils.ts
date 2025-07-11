@@ -136,7 +136,7 @@ export function canPreviewResource(resource: CourseResource): boolean {
 }
 
 // S3 public bucket base URL
-export const S3_BASE_URL = 'https://course-skilllearn.s3.us-east-1.amazonaws.com/';
+export const S3_BASE_URL = 'https://courses-skilllearn.s3.us-east-1.amazonaws.com/';
 
 // Helper to construct a full S3 URL from a key or relative path
 export function getS3Url(pathOrUrl?: string): string | undefined {

@@ -23,12 +23,16 @@ export async function POST(req: NextRequest) {
 
   const key = `${folder}/${fileName}`;
   const command = new PutObjectCommand({
-    Bucket: process.env.AWS_BUCKET_NAME!,
+    Bucket: process.env.AWS_BUCKET_NAME!, // Should be 'courses-skilllearn'
     Key: key,
     ContentType: fileType,
   });
 
   const url = await getSignedUrl(s3, command, { expiresIn: 60 });
+
+  // Debug log for S3 upload
+  console.log('[s3-presign-upload] Bucket:', process.env.AWS_BUCKET_NAME);
+  console.log('[s3-presign-upload] publicUrl:', `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_BUCKET_REGION}.amazonaws.com/${key}`);
 
   return NextResponse.json({
     url,

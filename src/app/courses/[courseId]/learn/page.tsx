@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { CourseInterfaceLayout } from '@/components/courses/course-interface-layout'
 import { Course, Lesson } from '@/types/index'
 import { Skeleton } from '@/components/ui/skeleton'
+import supabase from '@/lib/supabaseClient'
 
 export default function CourseLearnPage() {
   const params = useParams()
@@ -18,11 +19,40 @@ export default function CourseLearnPage() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+  // --- COURSE FETCH LOGIC ---
   useEffect(() => {
     if (courseId) {
       fetchCourseData()
     }
   }, [courseId])
+
+  // --- LESSONS FETCH LOGIC ---
+  useEffect(() => {
+    const fetchLessons = async () => {
+      if (!courseId) {
+        return;
+      }
+      try {
+        const { data: lessonsData, error: lessonsError } = await supabase
+          .from('lessons')
+          .select('*')
+          .eq('course_id', courseId)
+          .order('order_index', { ascending: true });
+        if (lessonsError) {
+          setError('Failed to load lessons: ' + lessonsError.message);
+        }
+        if (!lessonsData || lessonsData.length === 0) {
+        }
+        setLessons(lessonsData || []);
+        if (lessonsData && lessonsData.length > 0) {
+          setCurrentLesson(lessonsData[0]);
+        }
+      } catch (err) {
+        setError('Unexpected error loading lessons: ' + (err as Error).message);
+      }
+    };
+    if (courseId) fetchLessons();
+  }, [courseId]);
 
   const fetchCourseData = async () => {
     try {
@@ -55,7 +85,6 @@ export default function CourseLearnPage() {
       if (courseInfo.thumbnail_s3_key && !thumbnailUrl) {
         thumbnailUrl = `https://courses-skilllearn.s3.us-east-1.amazonaws.com/${courseInfo.thumbnail_s3_key}`
       }
-      
       // Handle relative thumbnail paths
       if (thumbnailUrl && !thumbnailUrl.startsWith('http://') && !thumbnailUrl.startsWith('https://')) {
         if (thumbnailUrl.startsWith('thumbnails/') || thumbnailUrl.startsWith('images/')) {
@@ -82,23 +111,15 @@ export default function CourseLearnPage() {
 
       setCourse(processedCourse)
 
-      // Fetch lessons using direct fetch
-      const lessonsData = await fetchCourseLessonsWithResources(courseId)
-      setLessons(lessonsData)
-
-      // Set first lesson as current if available
-      if (lessonsData.length > 0) {
-        setCurrentLesson(lessonsData[0])
-      }
-
     } catch (err) {
-      console.error('Error fetching course data:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch course data')
     } finally {
       setIsLoading(false)
     }
   }
 
+  // The fetchCourseLessonsWithResources function is no longer needed as lessons are fetched directly.
+  // Keeping it here for now, but it will be removed if not used elsewhere.
   const fetchCourseLessonsWithResources = async (courseId: string): Promise<Lesson[]> => {
     try {
       // First get all sections for the course
@@ -137,7 +158,6 @@ export default function CourseLearnPage() {
       const lessons = await lessonsResponse.json()
       return lessons || []
     } catch (error) {
-      console.error('Error fetching lessons:', error)
       return []
     }
   }

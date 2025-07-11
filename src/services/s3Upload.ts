@@ -25,6 +25,7 @@ export const s3Service = {
     });
     if (!presignRes.ok) throw new Error('Failed to get pre-signed URL');
     const { url, key, publicUrl } = await presignRes.json();
+    console.log('[s3Upload] publicUrl from presign API:', publicUrl);
 
     // 2. Upload to S3 using XHR for progress
     await new Promise<void>((resolve, reject) => {
