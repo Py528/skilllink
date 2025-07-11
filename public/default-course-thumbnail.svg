@@ -1,0 +1,7 @@
+<svg width="400" height="225" viewBox="0 0 400 225" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="225" fill="#1F2937"/>
+  <rect x="50" y="50" width="300" height="125" fill="#374151" rx="8"/>
+  <circle cx="200" cy="112.5" r="30" fill="#6B7280"/>
+  <path d="M190 102.5L210 112.5L190 122.5V102.5Z" fill="#9CA3AF"/>
+  <text x="200" y="170" text-anchor="middle" fill="#9CA3AF" font-family="Arial, sans-serif" font-size="14">Course Thumbnail</text>
+</svg> 

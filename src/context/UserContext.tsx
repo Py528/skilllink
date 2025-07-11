@@ -1,10 +1,10 @@
 'use client';
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { useAuth } from "@/components/auth/useAuth";
+import { useAuth } from "@/providers/AuthProvider";
 
 export type UserRole = "instructor" | "learner";
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;

@@ -1,7 +1,7 @@
 // src/app/dashboard/page.tsx
 "use client";
 
-import { useAuth } from "@/components/auth/useAuth";
+import { useAuth } from "@/providers/AuthProvider";
 import { InstructorDashboard } from "@/components/dashboard/InstructorDashboard";
 import { LearnerDashboard } from "@/components/dashboard/LearnerDashboard";
 import RoleSelection from "@/components/auth/RoleSelection";

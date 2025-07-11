@@ -3,6 +3,7 @@ import React from 'react';
 import { SupabaseProvider } from './SupabaseProvider';
 import { ThemeProvider } from '../context/ThemeContext';
 import { UserProvider } from '../context/UserContext';
+import { AuthProvider } from './AuthProvider';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -11,11 +12,13 @@ interface ProvidersProps {
 export const Providers: React.FC<ProvidersProps> = ({ children }) => {
   return (
     <SupabaseProvider>
-      <ThemeProvider>
-        <UserProvider>
-          {children}
-        </UserProvider>
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <UserProvider>
+            {children}
+          </UserProvider>
+        </ThemeProvider>
+      </AuthProvider>
     </SupabaseProvider>
   );
 }; 

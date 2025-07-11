@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { User, Mail, Lock, Github, ArrowRight, Loader2, Sparkles, CheckCircle2, Briefcase, GraduationCap } from 'lucide-react';
 import { FcGoogle } from "react-icons/fc";
-import { useAuth } from '@/components/auth/useAuth';
+import { useAuth } from '@/providers/AuthProvider';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';

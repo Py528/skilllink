@@ -51,7 +51,7 @@ export default function CourseDetailPage() {
       })
 
       console.log('Direct fetch response status:', response.status)
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -62,29 +62,29 @@ export default function CourseDetailPage() {
       if (data && data.length > 0) {
         const courseData = data[0]
         console.log('Setting course data:', courseData)
-        
-        // Process S3 thumbnail if needed
+
+      // Process S3 thumbnail if needed
         let thumbnailUrl = courseData.thumbnail_url
         if (courseData.thumbnail_s3_key && !thumbnailUrl) {
           thumbnailUrl = `https://course-skilllearn.s3.us-east-1.amazonaws.com/${courseData.thumbnail_s3_key}`
+      }
+      
+      // Handle relative thumbnail paths
+      if (thumbnailUrl && !thumbnailUrl.startsWith('http://') && !thumbnailUrl.startsWith('https://')) {
+        if (thumbnailUrl.startsWith('thumbnails/') || thumbnailUrl.startsWith('images/')) {
+          thumbnailUrl = `https://course-skilllearn.s3.us-east-1.amazonaws.com/${thumbnailUrl}`
+        } else {
+          // If it's just a filename, assume it's in the thumbnails folder
+          thumbnailUrl = `https://course-skilllearn.s3.us-east-1.amazonaws.com/thumbnails/${thumbnailUrl}`
         }
-        
-        // Handle relative thumbnail paths
-        if (thumbnailUrl && !thumbnailUrl.startsWith('http://') && !thumbnailUrl.startsWith('https://')) {
-          if (thumbnailUrl.startsWith('thumbnails/') || thumbnailUrl.startsWith('images/')) {
-            thumbnailUrl = `https://course-skilllearn.s3.us-east-1.amazonaws.com/${thumbnailUrl}`
-          } else {
-            // If it's just a filename, assume it's in the thumbnails folder
-            thumbnailUrl = `https://course-skilllearn.s3.us-east-1.amazonaws.com/thumbnails/${thumbnailUrl}`
-          }
-        }
+      }
 
         const processedCourse = {
           ...courseData,
-          thumbnail_url: thumbnailUrl,
-          // Ensure instructor_name has a fallback
+        thumbnail_url: thumbnailUrl,
+        // Ensure instructor_name has a fallback
           instructor_name: courseData.instructor_name || 'Unknown Instructor',
-          // Map schema fields to component expectations
+        // Map schema fields to component expectations
           student_count: courseData.total_enrollments || 0,
           rating: courseData.average_rating || 0,
           duration: courseData.estimated_duration ? `${Math.floor(courseData.estimated_duration / 60)}h ${courseData.estimated_duration % 60}m` : 'Not specified',

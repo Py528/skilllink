@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Save, Check } from 'lucide-react';
 import { Button } from '@/components/publish_course/Button';
@@ -13,6 +13,8 @@ import { PreviewPublishStep } from '@/components/publish_course/PreviewPublishSt
 import { s3Service } from '@/services/s3Upload';
 import { toast } from '@/components/ui/sonner';
 import { useSupabase } from '@/providers/SupabaseProvider';
+import { useAuth } from '@/providers/AuthProvider';
+import { useRouter } from 'next/navigation';
 
 interface UploadedFile {
   id: string;
@@ -89,7 +91,9 @@ function isUploadedFile(file: any): file is UploadedFile {
 }
 
 export default function CreateCourse() {
-  const { supabase, session, user } = useSupabase();
+  const { supabase } = useSupabase();
+  const { user, profile, loading } = useAuth();
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -109,6 +113,76 @@ export default function CreateCourse() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
+
+  // Check authentication and user type
+  useEffect(() => {
+    console.log('CreateCourse - Auth state:', {
+      loading,
+      user: user?.id,
+      profile: profile?.user_type,
+      hasProfile: !!profile
+    });
+    
+    if (!loading) {
+      if (!user) {
+        console.log('CreateCourse - No user found, redirecting to login');
+        toast.error('You must be logged in to create a course');
+        router.push('/login');
+        return;
+      }
+      
+      if (!profile) {
+        console.log('CreateCourse - No profile found, redirecting to dashboard');
+        toast.error('Please complete your profile setup first');
+        router.push('/dashboard');
+        return;
+      }
+      
+      if (profile.user_type !== 'instructor') {
+        console.log('CreateCourse - User is not instructor:', profile.user_type);
+        toast.error('Only instructors can create courses');
+        router.push('/dashboard');
+        return;
+      }
+      
+      console.log('CreateCourse - Authentication successful, user is instructor');
+    }
+  }, [user, profile, loading, router]);
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#111111] text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0CF2A0] mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied if not authenticated or not an instructor
+  if (!user || !profile || profile.user_type !== 'instructor') {
+    return (
+      <div className="min-h-screen bg-[#111111] text-white flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+          <p className="text-gray-400 mb-4">You must be logged in as an instructor to create courses.</p>
+          <div className="space-y-2 text-sm text-gray-500">
+            <p>User: {user?.id || 'Not logged in'}</p>
+            <p>Profile: {profile?.user_type || 'No profile'}</p>
+            <p>Loading: {loading ? 'Yes' : 'No'}</p>
+          </div>
+          <button 
+            onClick={() => router.push('/dashboard')}
+            className="mt-4 px-4 py-2 bg-[#0CF2A0] text-black rounded hover:bg-[#0CF2A0]/80"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const updateFormData = (newData: Partial<FormData>) => {
     setFormData(prev => ({ ...prev, ...newData }));
@@ -282,8 +356,10 @@ export default function CreateCourse() {
         modules: modulesWithUploads
       };
 
-      // Check if user is logged in using the context
+      // Check if user is logged in using the auth context
+      console.log('CreateCourse - Publishing with user:', user?.id);
       if (!user) {
+        console.error('CreateCourse - No user found during publish');
         toast.error('You must be logged in to create a course');
         throw new Error('You must be logged in to create a course');
       }
@@ -451,6 +527,9 @@ export default function CreateCourse() {
       // After everything is successful
       toast.dismiss(toastId);
       toast.success('Course published successfully!');
+      
+      // Redirect to the course page or dashboard
+      router.push('/dashboard');
     } catch (error) {
       toast.dismiss(toastId);
       toast.error('Failed to publish course: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -504,32 +583,47 @@ export default function CreateCourse() {
                       <h3 className="font-semibold text-white mb-2">Progress</h3>
                       <Progress value={(currentStep / steps.length) * 100} showLabel />
                     </div>
-                    <div className="space-y-3">
-                      {steps.map((step) => (
-                        <div
+                    
+                    <div className="space-y-2">
+                      {steps.map((step, index) => (
+                        <motion.div
                           key={step.id}
-                          className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 cursor-pointer
-                            ${currentStep === step.id ? 'bg-[#0CF2A0]/20 border border-[#0CF2A0]' : 'border border-transparent hover:bg-gray-700'}
-                            ${currentStep > step.id ? 'opacity-75' : ''}
-                          `}
-                          onClick={() => {
-                              setCurrentStep(step.id);
-                          }}
+                          className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                            currentStep === step.id
+                              ? 'bg-primary-600/20 border border-primary-600/30'
+                              : currentStep > step.id
+                              ? 'bg-green-600/20 border border-green-600/30'
+                              : 'bg-gray-800/50 border border-gray-700/50'
+                          }`}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
                         >
-                          <div className={`size-8 rounded-full flex items-center justify-center font-bold text-sm
-                            ${currentStep === step.id ? 'bg-[#0CF2A0] text-[#111111]' : 'bg-gray-700 text-gray-300'}
-                          `}>
+                          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                            currentStep === step.id
+                              ? 'bg-primary-600 text-white'
+                              : currentStep > step.id
+                              ? 'bg-green-600 text-white'
+                              : 'bg-gray-700 text-gray-400'
+                          }`}>
                             {currentStep > step.id ? (
-                              <Check className="size-4" />
+                              <Check className="w-4 h-4" />
                             ) : (
                               step.id
                             )}
                           </div>
-                          <div>
-                            <p className={`font-semibold ${currentStep === step.id ? 'text-[#0CF2A0]' : 'text-white'}`}>{step.title}</p>
-                            <p className="text-xs text-gray-400">{step.description}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium ${
+                              currentStep === step.id
+                                ? 'text-primary-400'
+                                : currentStep > step.id
+                                ? 'text-green-400'
+                                : 'text-gray-400'
+                            }`}>
+                              {step.title}
+                            </p>
+                            <p className="text-xs text-gray-500">{step.description}</p>
                           </div>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                   </div>
