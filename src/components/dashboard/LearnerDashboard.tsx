@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   BookOpen, Clock, Compass, PlayCircle, BadgeCheck, 
-  Search, Trophy, ChevronRight, 
+  Search, ChevronRight, 
   Lightbulb, X, CheckCircle, Plus, Bookmark
 } from "lucide-react";
 import { Card, CardHeader, CardContent } from "../common/Card";
@@ -86,11 +86,13 @@ export const LearnerDashboard: React.FC = () => {
   // Fetch courses from Supabase
   useEffect(() => {
     const fetchCourses = async () => {
+      const start = Date.now();
       try {
         setIsLoadingCourses(true);
         setCoursesError(null);
         const courses = await coursesService.getAllPublishedCourses();
         setRecommendedCourses(courses);
+        console.log('LearnerDashboard: fetched courses in', Date.now() - start, 'ms');
       } catch (error) {
         console.error('Error fetching courses:', error);
         setCoursesError('Failed to load courses');
@@ -183,7 +185,7 @@ export const LearnerDashboard: React.FC = () => {
                       </motion.div>
                     </motion.div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* <div className="grid grid-cols-2 gap-4">
                       <motion.div 
                         className="bg-white dark:bg-white/5 backdrop-blur-sm rounded-lg p-4 hover:bg-secondary-50 dark:hover:bg-white/10 transition-colors shadow-sm"
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -263,7 +265,7 @@ export const LearnerDashboard: React.FC = () => {
                           />
                         </motion.div>
                       </motion.div>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>
@@ -603,7 +605,7 @@ export const LearnerDashboard: React.FC = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 * index + 0.2 }}
-                      className="bg-gray-800 rounded-lg overflow-hidden animate-pulse"
+                      className="bg-gray-800 rounded-lg overflow-hidden animate-pulse min-h-[260px]"
                     >
                       <div className="aspect-video bg-gray-700"></div>
                       <div className="p-4 space-y-4">

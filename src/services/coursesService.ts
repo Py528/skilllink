@@ -48,52 +48,36 @@ class CoursesService {
 
   async getAllPublishedCourses(): Promise<CourseWithInstructor[]> {
     try {
-      console.log('Fetching published courses from Supabase...');
-      
+      const start = Date.now();
       const { data: courses, error } = await this.supabase
         .from('courses')
         .select(`
-          *,
-          instructor:profiles!courses_instructor_id_fkey(
-            full_name,
-            avatar_url
-          )
+          id, title, description, thumbnail_url, instructor_id, price, is_published, difficulty_level, estimated_duration, tags, created_at, updated_at, category,
+          instructor:profiles!courses_instructor_id_fkey(full_name, avatar_url)
         `)
         .eq('is_published', true)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(8);
 
       if (error) {
         console.error('Error fetching courses:', error);
         throw new Error('Failed to fetch courses');
       }
 
-      console.log(`Found ${courses?.length || 0} published courses`);
+      console.log('Fetched courses in', Date.now() - start, 'ms');
 
-      // Transform the data to match our interface
-      const transformedCourses = courses?.map(course => {
-        console.log('Course data:', {
-          id: course.id,
-          title: course.title,
-          thumbnail_url: course.thumbnail_url,
-          instructor: course.instructor
-        });
-        
-        return {
-          ...course,
-          instructor: {
-            name: course.instructor?.full_name || 'Unknown Instructor',
-            avatar: course.instructor?.avatar_url || '/default-avatar.svg'
-          },
-          duration: course.estimated_duration ? `${course.estimated_duration}h` : 'N/A',
-          students: 0, // This would need to be calculated from enrollments table
-          rating: 4.5, // This would need to be calculated from reviews table
-          lessons: 0, // This would need to be calculated from lessons table
-          category: course.tags?.[0] || 'General'
-        };
-      }) || [];
-
-      console.log('Transformed courses:', transformedCourses);
-      return transformedCourses;
+      return courses?.map(course => ({
+        ...course,
+        instructor: {
+          name: course.instructor?.full_name || 'Unknown Instructor',
+          avatar: course.instructor?.avatar_url || '/default-avatar.svg'
+        },
+        duration: course.estimated_duration ? `${course.estimated_duration}h` : 'N/A',
+        students: 0,
+        rating: 4.5,
+        lessons: 0,
+        category: course.tags?.[0] || 'General'
+      })) || [];
     } catch (error) {
       console.error('Error in getAllPublishedCourses:', error);
       return [];
