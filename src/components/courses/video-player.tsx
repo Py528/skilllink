@@ -39,6 +39,74 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [hoverProgress, setHoverProgress] = useState(-1);
   const [quality, setQuality] = useState('Auto');
+  // Error state for video loading
+  const [videoError, setVideoError] = useState(false);
+  // Drag-to-seek state
+  const seekingRef = useRef(false);
+  const seekBarRef = useRef<HTMLDivElement>(null);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [seekTime, setSeekTime] = useState<number | null>(null);
+
+  // Helper to get seek time from event
+  const getSeekTimeFromEvent = (e: MouseEvent | TouchEvent) => {
+    let clientX;
+    if ('touches' in e && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+    } else if ('clientX' in e) {
+      clientX = e.clientX;
+    } else {
+      return null;
+    }
+    const seekBar = seekBarRef.current;
+    if (!seekBar || !duration) return null;
+    const rect = seekBar.getBoundingClientRect();
+    const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return pos * duration;
+  };
+
+  // Global listeners for drag
+  useEffect(() => {
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      if (!seekingRef.current) return;
+      const time = getSeekTimeFromEvent(e);
+      if (time !== null && videoRef.current) {
+        videoRef.current.currentTime = time;
+        setSeekTime(time);
+      }
+    };
+    const handleUp = (e: MouseEvent | TouchEvent) => {
+      if (!seekingRef.current) return;
+      const time = getSeekTimeFromEvent(e);
+      if (time !== null && videoRef.current) {
+        videoRef.current.currentTime = time;
+        setCurrentTime(time);
+      }
+      setIsSeeking(false);
+      setSeekTime(null);
+      seekingRef.current = false;
+    };
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('touchmove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('touchend', handleUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('touchend', handleUp);
+    };
+  }, [duration]);
+
+  // Start seeking
+  const handleSeekStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    seekingRef.current = true;
+    setIsSeeking(true);
+    const time = getSeekTimeFromEvent(e.nativeEvent || e);
+    if (time !== null && videoRef.current) {
+      videoRef.current.currentTime = time;
+      setSeekTime(time);
+    }
+  };
 
   // Fallbacks for missing data
   const safePoster = poster || '';
@@ -47,15 +115,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Always resolve src and poster to full URLs
   const resolvedSrc = getS3Url(src);
   const resolvedPoster = getS3Url(safePoster);
-
-  // Debug logging for S3 URLs
-  useEffect(() => {
-    console.log('[VideoPlayer] resolvedSrc:', resolvedSrc);
-    console.log('[VideoPlayer] resolvedPoster:', resolvedPoster);
-  }, [resolvedSrc, resolvedPoster]);
-
-  // Error state for video loading
-  const [videoError, setVideoError] = useState(false);
 
   // Auto-hide controls (only on mobile)
   useEffect(() => {
@@ -106,17 +165,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
     setIsPlaying(!isPlaying);
   }, [isPlaying]);
-
-  const handleSeek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const video = videoRef.current;
-    if (!video || !duration) return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const pos = (e.clientX - rect.left) / rect.width;
-    const time = pos * duration;
-    video.currentTime = time;
-    setCurrentTime(time);
-  }, [duration]);
 
   const handleVolumeChange = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const video = videoRef.current;
@@ -244,23 +292,26 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         ref={containerRef}
         className={`relative bg-black rounded-2xl overflow-hidden shadow-2xl transition-all duration-500 ${
           isTheaterMode ? 'mx-0 max-w-none' : ''
-        }`}
+        } group" tabIndex={0}`}
         onDoubleClick={toggleFullscreen}
       >
         {/* Ambient Glow Effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 via-blue-500/20 to-pink-500/20 animate-pulse" />
-        
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 via-blue-500/20 to-pink-500/20 animate-pulse pointer-events-none" />
         {/* Video Element */}
-
         {resolvedSrc && !videoError ? (
           <video
             ref={videoRef}
             src={resolvedSrc}
             poster={resolvedPoster}
-            className="w-full h-auto max-h-[70vh] object-cover"
+            className={
+              isFullscreen
+                ? "w-full h-full object-contain bg-black"
+                : "w-full h-[320px] max-w-2xl max-h-[320px] mx-auto object-contain bg-black"
+            }
             onClick={togglePlay}
             onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
             onError={() => setVideoError(true)}
+            tabIndex={-1}
           />
         ) : (
           <div className="flex flex-col items-center justify-center w-full h-[300px] bg-zinc-900 text-white rounded-2xl">
@@ -270,85 +321,108 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <span className="text-xs mt-1 break-all">{resolvedSrc || '(empty URL)'}</span>
           </div>
         )}
-
-        {/* Loading Spinner */}
-        {/* Center Play Button */}
-        {!isPlaying && (
-          <div 
-            className="absolute inset-0 flex items-center justify-center cursor-pointer group"
-            onClick={togglePlay}
+        {/* Center Play Button: only the button area toggles play/pause */}
+        {resolvedSrc && !videoError && !isPlaying && (
+          <div
+            className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
           >
-            <div className="bg-white/10 backdrop-blur-lg rounded-full p-6 group-hover:bg-white/20 transition-all duration-300 group-hover:scale-110 shadow-lg">
-              <Play className="w-16 h-16 text-white ml-2" fill="white" />
-            </div>
+            <button
+              type="button"
+              className="flex items-center justify-center bg-white/10 backdrop-blur-lg rounded-full p-4 md:p-6 hover:bg-white/20 transition-all duration-300 hover:scale-110 shadow-lg min-w-[56px] min-h-[56px] max-w-[80px] max-h-[80px] pointer-events-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
+              onClick={togglePlay}
+              tabIndex={0}
+              aria-label="Play video"
+              onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && togglePlay()}
+            >
+              <Play className="w-12 h-12 md:w-16 md:h-16 text-white ml-1 md:ml-2" fill="white" />
+            </button>
           </div>
         )}
-
         {/* Controls Overlay */}
         <div 
           className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 transition-opacity duration-300 ${
             showControls ? 'opacity-100' : 'opacity-0'
           } pointer-events-none md:pointer-events-auto`}
+          style={{ pointerEvents: 'auto' }}
         >
           {/* Top Bar */}
           <div className="absolute top-0 left-0 right-0 p-6">
             <div className="flex items-center justify-between">
-              <h1 className="text-white text-xl font-bold">{safeTitle}</h1>
+              <h1 className="text-white text-xl font-bold truncate max-w-[60vw]">{safeTitle}</h1>
               <div className="flex items-center space-x-3">
                 <button
                   onClick={enterPictureInPicture}
-                  className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+                  className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
+                  tabIndex={0}
+                  aria-label="Picture in Picture"
                 >
                   <PictureInPicture className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => setIsTheaterMode(!isTheaterMode)}
-                  className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+                  className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
+                  tabIndex={0}
+                  aria-label="Theater mode"
                 >
                   <MonitorSpeaker className="w-5 h-5" />
                 </button>
               </div>
             </div>
           </div>
-
           {/* Progress Bar */}
           <div className="absolute bottom-20 left-6 right-6">
             <div className="relative">
               {/* Progress Track */}
-              <div 
-                className="h-2 bg-white/20 rounded-full cursor-pointer group hover:h-3 transition-all duration-200"
-                onClick={handleSeek}
+              <div
+                id="seek-bar"
+                ref={seekBarRef}
+                className="h-2 md:h-2.5 bg-gradient-to-r from-zinc-700 via-zinc-600 to-zinc-700 rounded-full cursor-pointer group transition-all duration-200 shadow-inner"
+                onMouseDown={handleSeekStart}
+                onTouchStart={handleSeekStart}
                 onMouseMove={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const pos = (e.clientX - rect.left) / rect.width;
                   setHoverProgress(pos * 100);
                 }}
                 onMouseLeave={() => setHoverProgress(-1)}
+                tabIndex={0}
+                aria-label="Seek bar"
               >
                 {/* Progress Fill */}
                 <div 
-                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full relative overflow-hidden"
-                  style={{ width: `${progressPercentage}%` }}
+                  className="h-full bg-gradient-to-r from-purple-500 via-blue-500 to-pink-500 rounded-full relative overflow-visible shadow-lg transition-all duration-200"
+                  style={{ width: `${((isSeeking && seekTime !== null) ? (seekTime / duration) * 100 : progressPercentage)}%`, boxShadow: '0 0 8px 2px rgba(168,85,247,0.3), 0 0 16px 4px rgba(236,72,153,0.15)' }}
                 >
                   {/* Shimmer Effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
                 </div>
-                
                 {/* Progress Handle */}
                 <div 
-                  className="absolute top-1/2 w-4 h-4 bg-white rounded-full shadow-lg transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ left: `${progressPercentage}%`, marginLeft: '-8px' }}
+                  className="absolute top-1/2 w-4 h-4 md:w-5 md:h-5 bg-white border-2 border-purple-400 shadow-lg transform -translate-y-1/2 scale-100 group-hover:scale-125 group-hover:opacity-100 opacity-0 focus:opacity-100 focus:scale-125 transition-all duration-200"
+                  style={{ left: `${((isSeeking && seekTime !== null) ? (seekTime / duration) * 100 : progressPercentage)}%`, marginLeft: '-10px', boxShadow: '0 0 8px 2px rgba(168,85,247,0.3)' }}
                 />
-
-                {/* Hover Preview */}
-                {hoverProgress >= 0 && (
-                  <div 
-                    className="absolute top-1/2 w-1 h-6 bg-white/50 transform -translate-y-1/2 transition-all duration-100"
-                    style={{ left: `${hoverProgress}%` }}
-                  />
+                {/* Hover Preview Tooltip */}
+                {(hoverProgress >= 0 || (isSeeking && seekTime !== null)) && (
+                  <div
+                    className="absolute -top-24 left-0 flex flex-col items-center pointer-events-none"
+                    style={{ left: `calc(${(isSeeking && seekTime !== null) ? ((seekTime / duration) * 100) : hoverProgress}% - 32px)` }}
+                  >
+                    {/* Preview thumbnail */}
+                    {resolvedPoster && (
+                      <img
+                        src={resolvedPoster}
+                        alt="Preview"
+                        className="w-16 h-10 object-cover rounded-md shadow border border-zinc-700 bg-zinc-900"
+                        draggable={false}
+                      />
+                    )}
+                    {/* Time tooltip */}
+                    <div className="mt-1 px-2 py-0.5 bg-zinc-900/90 text-white text-xs rounded-md shadow border border-zinc-700 min-w-[36px] text-center">
+                      {formatTime((isSeeking && seekTime !== null) ? seekTime! : ((hoverProgress / 100) * duration))}
+                    </div>
+                  </div>
                 )}
               </div>
-
               {/* Time Display */}
               <div className="flex justify-between mt-2 text-sm text-white/80">
                 <span>{formatTime(currentTime)}</span>
@@ -356,7 +430,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </div>
             </div>
           </div>
-
           {/* Bottom Controls */}
           <div className="absolute bottom-0 left-0 right-0 p-6">
             <div className="flex items-center justify-between">
@@ -364,42 +437,44 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <div className="flex items-center space-x-4">
                 <button
                   onClick={() => skip(-10)}
-                  className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/20 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
                   tabIndex={0}
+                  aria-label="Rewind 10 seconds"
                 >
                   <SkipBack className="w-5 h-5" />
                 </button>
-                
                 <button
                   onClick={togglePlay}
-                  className="bg-white/10 backdrop-blur-lg text-white p-3 rounded-full hover:bg-white/20 transition-all duration-300 hover:scale-105 shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="bg-white/10 backdrop-blur-lg text-white p-3 rounded-full hover:bg-white/20 transition-all duration-300 hover:scale-105 shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
                   tabIndex={0}
+                  aria-label={isPlaying ? 'Pause' : 'Play'}
                 >
                   {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" />}
                 </button>
-                
                 <button
                   onClick={() => skip(10)}
-                  className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/20 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
                   tabIndex={0}
+                  aria-label="Forward 10 seconds"
                 >
                   <SkipForward className="w-5 h-5" />
                 </button>
-
                 {/* Volume Control */}
                 <div className="flex items-center space-x-3 group">
                   <button
                     onClick={toggleMute}
-                    className="text-white/80 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    className="text-white/80 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
                     tabIndex={0}
+                    aria-label={isMuted ? 'Unmute' : 'Mute'}
                   >
                     {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                   </button>
-                  
-                  <div className="w-0 group-hover:w-24 overflow-hidden transition-all duration-300">
+                  <div className="w-24 transition-all duration-300">
                     <div 
-                      className="h-2 bg-white/20 rounded-full cursor-pointer mt-1"
+                      className="h-2 bg-white/30 rounded-full cursor-pointer mt-1"
                       onClick={handleVolumeChange}
+                      tabIndex={0}
+                      aria-label="Volume bar"
                     >
                       <div 
                         className="h-full bg-white rounded-full transition-all duration-150"
@@ -409,19 +484,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   </div>
                 </div>
               </div>
-
               {/* Right Controls */}
               <div className="flex items-center space-x-3">
                 {/* Settings Menu */}
                 <div className="relative">
                   <button
                     onClick={() => setShowSettings(!showSettings)}
-                    className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
                     tabIndex={0}
+                    aria-label="Settings"
                   >
                     <Settings className="w-5 h-5" />
                   </button>
-                  
                   {showSettings && (
                     <div className="absolute bottom-full right-0 mb-2 bg-black/90 backdrop-blur-lg rounded-lg p-3 min-w-[200px] border border-white/10 shadow-xl z-10">
                       {/* Playback Speed */}
@@ -432,7 +506,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                             <button
                               key={rate}
                               onClick={() => changePlaybackRate(rate)}
-                              className={`px-2 py-1 text-xs rounded transition-colors focus:outline-none focus:ring-2 focus:ring-purple-400 ${
+                              className={`px-2 py-1 text-xs rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 ${
                                 playbackRate === rate 
                                   ? 'bg-purple-500 text-white' 
                                   : 'text-white/80 hover:bg-white/10'
@@ -444,7 +518,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                           ))}
                         </div>
                       </div>
-
                       {/* Quality */}
                       <div>
                         <h3 className="text-white text-sm font-medium mb-2">Quality</h3>
@@ -453,7 +526,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                             <button
                               key={qual}
                               onClick={() => changeQuality(qual)}
-                              className={`block w-full text-left px-2 py-1 text-xs rounded transition-colors focus:outline-none focus:ring-2 focus:ring-purple-400 ${
+                              className={`block w-full text-left px-2 py-1 text-xs rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 ${
                                 quality === qual 
                                   ? 'bg-purple-500 text-white' 
                                   : 'text-white/80 hover:bg-white/10'
@@ -468,11 +541,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     </div>
                   )}
                 </div>
-                
                 <button
                   onClick={toggleFullscreen}
-                  className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
                   tabIndex={0}
+                  aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
                 >
                   {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
                 </button>
