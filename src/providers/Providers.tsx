@@ -13,11 +13,11 @@ export const Providers: React.FC<ProvidersProps> = ({ children }) => {
   return (
     <SupabaseProvider>
       <AuthProvider>
-        <ThemeProvider>
-          <UserProvider>
-            {children}
-          </UserProvider>
-        </ThemeProvider>
+      <ThemeProvider>
+        <UserProvider>
+          {children}
+        </UserProvider>
+      </ThemeProvider>
       </AuthProvider>
     </SupabaseProvider>
   );

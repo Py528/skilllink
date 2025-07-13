@@ -16,9 +16,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing AWS environment variables' }, { status: 500 });
   }
 
-  const { fileName, fileType, folder } = await req.json();
+  const body = await req.json();
+  console.log('[s3-presign-upload] Request body:', body);
+  
+  const { fileName, fileType, folder } = body;
   if (!fileName || !fileType || !folder) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    console.log('[s3-presign-upload] Missing fields:', { fileName, fileType, folder });
+    return NextResponse.json({ error: 'Missing required fields', received: { fileName, fileType, folder } }, { status: 400 });
   }
 
   const key = `${folder}/${fileName}`;

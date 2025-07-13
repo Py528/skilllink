@@ -7,9 +7,11 @@ import { LearnerDashboard } from "@/components/dashboard/LearnerDashboard";
 import RoleSelection from "@/components/auth/RoleSelection";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState } from "react";
+import { useUser } from "@/context/UserContext";
 
 export default function DashboardPage() {
-  const { user, profile, loading, updateUserType, refreshProfile } = useAuth();
+  const { user: authUser, profile, loading, updateUserType, refreshProfile } = useAuth();
+  const { user } = useUser();
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
   const handleRoleSelection = async (role: 'instructor' | 'learner') => {
@@ -87,16 +89,13 @@ export default function DashboardPage() {
     );
   }
 
-  // Route to appropriate dashboard based on user type
-  console.log('Routing to dashboard for user type:', profile.user_type);
-  
-  if (profile.user_type === 'instructor') {
+  // Route to appropriate dashboard based on user role from UserContext
+  if (user.role === 'instructor') {
     return <InstructorDashboard user={user} profile={profile} />;
-  } else if (profile.user_type === 'learner') {
+  } else if (user.role === 'learner') {
     return <LearnerDashboard user={user} profile={profile} />;
   } else {
     // Fallback - show role selection if user_type is unexpected
-    console.warn('Unexpected user_type:', profile.user_type);
     return (
       <RoleSelection 
         onSelectRole={handleRoleSelection}

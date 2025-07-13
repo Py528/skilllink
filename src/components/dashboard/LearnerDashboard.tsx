@@ -271,7 +271,7 @@ export const LearnerDashboard: React.FC = () => {
                           transition={{ delay: 0.6, duration: 1 }}
                           className="h-2 bg-secondary-200 dark:bg-secondary-700 rounded-full overflow-hidden"
                         >
-                          <motion.div
+                            <motion.div
                             initial={{ width: "0%" }}
                             animate={{ width: "85%" }}
                             transition={{ delay: 0.9, duration: 1.5 }}
@@ -286,25 +286,25 @@ export const LearnerDashboard: React.FC = () => {
             </div>
 
             {/* Continue Learning Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
-            >
+              >
               <Card className="overflow-hidden">
                 <CardHeader className="border-b border-secondary-200 dark:border-secondary-700">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
+                  <div className="p-2 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
                         <PlayCircle className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                      </div>
+                  </div>
                       <div>
                         <h2 className="text-xl font-bold text-secondary-900 dark:text-white">Continue Learning</h2>
                         <p className="text-sm text-secondary-600 dark:text-secondary-400">
                           Pick up where you left off
                         </p>
-                      </div>
-                    </div>
+                </div>
+                  </div>
                     <Button
                       variant="outline"
                       className="border-secondary-200 text-secondary-700 hover:bg-secondary-50 dark:border-secondary-700 dark:text-secondary-400 dark:hover:bg-secondary-800/50"
@@ -317,10 +317,10 @@ export const LearnerDashboard: React.FC = () => {
                 <CardContent className="p-6">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {filteredCourses.slice(0, 2).map((course, index) => (
-                      <motion.div
+              <motion.div
                         key={course.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 * index + 0.2 }}
                         whileHover={{ y: -5 }}
                         className="bg-white dark:bg-secondary-800 rounded-xl border border-secondary-200 dark:border-secondary-700 p-6 hover:shadow-lg transition-all duration-200 cursor-pointer"
@@ -334,7 +334,7 @@ export const LearnerDashboard: React.FC = () => {
                               fill
                               className="object-cover"
                               sizes="64px"
-                            />
+                                  />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between mb-2">
@@ -356,13 +356,13 @@ export const LearnerDashboard: React.FC = () => {
                                 }`}
                               >
                                 {course.progress}%
-                              </Badge>
+                                </Badge>
                             </div>
                             <div className="flex items-center text-sm text-secondary-600 dark:text-secondary-400">
-                              <Clock size={14} className="mr-1" />
+                                <Clock size={14} className="mr-1" />
                               {course.duration}
                               <span className="mx-2">•</span>
-                              <BookOpen size={14} className="mr-1" />
+                                <BookOpen size={14} className="mr-1" />
                               {course.lessons} lessons
                             </div>
                           </div>
@@ -371,8 +371,8 @@ export const LearnerDashboard: React.FC = () => {
                     ))}
                   </div>
                 </CardContent>
-              </Card>
-            </motion.div>
+                </Card>
+              </motion.div>
 
             {/* Learning Path and Search */}
             <div className="grid lg:grid-cols-3 gap-6">
@@ -657,19 +657,19 @@ export const LearnerDashboard: React.FC = () => {
                   <p className="text-gray-500 dark:text-gray-400">No courses available at the moment.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {recommendedCourses.slice(0, 4).map((course, index) => (
-                    <motion.div
-                      key={course.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 * index + 0.2 }}
-                      whileHover={{ y: -5 }}
-                    >
+                  <motion.div
+                    key={course.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 * index + 0.2 }}
+                    whileHover={{ y: -5 }}
+                  >
                       <CourseCard course={course} onClick={() => router.push(`/courses/${course.id}/learn`)} />
-                    </motion.div>
-                  ))}
-                </div>
+                  </motion.div>
+                ))}
+              </div>
               )}
             </motion.div>
           </div>

@@ -16,6 +16,7 @@ interface UserContextType {
   user: User | null;
   login: (user: User) => void;
   logout: () => void;
+  setRole: (role: UserRole) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -28,6 +29,15 @@ const DEMO_AVATARS = {
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user: authUser, profile, logout: authLogout } = useAuth();
   const [user, setUser] = useState<User | null>(null);
+
+  // Load role from localStorage if present
+  useEffect(() => {
+    const storedRole = localStorage.getItem('demo_user_role') as UserRole | null;
+    if (storedRole && user) {
+      setUser({ ...user, role: storedRole });
+    }
+    // eslint-disable-next-line
+  }, []);
 
   useEffect(() => {
     if (authUser && profile) {
@@ -52,8 +62,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  // Add setRole for demo switching
+  const setRole = (role: UserRole) => {
+    setUser((prev) => prev ? { ...prev, role } : prev);
+    localStorage.setItem('demo_user_role', role);
+  };
+
   return (
-    <UserContext.Provider value={{ user, login, logout }}>
+    <UserContext.Provider value={{ user, login, logout, setRole }}>
       {children}
     </UserContext.Provider>
   );

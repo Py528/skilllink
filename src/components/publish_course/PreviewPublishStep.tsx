@@ -7,6 +7,7 @@ import { Button } from '@/components/publish_course/Button';
 import { Select } from '@/components/publish_course/Select';
 import { Input } from '@/components/publish_course/Input';
 import { toast } from '@/components/ui/sonner';
+import { s3Service } from '@/services/s3Upload';
 
 interface UploadedFile {
   id: string;
@@ -251,6 +252,31 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
   }, [publishStatus]);
 
   const handlePublish = async () => {
+    let thumbnailUrl: string | undefined = undefined;
+    if (formData.thumbnail && formData.thumbnail instanceof File) {
+      // Upload thumbnail to S3
+      console.log('[PUBLISH] Uploading thumbnail:', {
+        name: formData.thumbnail.name,
+        size: formData.thumbnail.size,
+        type: formData.thumbnail.type
+      });
+      try {
+        const uploadResult = await s3Service.uploadFile(formData.thumbnail, 'thumbnails');
+        thumbnailUrl = uploadResult.url;
+      } catch (err) {
+        console.error('[PUBLISH] Thumbnail upload error:', err);
+        setPublishStatus('error');
+        toast('Thumbnail upload failed', { description: 'Could not upload course thumbnail.', duration: 5000 });
+        return;
+      }
+    } else if (typeof formData.thumbnail === 'string') {
+      thumbnailUrl = formData.thumbnail;
+    } else if (formData.thumbnail === null) {
+      // No thumbnail provided, that's okay
+      console.log('[PUBLISH] No thumbnail provided');
+    } else {
+      console.warn('[PUBLISH] Unexpected thumbnail type:', typeof formData.thumbnail);
+    }
     // Transform modules/lessons for Supabase
     const transformedModules = (formData.modules || []).map((mod) => ({
       ...mod,
@@ -294,7 +320,7 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
     const publishData = {
       ...formData,
       modules: transformedModules,
-      thumbnail_url: formData.thumbnail,
+      thumbnail_url: thumbnailUrl,
       publishType,
       scheduleDate: publishType === 'schedule' ? scheduleDate : null,
       publishedAt: publishType === 'now' ? new Date().toISOString() : null

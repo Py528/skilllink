@@ -82,14 +82,14 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="flex gap-2">
+        <div className="flex gap-2">
             <span className="px-2 py-1 rounded-full bg-gray-700 text-xs text-white capitalize">
               {course.difficulty_level || 'beginner'}
-            </span>
+          </span>
             {course.category && (
               <span className="px-2 py-1 rounded-full bg-gray-700 text-xs text-white">
-                {course.category}
-              </span>
+            {course.category}
+          </span>
             )}
           </div>
           {course.rating && (

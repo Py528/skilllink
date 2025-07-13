@@ -12,7 +12,9 @@ import {
   Bell, 
   Search,
   MessageSquare,
-  ChevronDown
+  ChevronDown,
+  ToggleLeft,
+  ToggleRight
 } from "lucide-react";
 import { Avatar } from "@/components/common/Avatar";
 import { Badge } from "@/components/common/Badge";
@@ -31,7 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isSidebarOpen
 }) => {
   const { theme, toggleTheme } = useTheme();
-  const { user, logout } = useUser();
+  const { user, logout, setRole } = useUser();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [notifications, setNotifications] = useState(3);
   const [messages, setMessages] = useState(2);
@@ -257,7 +259,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div className="text-sm font-medium text-secondary-900 dark:text-white">{user.name}</div>
                     <div className="text-xs text-secondary-500 dark:text-secondary-400">{user.role}</div>
                   </motion.div>
-                  
+                 {/* Role Toggle Button */}
+                 <div className="flex items-center ml-2">
+                   <button
+                     className={cn(
+                       "flex items-center px-2 py-1 rounded-full border text-xs font-semibold transition-colors",
+                       user.role === 'instructor'
+                         ? "bg-primary-600 text-white border-primary-600 hover:bg-primary-700"
+                         : "bg-secondary-100 dark:bg-secondary-800 text-secondary-700 dark:text-secondary-300 border-secondary-300 dark:border-secondary-700 hover:bg-secondary-200 dark:hover:bg-secondary-700"
+                     )}
+                     title={`Switch to ${user.role === 'instructor' ? 'Learner' : 'Instructor'} mode`}
+                     onClick={() => setRole(user.role === 'instructor' ? 'learner' : 'instructor')}
+                   >
+                     {user.role === 'instructor' ? <ToggleRight className="w-4 h-4 mr-1" /> : <ToggleLeft className="w-4 h-4 mr-1" />}
+                     {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                   </button>
+                 </div>
                   <div className="flex items-center">
                     <motion.div whileHover={{ scale: 1.05 }}>
                       <Avatar src={user.avatar} alt={user.name} size="sm" status="online" />

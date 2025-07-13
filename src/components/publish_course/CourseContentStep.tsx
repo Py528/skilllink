@@ -68,6 +68,12 @@ const fileTypeConfig = {
     icon: FileVideo,
     color: 'text-purple-400'
   },
+  audio: {
+    accept: 'audio/*',
+    maxSize: 100 * 1024 * 1024, // 100MB
+    icon: FileVideo,
+    color: 'text-green-400'
+  },
   pdf: {
     accept: '.pdf',
     maxSize: 50 * 1024 * 1024, // 50MB
@@ -81,16 +87,40 @@ const fileTypeConfig = {
     color: 'text-blue-400'
   },
   document: {
-    accept: '.doc,.docx,.txt,.rtf',
+    accept: '.doc,.docx,.txt,.rtf,.odt,.pages',
     maxSize: 25 * 1024 * 1024, // 25MB
     icon: FileText,
     color: 'text-green-400'
   },
+  spreadsheet: {
+    accept: '.xls,.xlsx,.csv,.ods,.numbers',
+    maxSize: 25 * 1024 * 1024, // 25MB
+    icon: FileText,
+    color: 'text-yellow-400'
+  },
+  presentation: {
+    accept: '.ppt,.pptx,.odp,.key',
+    maxSize: 50 * 1024 * 1024, // 50MB
+    icon: FileText,
+    color: 'text-orange-400'
+  },
   code: {
-    accept: '.py,.tsx,.jsx,.js,.ts,.env,.sql,.json,.xml,.html,.css',
+    accept: '.py,.tsx,.jsx,.js,.ts,.env,.sql,.json,.xml,.html,.css,.php,.java,.cpp,.c,.cs,.rb,.go,.rs,.swift,.kt,.scala,.r,.matlab,.sh,.bat,.ps1,.yaml,.yml,.toml,.ini,.cfg,.conf,.md,.rst,.tex,.latex',
     maxSize: 5 * 1024 * 1024, // 5MB
     icon: FileCode,
     color: 'text-yellow-400'
+  },
+  archive: {
+    accept: '.zip,.rar,.7z,.tar,.gz,.bz2',
+    maxSize: 100 * 1024 * 1024, // 100MB
+    icon: File,
+    color: 'text-purple-400'
+  },
+  data: {
+    accept: '.json,.xml,.csv,.tsv,.xlsx,.xls,.db,.sqlite,.sql',
+    maxSize: 50 * 1024 * 1024, // 50MB
+    icon: FileText,
+    color: 'text-cyan-400'
   },
   other: {
     accept: '*',
@@ -159,10 +189,15 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
     const mimeType = file.type.toLowerCase();
 
     if (mimeType.startsWith('video/')) return 'video';
+    if (mimeType.startsWith('audio/')) return 'audio';
     if (mimeType.startsWith('image/')) return 'image';
     if (extension === 'pdf' || mimeType === 'application/pdf') return 'pdf';
-    if (['doc', 'docx', 'txt', 'rtf'].includes(extension || '')) return 'document';
-    if (['py', 'tsx', 'jsx', 'js', 'ts', 'env', 'sql', 'json', 'xml', 'html', 'css'].includes(extension || '')) return 'code';
+    if (['doc', 'docx', 'txt', 'rtf', 'odt', 'pages'].includes(extension || '')) return 'document';
+    if (['xls', 'xlsx', 'csv', 'ods', 'numbers'].includes(extension || '')) return 'spreadsheet';
+    if (['ppt', 'pptx', 'odp', 'key'].includes(extension || '')) return 'presentation';
+    if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(extension || '')) return 'archive';
+    if (['json', 'xml', 'csv', 'tsv', 'db', 'sqlite', 'sql'].includes(extension || '')) return 'data';
+    if (['py', 'tsx', 'jsx', 'js', 'ts', 'env', 'sql', 'json', 'xml', 'html', 'css', 'php', 'java', 'cpp', 'c', 'cs', 'rb', 'go', 'rs', 'swift', 'kt', 'scala', 'r', 'matlab', 'sh', 'bat', 'ps1', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf', 'md', 'rst', 'tex', 'latex'].includes(extension || '')) return 'code';
     return 'other';
   };
 
@@ -476,7 +511,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                 <input
                   type="file"
                   multiple
-                  accept=".pdf,.doc,.docx,.txt,.py,.tsx,.jsx,.js,.ts,.env,.sql,.json,.xml,.html,.css,image/*"
+                  accept=".pdf,.doc,.docx,.txt,.rtf,.odt,.pages,.xls,.xlsx,.csv,.ods,.numbers,.ppt,.pptx,.odp,.key,.zip,.rar,.7z,.tar,.gz,.bz2,.json,.xml,.tsv,.db,.sqlite,.sql,.py,.tsx,.jsx,.js,.ts,.env,.php,.java,.cpp,.c,.cs,.rb,.go,.rs,.swift,.kt,.scala,.r,.matlab,.sh,.bat,.ps1,.yaml,.yml,.toml,.ini,.cfg,.conf,.md,.rst,.tex,.latex,image/*,audio/*"
                   onChange={(e) => e.target.files && handleFileSelect(moduleIndex, lessonIndex, e.target.files, false)}
                   className="hidden"
                   id={`resource-upload-${lessonKey}`}
@@ -984,9 +1019,15 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                 <h4 className="font-semibold text-blue-400 mb-2">File Upload Guidelines</h4>
                 <ul className="text-sm text-blue-300 space-y-1">
                   <li>• <strong>Videos:</strong> One per lesson, max 500MB (MP4, MOV, AVI)</li>
-                  <li>• <strong>Resources:</strong> Multiple files allowed (PDFs, docs, code files, images)</li>
+                  <li>• <strong>Audio:</strong> Multiple files allowed, max 100MB (MP3, WAV, AAC)</li>
+                  <li>• <strong>Documents:</strong> PDFs (50MB), Word docs (25MB), Text files (25MB)</li>
+                  <li>• <strong>Spreadsheets:</strong> Excel, CSV, Numbers files (25MB)</li>
+                  <li>• <strong>Presentations:</strong> PowerPoint, Keynote files (50MB)</li>
+                  <li>• <strong>Code Files:</strong> All programming languages (5MB)</li>
+                  <li>• <strong>Archives:</strong> ZIP, RAR, 7Z files (100MB)</li>
+                  <li>• <strong>Images:</strong> All formats (10MB)</li>
+                  <li>• <strong>Data Files:</strong> JSON, XML, SQL, databases (50MB)</li>
                   <li>• <strong>Drag & Drop:</strong> Supported for all file types</li>
-                  <li>• <strong>File Limits:</strong> PDFs (50MB), Images (10MB), Documents (25MB), Code files (5MB)</li>
                 </ul>
               </div>
             </div>
