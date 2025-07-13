@@ -33,36 +33,46 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    console.log('SupabaseProvider - Starting initialization...');
+    
     // Add a timeout to prevent infinite hanging
     const timeout = setTimeout(() => {
+      console.log('SupabaseProvider - Initialization timeout reached');
       setIsInitialized(true);
     }, 5000); // 5 seconds
 
     // Get current session
+    console.log('SupabaseProvider - Getting session...');
     supabase.auth.getSession()
       .then(({ data: { session }, error }) => {
+        console.log('SupabaseProvider - Session result:', { session: !!session, error: !!error });
         clearTimeout(timeout);
         
         if (error) {
+          console.error('SupabaseProvider - Session error:', error);
           setIsInitialized(true);
         }
         
         setSession(session ?? null);
         setUser(session?.user ?? null);
         setIsInitialized(true);
+        console.log('SupabaseProvider - Initialization complete');
       })
       .catch((error) => {
+        console.error('SupabaseProvider - Session catch error:', error);
         clearTimeout(timeout);
         setIsInitialized(true);
       });
 
     // Listen for auth changes
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('SupabaseProvider - Auth state change:', event, !!session);
       setSession(session ?? null);
       setUser(session?.user ?? null);
     });
 
     return () => {
+      console.log('SupabaseProvider - Cleaning up...');
       clearTimeout(timeout);
       listener.subscription.unsubscribe();
     };

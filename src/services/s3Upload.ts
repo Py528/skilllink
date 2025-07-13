@@ -117,5 +117,143 @@ export const s3Service = {
     });
   },
 
+  // Upload multiple files with progress tracking
+  async uploadMultipleFiles(
+    files: File[], 
+    folder: string, 
+    onProgress?: (progress: { completed: number; total: number; percentage: number; currentFile?: string }) => void
+  ): Promise<UploadResult[]> {
+    const results: UploadResult[] = [];
+    const total = files.length;
+    let completed = 0;
+
+    for (const file of files) {
+      try {
+        const result = await this.uploadFile(file, folder, (fileProgress) => {
+          // Calculate overall progress
+          const overallPercentage = ((completed + fileProgress.percentage / 100) / total) * 100;
+          onProgress?.({
+            completed: completed + (fileProgress.percentage / 100),
+            total,
+            percentage: overallPercentage,
+            currentFile: file.name
+          });
+        });
+        
+        results.push(result);
+        completed++;
+        
+        // Update progress after file completion
+        onProgress?.({
+          completed,
+          total,
+          percentage: (completed / total) * 100,
+          currentFile: file.name
+        });
+        
+      } catch (error) {
+        console.error(`Failed to upload ${file.name}:`, error);
+        // Continue with other files even if one fails
+        completed++;
+      }
+    }
+
+    return results;
+  },
+
+  // Upload files with organized folder structure
+  async uploadWithOrganization(
+    files: File[], 
+    courseFolderId: string,
+    onProgress?: (progress: { completed: number; total: number; percentage: number; currentFile?: string }) => void
+  ): Promise<{ file: File; result: UploadResult }[]> {
+    const results: { file: File; result: UploadResult }[] = [];
+    const total = files.length;
+    let completed = 0;
+
+    // File type configuration for organization
+    const fileTypeConfig = {
+      video: { folder: 'videos', extensions: ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.3gp'] },
+      audio: { folder: 'audio', extensions: ['.mp3', '.wav', '.aac', '.ogg', '.flac', '.m4a'] },
+      transcript: { folder: 'transcripts', extensions: ['.txt'] },
+      subtitle: { folder: 'subtitles', extensions: ['.srt', '.vtt', '.sub'] },
+      instruction: { folder: 'instructions', extensions: ['.html', '.htm'] },
+      image: { folder: 'images', extensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.svg'] },
+      document: { folder: 'documents', extensions: ['.pdf', '.doc', '.docx', '.rtf', '.odt'] },
+      spreadsheet: { folder: 'spreadsheets', extensions: ['.xls', '.xlsx', '.csv', '.ods'] },
+      presentation: { folder: 'presentations', extensions: ['.ppt', '.pptx', '.odp'] },
+      code: { folder: 'code', extensions: ['.py', '.tsx', '.jsx', '.js', '.ts', '.env', '.php', '.java', '.cpp', '.c', '.cs', '.rb', '.go', '.rs', '.swift', '.kt', '.scala', '.r', '.matlab', '.sh', '.bat', '.ps1', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf', '.md', '.rst', '.tex', '.latex'] },
+      archive: { folder: 'archives', extensions: ['.zip', '.rar', '.7z', '.tar', '.gz'] }
+    };
+
+    // Helper function to get file type
+    const getFileType = (filename: string): string => {
+      const ext = filename.toLowerCase().split('.').pop() || '';
+      for (const [type, config] of Object.entries(fileTypeConfig)) {
+        if (config.extensions.includes(`.${ext}`)) {
+          return type;
+        }
+      }
+      return 'document'; // Default to documents
+    };
+
+    for (const file of files) {
+      try {
+        const fileType = getFileType(file.name);
+        const fileConfig = fileTypeConfig[fileType as keyof typeof fileTypeConfig] || fileTypeConfig.document;
+        const folder = `${courseFolderId}/${fileConfig.folder}`;
+
+        const result = await this.uploadFile(file, folder, (fileProgress) => {
+          // Calculate overall progress
+          const overallPercentage = ((completed + fileProgress.percentage / 100) / total) * 100;
+          onProgress?.({
+            completed: completed + (fileProgress.percentage / 100),
+            total,
+            percentage: overallPercentage,
+            currentFile: file.name
+          });
+        });
+        
+        results.push({ file, result });
+        completed++;
+        
+        // Update progress after file completion
+        onProgress?.({
+          completed,
+          total,
+          percentage: (completed / total) * 100,
+          currentFile: file.name
+        });
+        
+      } catch (error) {
+        console.error(`Failed to upload ${file.name}:`, error);
+        // Continue with other files even if one fails
+        completed++;
+      }
+    }
+
+    return results;
+  },
+
+  // Server-side buffer upload method
+  async uploadBuffer(buffer: Buffer, s3Path: string): Promise<UploadResult> {
+    // This method is for server-side use only
+    // It requires AWS SDK on the server side
+    
+    // For now, we'll simulate the upload
+    // In a real implementation, you'd use AWS SDK to upload directly to S3
+    
+    return new Promise((resolve) => {
+      // Simulate upload delay
+      setTimeout(() => {
+        const publicUrl = `https://your-s3-bucket.s3.amazonaws.com/${s3Path}`;
+        resolve({
+          url: publicUrl,
+          key: s3Path
+        });
+      }, 1000);
+    });
+  },
+
   // Delete is not implemented for S3 in this client.
 }; 

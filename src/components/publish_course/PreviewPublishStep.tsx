@@ -7,7 +7,6 @@ import { Button } from '@/components/publish_course/Button';
 import { Select } from '@/components/publish_course/Select';
 import { Input } from '@/components/publish_course/Input';
 import { toast } from '@/components/ui/sonner';
-import { s3Service } from '@/services/s3Upload';
 
 interface UploadedFile {
   id: string;
@@ -252,105 +251,46 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
   }, [publishStatus]);
 
   const handlePublish = async () => {
-    let thumbnailUrl: string | undefined = undefined;
-    if (formData.thumbnail && formData.thumbnail instanceof File) {
-      // Upload thumbnail to S3
-      console.log('[PUBLISH] Uploading thumbnail:', {
-        name: formData.thumbnail.name,
-        size: formData.thumbnail.size,
-        type: formData.thumbnail.type
-      });
-      try {
-        const uploadResult = await s3Service.uploadFile(formData.thumbnail, 'thumbnails');
-        thumbnailUrl = uploadResult.url;
-      } catch (err) {
-        console.error('[PUBLISH] Thumbnail upload error:', err);
-        setPublishStatus('error');
-        toast('Thumbnail upload failed', { description: 'Could not upload course thumbnail.', duration: 5000 });
-        return;
-      }
-    } else if (typeof formData.thumbnail === 'string') {
-      thumbnailUrl = formData.thumbnail;
-    } else if (formData.thumbnail === null) {
-      // No thumbnail provided, that's okay
-      console.log('[PUBLISH] No thumbnail provided');
-    } else {
-      console.warn('[PUBLISH] Unexpected thumbnail type:', typeof formData.thumbnail);
+    console.log('PreviewPublishStep - handlePublish called');
+    
+    // Basic validation before publishing
+    if (!formData.title || formData.title.trim() === '') {
+      toast.error('Course title is required');
+      return;
     }
-    // Transform modules/lessons for Supabase
-    const transformedModules = (formData.modules || []).map((mod) => ({
-      ...mod,
-      lessons: (mod.lessons || []).map((lesson) => {
-        // Transform resourceFiles to resources format for Supabase
-        const resources = Array.isArray(lesson.resourceFiles)
-          ? lesson.resourceFiles.map((file, idx) => {
-              if (isUploadedFile(file)) {
-                return {
-                  key: file.key,
-                  name: file.name,
-                  type: file.type,
-                  size: file.size,
-                  url: file.url,
-                };
-              } else {
-                return {
-                  key: undefined,
-                  name: file.name,
-                  type: file.type,
-                  size: file.size,
-                  url: lesson.resourcePreviews && lesson.resourcePreviews[idx] ? lesson.resourcePreviews[idx] : undefined,
-                };
-              }
-            })
-          : [];
-        
-        return {
-          ...lesson,
-          description: lesson.description || '',
-          is_free: lesson.is_free || false,
-          is_preview: lesson.is_preview || false,
-          content: (lesson.type === 'text' || lesson.type === 'quiz' || lesson.type === 'assignment') ? lesson.content : {},
-          resources: resources,
-        videoFile: undefined,
-        resourceFiles: undefined,
-        };
-      }),
-    }));
-    // Data to send to Supabase (no UI-only fields)
-    const publishData = {
-      ...formData,
-      modules: transformedModules,
-      thumbnail_url: thumbnailUrl,
-      publishType,
-      scheduleDate: publishType === 'schedule' ? scheduleDate : null,
-      publishedAt: publishType === 'now' ? new Date().toISOString() : null
-    };
-    // Data to update form state (keep thumbnail for UI)
-    const formStateData = {
-      ...formData,
-      modules: transformedModules,
-      // keep 'thumbnail' for UI
-    };
+    
+    if (!formData.description || formData.description.trim() === '') {
+      toast.error('Course description is required');
+      return;
+    }
+    
+    if (!formData.modules || formData.modules.length === 0) {
+      toast.error('At least one module is required');
+      return;
+    }
+    
+    const totalLessons = formData.modules.reduce((total, module) => 
+      total + (module.lessons?.length || 0), 0
+    );
+    
+    if (totalLessons === 0) {
+      toast.error('At least one lesson is required');
+      return;
+    }
+    
+    console.log('PreviewPublishStep - Validation passed, calling parent onPublish');
+    
     try {
-      // Replace this with your actual save logic
-      // Example: const { data, error } = await supabase.from('courses').insert([publishData]);
-      // For now, just simulate:
-      // Simulate response:
       setPublishStatus('success');
+      
+      // Call the parent's onPublish function which will handle S3 uploads and database operations
+      onPublish();
+      
     } catch (err) {
-      console.error('[PUBLISH] Exception during publish:', err);
+      console.error('PreviewPublishStep - Publish failed:', err);
       setPublishStatus('error');
+      toast.error('Failed to publish course: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
-    // Ensure all modules/lessons have resourceFiles as array
-    const safeModules = (formStateData.modules || []).map((mod) => ({
-      ...mod,
-      lessons: (mod.lessons || []).map((lesson) => ({
-        ...lesson,
-        resourceFiles: Array.isArray(lesson.resourceFiles) ? lesson.resourceFiles : [],
-      })),
-    }));
-    updateFormData({ ...formStateData, modules: safeModules });
-    onPublish();
   };
 
   // Render lesson content preview

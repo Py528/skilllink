@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, GripVertical, Video, FileText, HelpCircle, AlignCenter as Assignment, Trash2, Edit3, Upload, X, File, Image, FileVideo, File as FilePdf, FileCode, Download, Eye, AlertCircle } from 'lucide-react';
+import { Plus, GripVertical, Video, FileText, HelpCircle, AlignCenter as Assignment, Trash2, Edit3, X, File, Image, FileVideo, File as FilePdf, FileCode, Download, Eye, AlertCircle } from 'lucide-react';
 import { Button } from "@/components/publish_course/Button";
 import { Card, CardContent, CardHeader } from '@/components/publish_course/Card';
 import { Input } from '@/components/publish_course/Input';
 import { Select } from '@/components/publish_course/Select';
 import { Badge } from '@/components/publish_course/Badge';
-import { s3Service } from '@/services/s3Upload';
+import { BulkUploadStep } from './BulkUploadStep';
 
 interface UploadedFile {
   id: string;
@@ -154,15 +154,6 @@ const formatDuration = (seconds: number | undefined) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-// Utility to generate a SHA-256 hash for a file
-const getFileHash = async (file: File): Promise<string> => {
-  const buffer = await file.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-};
-
 // Type guard for UploadedFile
 function isUploadedFile(file: File | UploadedFile): file is UploadedFile {
   return (file as UploadedFile).url !== undefined;
@@ -175,13 +166,19 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [editingModule, setEditingModule] = useState<number | null>(null);
   const [editingLesson, setEditingLesson] = useState<{ moduleIndex: number; lessonIndex: number } | null>(null);
-  const [uploadingFiles, setUploadingFiles] = useState<Record<string, number>>({});
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [uploadMode, setUploadMode] = useState<'manual' | 'bulk'>('manual');
 
   const modules = formData.modules || [];
 
-  // Generate unique file ID
-  const generateFileId = () => `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  // Format file size for display
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   // Get file type category based on file extension/mime type
   const getFileTypeCategory = (file: File): keyof typeof fileTypeConfig => {
@@ -199,35 +196,6 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
     if (['json', 'xml', 'csv', 'tsv', 'db', 'sqlite', 'sql'].includes(extension || '')) return 'data';
     if (['py', 'tsx', 'jsx', 'js', 'ts', 'env', 'sql', 'json', 'xml', 'html', 'css', 'php', 'java', 'cpp', 'c', 'cs', 'rb', 'go', 'rs', 'swift', 'kt', 'scala', 'r', 'matlab', 'sh', 'bat', 'ps1', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf', 'md', 'rst', 'tex', 'latex'].includes(extension || '')) return 'code';
     return 'other';
-  };
-
-  // Format file size for display
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  // Upload file to S3 for videos, simulate for others
-  const uploadFile = async (file: File, isVideo: boolean = false, progressCallback?: (progress: { percentage: number }) => void): Promise<UploadedFile> => {
-    const fileId = generateFileId();
-    // Hash the file name for privacy
-    const hash = await getFileHash(file);
-    const ext = file.name.split('.').pop();
-    const safeName = ext ? `${hash}.${ext}` : hash;
-    const folder = isVideo ? 'videos' : 'resources';
-    const hashedFile = new window.File([file], safeName, { type: file.type });
-    const result = await s3Service.uploadFile(hashedFile, folder, progressCallback);
-    return {
-      id: fileId,
-      name: file.name, // Show original name in UI
-      size: file.size,
-      type: file.type,
-      url: result.url,
-      key: result.key,
-    };
   };
 
   // Handle file upload for lessons
@@ -296,7 +264,12 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                     ...lesson,
                     ...(isVideo 
                       ? { videoFile: undefined }
-                      : { resourceFiles: lesson.resourceFiles?.filter(file => file.id !== fileId) || [] }
+                      : { resourceFiles: lesson.resourceFiles?.filter(file => {
+                          if (isUploadedFile(file)) {
+                            return file.id !== fileId;
+                          }
+                          return true; // Keep non-uploaded files
+                        }) || [] }
                     )
                   }
                 : lesson
@@ -336,11 +309,9 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
     lesson: Lesson, 
     isVideo: boolean = false
   ) => {
-    const uploadKey = `${moduleIndex}-${lessonIndex}`;
-    const lessonKey = `${uploadKey}-${isVideo ? 'video' : 'resources'}`;
-    const uploadProgress = uploadingFiles[uploadKey] || 0;
-    const isUploading = uploadProgress > 0 && uploadProgress < 100;
-    const isDragOver = dragOver === lessonKey;
+      const uploadKey = `${moduleIndex}-${lessonIndex}`;
+  const lessonKey = `${uploadKey}-${isVideo ? 'video' : 'resources'}`;
+  const isDragOver = dragOver === lessonKey;
 
     return (
       <div className="space-y-3">
@@ -438,7 +409,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
 
                   return (
                     <motion.div
-                      key={file.id}
+                      key={isUploadedFile(file) ? file.id : file.name}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20 }}
@@ -491,17 +462,7 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, moduleIndex, lessonIndex, false)}
           >
-            {isUploading ? (
-              <div className="flex flex-col items-center">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                >
-                  <Upload className="w-6 h-6 text-[#0CF2A0] mb-2" />
-                </motion.div>
-                <p className="text-[#0CF2A0] text-sm">Uploading files...</p>
-              </div>
-            ) : (
+            {(
               <>
                 <File className="w-6 h-6 text-gray-400 mx-auto mb-2" />
                 <p className="text-gray-400 text-sm mb-2">Drop files here or click to upload</p>
@@ -648,167 +609,249 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
           <h2 className="text-2xl font-bold text-white mb-2">Course Content</h2>
           <p className="text-gray-400">Structure your course with modules and lessons</p>
         </div>
-        <Button onClick={addModule}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Module
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant={uploadMode === 'manual' ? 'primary' : 'outline'}
+            onClick={() => setUploadMode('manual')}
+          >
+            Manual Upload
+          </Button>
+          <Button
+            variant={uploadMode === 'bulk' ? 'primary' : 'outline'}
+            onClick={() => setUploadMode('bulk')}
+          >
+            Bulk Upload
+          </Button>
+        </div>
       </div>
 
-      <div className="space-y-4">
-        <AnimatePresence>
-          {modules.map((module: Module, moduleIndex: number) => (
-            <motion.div
-              key={moduleIndex}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ delay: moduleIndex * 0.1 }}
-            >
-              <Card className="overflow-hidden" hover>
-                <CardHeader className="bg-[#111111]/50 border-b border-gray-800/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <motion.div
-                        whileHover={{ scale: 1.1 }}
-                        className="cursor-grab active:cursor-grabbing"
-                      >
-                        <GripVertical className="w-5 h-5 text-gray-400" />
-                      </motion.div>
-                      {editingModule === moduleIndex ? (
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <Input
-                            value={module.title}
-                            onChange={(e) => updateModule(moduleIndex, { ...module, title: e.target.value })}
-                            placeholder="Module title"
-                          />
-                          <Input
-                            value={module.description}
-                            onChange={(e) => updateModule(moduleIndex, { ...module, description: e.target.value })}
-                            placeholder="Module description"
-                          />
-                        </div>
-                      ) : (
-                        <div>
-                          <h3 className="text-lg font-semibold text-white">{module.title}</h3>
-                          {module.description && (
-                            <p className="text-sm text-gray-400">{module.description}</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">
-                        {module.lessons?.length || 0} lessons
-                      </Badge>
-                      {editingModule === moduleIndex ? (
-                        <Button
-                          size="sm"
-                          onClick={() => setEditingModule(null)}
+      {uploadMode === 'bulk' ? (
+        <BulkUploadStep
+          onStructureCreated={(structure: any) => {
+            console.log('CourseContentStep - Bulk upload structure received:', structure);
+            
+            // Convert the bulk upload structure to modules/lessons
+            const convertedModules = structure.sections.map((section: any, sectionIndex: number) => ({
+              id: `module_${Date.now()}_${sectionIndex}`,
+              title: section.name,
+              description: `Section ${sectionIndex + 1}: ${section.name}`,
+              order_index: sectionIndex,
+              lessons: section.lessons.map((lesson: any, lessonIndex: number) => {
+                // Find video file for this lesson
+                const videoFile = lesson.files.find((f: any) => f.type === 'video');
+                
+                // Convert files to File objects if they exist in the structure
+                const lessonResourceFiles: (File | UploadedFile)[] = [];
+                
+                // Check if the structure has the actual files stored
+                if (structure._files && Array.isArray(structure._files)) {
+                  // Find files that belong to this lesson
+                  const lessonFiles = structure._files.filter((file: File) => {
+                    const filePath = file.webkitRelativePath || file.name;
+                    return filePath.includes(lesson.name) || filePath.includes(`lesson_${lessonIndex}`);
+                  });
+                  
+                  lessonResourceFiles.push(...lessonFiles);
+                  console.log(`CourseContentStep - Found ${lessonFiles.length} files for lesson ${lesson.name}:`, lessonFiles.map((f: File) => f.name));
+                }
+                
+                return {
+                  id: `lesson_${Date.now()}_${sectionIndex}_${lessonIndex}`,
+                  title: lesson.name,
+                  description: `Lesson ${lessonIndex + 1}: ${lesson.name}`,
+                  video_url: videoFile?.s3Url || '',
+                  duration: 0, // Will be set when video is processed
+                  order_index: lessonIndex,
+                  is_preview: false,
+                  content: {
+                    type: 'video',
+                    transcript: '',
+                    chapters: [],
+                    notes: ''
+                  },
+                  resources: lesson.files
+                    .filter((f: any) => f.type !== 'video')
+                    .map((file: any) => ({
+                      name: file.name,
+                      type: file.type,
+                      url: file.s3Url || file.path, // Use S3 URL if available, fallback to path
+                      size: file.size
+                    })),
+                  is_free: false,
+                  type: lesson.files.find((f: any) => f.type === 'video') ? 'video' : 'text',
+                  videoFile: videoFile ? undefined : undefined, // Will be set during upload
+                  resourceFiles: lessonResourceFiles // Store actual File objects for later upload
+                };
+              })
+            }));
+            
+            console.log('CourseContentStep - Converted modules:', convertedModules);
+            
+            // Update the form data with the converted structure
+            updateFormData({ modules: convertedModules });
+          }}
+          onComplete={() => {
+            // Don't switch back to manual mode automatically
+            // Let the user continue working with the bulk upload
+          }}
+        />
+      ) : null}
+      {uploadMode === 'manual' && (
+        <div className="space-y-4">
+          <AnimatePresence>
+            {modules.map((module: Module, moduleIndex: number) => (
+              <motion.div
+                key={moduleIndex}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ delay: moduleIndex * 0.1 }}
+              >
+                <Card className="overflow-hidden" hover>
+                  <CardHeader className="bg-[#111111]/50 border-b border-gray-800/50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <motion.div
+                          whileHover={{ scale: 1.1 }}
+                          className="cursor-grab active:cursor-grabbing"
                         >
-                          Save
-                        </Button>
-                      ) : (
+                          <GripVertical className="w-5 h-5 text-gray-400" />
+                        </motion.div>
+                        {editingModule === moduleIndex ? (
+                          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Input
+                              value={module.title}
+                              onChange={(e) => updateModule(moduleIndex, { ...module, title: e.target.value })}
+                              placeholder="Module title"
+                            />
+                            <Input
+                              value={module.description}
+                              onChange={(e) => updateModule(moduleIndex, { ...module, description: e.target.value })}
+                              placeholder="Module description"
+                            />
+                          </div>
+                        ) : (
+                          <div>
+                            <h3 className="text-lg font-semibold text-white">{module.title}</h3>
+                            {module.description && (
+                              <p className="text-sm text-gray-400">{module.description}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">
+                          {module.lessons?.length || 0} lessons
+                        </Badge>
+                        {editingModule === moduleIndex ? (
+                          <Button
+                            size="sm"
+                            onClick={() => setEditingModule(null)}
+                          >
+                            Save
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setEditingModule(moduleIndex)}
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => setEditingModule(moduleIndex)}
+                          onClick={() => deleteModule(moduleIndex)}
+                          className="text-red-400 hover:text-red-300"
                         >
-                          <Edit3 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4" />
                         </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => deleteModule(moduleIndex)}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-4">
-                  <div className="space-y-3">
-                    <AnimatePresence>
-                      {module.lessons?.map((lesson: Lesson, lessonIndex: number) => {
-                        const IconComponent = getContentTypeIcon(lesson.type || 'video');
-                        const isEditingThisLesson = editingLesson?.moduleIndex === moduleIndex && editingLesson?.lessonIndex === lessonIndex;
-                        
-                        return (
-                          <motion.div
-                            key={lessonIndex}
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ delay: lessonIndex * 0.05 }}
-                            className="p-4 bg-[#111111]/50 rounded-xl border border-gray-800/50 hover:bg-white/5 transition-colors"
-                          >
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex items-center gap-3">
-                                <motion.div
-                                  whileHover={{ scale: 1.1 }}
-                                  className="cursor-grab active:cursor-grabbing"
-                                >
-                                  <GripVertical className="w-4 h-4 text-gray-400" />
-                                </motion.div>
-                                <IconComponent className="w-5 h-5 text-[#0CF2A0]" />
-                                {isEditingThisLesson ? (
-                                  <div className="flex gap-2 flex-wrap items-center">
-                                    <Input
-                                      value={lesson.title}
-                                      onChange={(e) => updateLesson(moduleIndex, lessonIndex, { ...lesson, title: e.target.value })}
-                                      placeholder="Lesson title"
-                                      className="w-48"
-                                    />
-                                    <Input
-                                      value={lesson.description}
-                                      onChange={(e) => updateLesson(moduleIndex, lessonIndex, { ...lesson, description: e.target.value })}
-                                      placeholder="Lesson description"
-                                      className="w-64"
-                                    />
-                                    <Select
-                                      options={contentTypes.map(ct => ({ value: ct.value, label: ct.label }))}
-                                      value={lesson.type}
-                                      onChange={(e) => updateLesson(moduleIndex, lessonIndex, { ...lesson, type: e.target.value })}
-                                    />
-                                    {/* Only show duration input for non-video lessons */}
-                                    {lesson.type !== 'video' && (
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <AnimatePresence>
+                        {module.lessons?.map((lesson: Lesson, lessonIndex: number) => {
+                          const IconComponent = getContentTypeIcon(lesson.type || 'video');
+                          const isEditingThisLesson = editingLesson?.moduleIndex === moduleIndex && editingLesson?.lessonIndex === lessonIndex;
+                          
+                          return (
+                            <motion.div
+                              key={lessonIndex}
+                              initial={{ opacity: 0, x: 20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -20 }}
+                              transition={{ delay: lessonIndex * 0.05 }}
+                              className="p-4 bg-[#111111]/50 rounded-xl border border-gray-800/50 hover:bg-white/5 transition-colors"
+                            >
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                  <motion.div
+                                    whileHover={{ scale: 1.1 }}
+                                    className="cursor-grab active:cursor-grabbing"
+                                  >
+                                    <GripVertical className="w-4 h-4 text-gray-400" />
+                                  </motion.div>
+                                  <IconComponent className="w-5 h-5 text-[#0CF2A0]" />
+                                  {isEditingThisLesson ? (
+                                    <div className="flex gap-2 flex-wrap items-center">
                                       <Input
-                                        value={lesson.duration.toString()}
-                                        onChange={(e) => updateLesson(moduleIndex, lessonIndex, { ...lesson, duration: parseInt(e.target.value) || 0 })}
-                                        placeholder="Duration"
-                                        className="w-24"
+                                        value={lesson.title}
+                                        onChange={(e) => updateLesson(moduleIndex, lessonIndex, { ...lesson, title: e.target.value })}
+                                        placeholder="Lesson title"
+                                        className="w-48"
                                       />
-                                    )}
-                                    {/* Show video duration for video lessons if available */}
-                                    {lesson.type === 'video' && lesson.duration && (
-                                      <span className="text-sm text-gray-400 ml-2">Duration: {formatDuration(lesson.duration)}</span>
-                                    )}
-                                    {/* is_free toggle */}
-                                    <label className="flex items-center gap-1 text-xs text-white">
-                                      <input
-                                        type="checkbox"
-                                        checked={lesson.is_free}
-                                        onChange={e => updateLesson(moduleIndex, lessonIndex, { ...lesson, is_free: e.target.checked })}
-                                        className="mr-1"
+                                      <Input
+                                        value={lesson.description}
+                                        onChange={(e) => updateLesson(moduleIndex, lessonIndex, { ...lesson, description: e.target.value })}
+                                        placeholder="Lesson description"
+                                        className="w-64"
                                       />
-                                      Free Lesson
-                                    </label>
-                                    {/* is_preview toggle */}
-                                    <label className="flex items-center gap-1 text-xs text-white">
-                                      <input
-                                        type="checkbox"
-                                        checked={lesson.is_preview}
-                                        onChange={e => updateLesson(moduleIndex, lessonIndex, { ...lesson, is_preview: e.target.checked })}
-                                        className="mr-1"
+                                      <Select
+                                        options={contentTypes.map(ct => ({ value: ct.value, label: ct.label }))}
+                                        value={lesson.type}
+                                        onChange={(e) => updateLesson(moduleIndex, lessonIndex, { ...lesson, type: e.target.value })}
                                       />
-                                      Previewable
-                                    </label>
-                                    {/* Content input for text/quiz/assignment */}
-                                    {(lesson.type === 'text' || lesson.type === 'quiz' || lesson.type === 'assignment') && (
-                                      <div className="w-full space-y-2">
-                                        {lesson.type === 'text' && (
-                                          <textarea
+                                      {/* Only show duration input for non-video lessons */}
+                                      {lesson.type !== 'video' && (
+                                        <Input
+                                          value={lesson.duration.toString()}
+                                          onChange={(e) => updateLesson(moduleIndex, lessonIndex, { ...lesson, duration: parseInt(e.target.value) || 0 })}
+                                          placeholder="Duration"
+                                          className="w-24"
+                                        />
+                                      )}
+                                      {/* Show video duration for video lessons if available */}
+                                      {lesson.type === 'video' && lesson.duration && (
+                                        <span className="text-sm text-gray-400 ml-2">Duration: {formatDuration(lesson.duration)}</span>
+                                      )}
+                                      {/* is_free toggle */}
+                                      <label className="flex items-center gap-1 text-xs text-white">
+                                        <input
+                                          type="checkbox"
+                                          checked={lesson.is_free}
+                                          onChange={e => updateLesson(moduleIndex, lessonIndex, { ...lesson, is_free: e.target.checked })}
+                                          className="mr-1"
+                                        />
+                                        Free Lesson
+                                      </label>
+                                      {/* is_preview toggle */}
+                                      <label className="flex items-center gap-1 text-xs text-white">
+                                        <input
+                                          type="checkbox"
+                                          checked={lesson.is_preview}
+                                          onChange={e => updateLesson(moduleIndex, lessonIndex, { ...lesson, is_preview: e.target.checked })}
+                                          className="mr-1"
+                                        />
+                                        Previewable
+                                      </label>
+                                      {/* Content input for text/quiz/assignment */}
+                                      {(lesson.type === 'text' || lesson.type === 'quiz' || lesson.type === 'assignment') && (
+                                        <div className="w-full space-y-2">
+                                          {lesson.type === 'text' && (
+                                            <textarea
                                         value={typeof lesson.content === 'object' && typeof lesson.content.text === 'string' ? lesson.content.text : ''}
                                             onChange={e => updateLesson(moduleIndex, lessonIndex, { 
                                               content: { 
@@ -978,32 +1021,33 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                     </Button>
                   </div>
                 </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          
+          {modules.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <Card className="text-center py-12">
+                <CardContent>
+                  <Video className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-white mb-2">No modules yet</h3>
+                  <p className="text-gray-400 mb-4">
+                    Start building your course by adding your first module
+                  </p>
+                  <Button onClick={addModule}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add First Module
+                  </Button>
+                </CardContent>
               </Card>
             </motion.div>
-          ))}
-        </AnimatePresence>
-        
-        {modules.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Card className="text-center py-12">
-              <CardContent>
-                <Video className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">No modules yet</h3>
-                <p className="text-gray-400 mb-4">
-                  Start building your course by adding your first module
-                </p>
-                <Button onClick={addModule}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add First Module
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* File Upload Guidelines */}
       <motion.div

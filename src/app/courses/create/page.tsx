@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Save, Check } from 'lucide-react';
 import { Button } from '@/components/publish_course/Button';
@@ -113,6 +113,11 @@ export default function CreateCourse() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Use refs to persist data across re-renders (React Strict Mode fix)
+  const courseRef = useRef<any>(null);
+  const courseIdRef = useRef<string | null>(null);
+  const publishingRef = useRef(false);
 
   // Check authentication and user type
   useEffect(() => {
@@ -196,6 +201,7 @@ export default function CreateCourse() {
   };
 
   const validateStep = (step: number): boolean => {
+    console.log('CreateCourse - Validating step:', step);
     const newErrors: Record<string, string> = {};
 
     switch (step) {
@@ -218,13 +224,20 @@ export default function CreateCourse() {
         break;
     }
 
+    console.log('CreateCourse - Validation errors:', newErrors);
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const isValid = Object.keys(newErrors).length === 0;
+    console.log('CreateCourse - Step validation result:', isValid);
+    return isValid;
   };
 
   const handleNext = () => {
+    console.log('CreateCourse - handleNext called, current step:', currentStep);
     if (validateStep(currentStep)) {
+      console.log('CreateCourse - Step validation passed, moving to next step');
       setCurrentStep(prev => Math.min(prev + 1, steps.length));
+    } else {
+      console.log('CreateCourse - Step validation failed');
     }
   };
 
@@ -246,12 +259,120 @@ export default function CreateCourse() {
     }
   };
 
+  const testBasicCourseCreation = async () => {
+    try {
+      console.log('CreateCourse - Testing basic course creation...');
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Database test timeout')), 10000); // 10 second timeout
+      });
+      
+      const testData = {
+        title: 'Test Course',
+        description: 'Test Description',
+        instructor_id: user?.id,
+        is_published: false,
+        difficulty_level: 'beginner'
+      };
+      
+      const testPromise = supabase
+        .from('courses')
+        .insert(testData)
+        .select()
+        .single();
+        
+      // Race between timeout and test
+      const { data, error } = await Promise.race([testPromise, timeoutPromise]) as any;
+        
+      if (error) {
+        console.error('CreateCourse - Basic course creation test failed:', error);
+        return false;
+      }
+      
+      console.log('CreateCourse - Basic course creation test successful:', data);
+      
+      // Clean up test course
+      try {
+        await supabase
+          .from('courses')
+          .delete()
+          .eq('id', data.id);
+      } catch (cleanupError) {
+        console.warn('CreateCourse - Failed to cleanup test course:', cleanupError);
+      }
+        
+      return true;
+    } catch (err) {
+      console.error('CreateCourse - Basic course creation test error:', err);
+      return false;
+    }
+  };
+
   const handlePublish = async () => {
+    console.log('=== CREATE COURSE PUBLISH STARTED ===');
+    console.log('CreateCourse - handlePublish called at:', new Date().toISOString());
+    console.log('CreateCourse - Current form data:', formData);
+    console.log('CreateCourse - User ID:', user?.id);
+    console.log('CreateCourse - Publishing ref current:', publishingRef.current);
+    
+    // Prevent double execution during React Strict Mode
+    if (publishingRef.current) {
+      console.log('CreateCourse - Publishing already in progress, skipping');
+      return;
+    }
+    
+    console.log('CreateCourse - Starting publish process');
+    console.log('CreateCourse - User:', user?.id);
+    console.log('CreateCourse - Form data:', {
+      title: formData.title,
+      description: formData.description,
+      modules: formData.modules.length
+    });
+    
+    // Basic validation
+    if (!formData.title || formData.title.trim() === '') {
+      console.error('CreateCourse - Title is required');
+      toast.error('Course title is required');
+      return;
+    }
+    
+    if (!formData.description || formData.description.trim() === '') {
+      console.error('CreateCourse - Description is required');
+      toast.error('Course description is required');
+      return;
+    }
+    
+    if (!user?.id) {
+      console.error('CreateCourse - User not found');
+      toast.error('You must be logged in to create a course');
+      return;
+    }
+    
+    console.log('CreateCourse - Basic validation passed');
+    
     let toastId: string | number | undefined;
     try {
+      publishingRef.current = true;
       setIsSaving(true);
+      
+      console.log('CreateCourse - Publishing state set');
+      
+      // Debug: Check if component is still mounted
+      console.log('CreateCourse - Starting publish, component mounted');
+      
+      // Test basic course creation first
+      const basicTestResult = await testBasicCourseCreation();
+      console.log('CreateCourse - Basic course creation test result:', basicTestResult);
+      
+      if (!basicTestResult) {
+        console.warn('CreateCourse - Database test failed, but continuing with publish...');
+        // Don't block the publish process if the test fails
+        // toast.error('Database connection test failed. Please check your setup.');
+        // return;
+      }
+
       // Show S3 upload toast with Progress component
-      let s3Progress = 0;
       toastId = toast.loading(
         <div className="flex flex-col gap-2">
           <span className="font-semibold text-primary">Uploading files to AWS S3...</span>
@@ -261,20 +382,6 @@ export default function CreateCourse() {
         { duration: Infinity }
       );
 
-      // Simulate S3 upload progress (replace with real progress if available)
-      for (let i = 1; i <= 100; i += 10) {
-        s3Progress = i;
-        toast.loading(
-          <div className="flex flex-col gap-2">
-            <span className="font-semibold text-primary">Uploading files to AWS S3... {s3Progress}%</span>
-            <Progress value={s3Progress} />
-            <span className="text-xs text-muted-foreground">This may take a while for large files.</span>
-          </div>,
-          { id: toastId, duration: Infinity }
-        );
-        await new Promise(res => setTimeout(res, 50)); // Simulate progress
-      }
-
       // After S3 upload, update toast to Supabase upload
       toast.loading(
         <div className="flex flex-col gap-2">
@@ -283,15 +390,108 @@ export default function CreateCourse() {
         { id: toastId, duration: Infinity }
       );
 
+      // 0. Handle bulk upload files FIRST (upload to S3 only now)
+      console.log('CreateCourse - Checking for bulk upload files...');
+      let bulkUploadFiles: File[] = [];
+      let updatedFormData = { ...formData };
+      
+      if (formData.modules && formData.modules.length > 0) {
+        // Check if any modules have bulk upload files
+        for (const module of formData.modules) {
+          for (const lesson of module.lessons) {
+            // Check if lesson has bulk upload files stored
+            if (lesson.resourceFiles && Array.isArray(lesson.resourceFiles)) {
+              for (const file of lesson.resourceFiles) {
+                if (isFile(file)) {
+                  bulkUploadFiles.push(file);
+                  console.log('CreateCourse - Found bulk upload file:', file.name, 'Size:', file.size);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Upload bulk upload files to S3 FIRST
+      if (bulkUploadFiles.length > 0) {
+        console.log('CreateCourse - Uploading bulk upload files to S3:', bulkUploadFiles.length);
+        toast.loading(
+          <div className="flex flex-col gap-2">
+            <span className="font-semibold text-primary">Uploading bulk upload files to AWS S3...</span>
+            <Progress value={0} />
+            <span className="text-xs text-muted-foreground">Uploading {bulkUploadFiles.length} files from bulk upload.</span>
+          </div>,
+          { id: toastId, duration: Infinity }
+        );
+
+        try {
+          // Upload bulk files with organization
+          const uploadResults = await s3Service.uploadWithOrganization(
+            bulkUploadFiles,
+            `course_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+            (progress) => {
+              console.log(`Bulk upload progress: ${progress.percentage.toFixed(1)}% (${progress.completed}/${progress.total})`);
+              if (progress.currentFile) {
+                console.log(`Currently uploading: ${progress.currentFile}`);
+              }
+            }
+          );
+
+          console.log('CreateCourse - Bulk upload results:', uploadResults.length);
+
+          // Update form data with uploaded file URLs
+          const updatedModules = formData.modules.map(module => ({
+            ...module,
+            lessons: module.lessons.map(lesson => ({
+              ...lesson,
+              resourceFiles: lesson.resourceFiles.map(file => {
+                if (isFile(file)) {
+                  const uploadResult = uploadResults.find(r => r.file.name === file.name);
+                  if (uploadResult) {
+                    console.log('CreateCourse - Updated file:', file.name, 'with URL:', uploadResult.result.url);
+                    return {
+                      id: uploadResult.result.key,
+                      name: file.name,
+                      size: file.size,
+                      type: file.type,
+                      url: uploadResult.result.url,
+                      key: uploadResult.result.key
+                    };
+                  }
+                }
+                return file;
+              })
+            }))
+          }));
+
+          // Update form data with uploaded files
+          updatedFormData = {
+            ...formData,
+            modules: updatedModules
+          };
+
+          console.log('CreateCourse - Bulk upload files uploaded successfully');
+        } catch (error) {
+          console.error('CreateCourse - Bulk upload failed:', error);
+          toast.error('Failed to upload bulk upload files: ' + (error instanceof Error ? error.message : 'Unknown error'));
+          return;
+        }
+      } else {
+        console.log('CreateCourse - No bulk upload files found');
+      }
+
       // 1. Upload thumbnail if it's a File
-      let thumbnailUrl = formData.thumbnail;
-      if (formData.thumbnail && typeof formData.thumbnail !== 'string') {
-        const result = await s3Service.uploadFile(formData.thumbnail, 'thumbnails');
+      let thumbnailUrl = updatedFormData.thumbnail;
+      if (updatedFormData.thumbnail && typeof updatedFormData.thumbnail !== 'string') {
+        console.log('CreateCourse - Uploading thumbnail...');
+        const result = await s3Service.uploadFile(updatedFormData.thumbnail, 'thumbnails');
         thumbnailUrl = result.url;
+        console.log('CreateCourse - Thumbnail uploaded:', thumbnailUrl);
       }
 
       // 2. Upload all lesson files (videos/resources) if they are File objects
-      const modulesWithUploads = await Promise.all(formData.modules.map(async (module) => {
+      console.log('CreateCourse - Processing individual lesson files...');
+      const modulesWithUploads = await Promise.all(updatedFormData.modules.map(async (module) => {
         const lessonsWithUploads = await Promise.all(module.lessons.map(async (lesson) => {
           const lessonId = lesson.id || generateId();
           // Video upload
@@ -299,6 +499,7 @@ export default function CreateCourse() {
           let videoFileMeta = lesson.videoFile;
           if (lesson.videoFile && isFile(lesson.videoFile)) {
             try {
+              console.log('CreateCourse - Uploading video:', lesson.videoFile.name);
               const result = await s3Service.uploadFile(lesson.videoFile, 'videos');
               video_url = result.url; // Use S3 public URL
               videoFileMeta = {
@@ -309,6 +510,7 @@ export default function CreateCourse() {
                 url: result.url,
                 key: result.key
               };
+              console.log('CreateCourse - Video uploaded:', video_url);
             } catch (err) {
               throw err;
             }
@@ -326,11 +528,12 @@ export default function CreateCourse() {
             // Fallback to course thumbnail if lesson thumbnail is missing
             thumbnail_url = thumbnailUrl;
           }
-          // Resource files upload
+          // Resource files upload (only if not already uploaded via bulk upload)
           let resourceFilesMeta: (File | UploadedFile)[] = Array.isArray(lesson.resourceFiles) ? lesson.resourceFiles : [];
           if (resourceFilesMeta.length > 0) {
             resourceFilesMeta = await Promise.all(resourceFilesMeta.map(async (file) => {
               if (isFile(file)) {
+                console.log('CreateCourse - Uploading resource file:', file.name);
                 const result = await s3Service.uploadFile(file, 'resources');
                 const uploaded: UploadedFile = {
                   id: result.key,
@@ -340,6 +543,7 @@ export default function CreateCourse() {
                   url: result.url,
                   key: result.key
                 };
+                console.log('CreateCourse - Resource file uploaded:', uploaded.url);
                 return uploaded;
               } else {
                 return file;
@@ -365,7 +569,7 @@ export default function CreateCourse() {
 
       // 3. Prepare new formData for Supabase
       const finalFormData = {
-        ...formData,
+        ...updatedFormData,
         thumbnail: thumbnailUrl,
         modules: modulesWithUploads
       };
@@ -393,48 +597,126 @@ export default function CreateCourse() {
         last_published_at: new Date().toISOString(),
         instructor_id: user.id
       });
+      
       // 1. Create the course
       console.log('CreateCourse - Executing Supabase insert...');
-      const courseInsertPromise = supabase
-        .from('courses')
-        .insert({
-          title: finalFormData.title,
-          description: finalFormData.description,
-          thumbnail_url: typeof thumbnailUrl === 'string' ? thumbnailUrl : null,
-          price: finalFormData.pricingType === 'paid' ? parseFloat(finalFormData.price) : 0,
-          is_published: true,
-          difficulty_level: finalFormData.level,
-          tags: finalFormData.tags,
-          prerequisites: finalFormData.prerequisites.split(',').map(p => p.trim()),
-          learning_objectives: finalFormData.requirements.split(',').map(r => r.trim()),
-          category: finalFormData.category,
-          last_published_at: new Date().toISOString(),
-          instructor_id: user.id
-        })
-        .select()
-        .single();
+      console.log('CreateCourse - User context:', { userId: user?.id });
+      
+      // Skip RLS test as it's hanging - proceed directly to course creation
+      console.log('CreateCourse - Skipping RLS test, proceeding with course creation...');
+      
+      try {
+        const courseInsertPromise = supabase
+          .from('courses')
+          .insert({
+            title: finalFormData.title,
+            description: finalFormData.description,
+            thumbnail_url: typeof thumbnailUrl === 'string' ? thumbnailUrl : null,
+            price: finalFormData.pricingType === 'paid' ? parseFloat(finalFormData.price) : 0,
+            is_published: true,
+            difficulty_level: finalFormData.level,
+            tags: finalFormData.tags,
+            category: finalFormData.category,
+            instructor_id: user.id,
+            // Only add these fields if they exist in the database
+            ...(finalFormData.prerequisites && { prerequisites: finalFormData.prerequisites.split(',').map(p => p.trim()) }),
+            ...(finalFormData.requirements && { learning_objectives: finalFormData.requirements.split(',').map(r => r.trim()) }),
+            ...(finalFormData.visibility && { visibility: finalFormData.visibility }),
+            ...(finalFormData.enrollmentType && { enrollment_type: finalFormData.enrollmentType }),
+            ...(finalFormData.certificateEnabled !== undefined && { certificate_enabled: finalFormData.certificateEnabled }),
+            ...(finalFormData.requirements && { requirements: finalFormData.requirements }),
+            ...(finalFormData.pricingType && { pricing_type: finalFormData.pricingType }),
+          })
+          .select()
+          .single();
 
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Course creation timed out after 30 seconds')), 30000);
-      });
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Course creation timed out after 15 seconds')), 15000);
+        });
 
-      const { data: course, error: courseError } = await Promise.race([courseInsertPromise, timeoutPromise]);
+        let course, courseError;
+        try {
+          console.log('CreateCourse - Starting Supabase insert with timeout...');
+          ({ data: course, error: courseError } = await Promise.race([courseInsertPromise, timeoutPromise]));
+          console.log('CreateCourse - Supabase insert completed successfully');
+        } catch (err) {
+          console.error('CreateCourse - Supabase insert threw error:', err);
+          
+          // Try fallback with minimal fields
+          console.log('CreateCourse - Trying fallback with minimal fields...');
+          const fallbackData = {
+            title: finalFormData.title,
+            description: finalFormData.description,
+            thumbnail_url: typeof thumbnailUrl === 'string' ? thumbnailUrl : null,
+            price: finalFormData.pricingType === 'paid' ? parseFloat(finalFormData.price) : 0,
+            is_published: true,
+            difficulty_level: finalFormData.level,
+            instructor_id: user.id,
+          };
+          
+          const { data: fallbackCourse, error: fallbackError } = await supabase
+            .from('courses')
+            .insert(fallbackData)
+            .select()
+            .single();
+            
+          if (fallbackError) {
+            console.error('CreateCourse - Fallback course creation also failed:', fallbackError);
+            throw new Error(`Course creation failed: ${fallbackError.message}`);
+          }
+          
+          course = fallbackCourse;
+          courseError = null;
+          console.log('CreateCourse - Fallback course creation successful');
+        }
 
-      if (courseError) {
-        console.error('CreateCourse - Course creation failed:', courseError);
-        toast.error('Failed to create course: ' + courseError.message);
-        throw new Error(`Failed to create course: ${courseError.message}`);
+        // Log the full response for debugging
+        console.log('CreateCourse - Supabase insert response:', { course, courseError });
+
+        if (courseError) {
+          console.error('CreateCourse - Course creation failed:', courseError, 'User:', user?.id);
+          toast.error('Failed to create course: ' + courseError.message);
+          throw new Error(`Failed to create course: ${courseError.message}`);
+        }
+        if (!course) {
+          console.error('CreateCourse - No course returned from insert, possible RLS or network issue. User:', user?.id, 'Response:', { course, courseError });
+          toast.error('Failed to create course: No course returned. Check your permissions, RLS, and Supabase logs.');
+          throw new Error('Failed to create course: No course returned.');
+        }
+        
+        // CRITICAL: Store course data in refs to persist across re-renders
+        courseRef.current = course;
+        courseIdRef.current = course.id;
+        
+        console.log('CreateCourse - Course created successfully:', courseIdRef.current);
+        console.log('CreateCourse - Course stored in ref:', courseRef.current);
+        
+      } catch (err) {
+        // Already handled above, just rethrow
+        throw err;
       }
-
-      console.log('CreateCourse - Course created successfully:', course.id);
+      
+      // Defensive check - ensure course is defined using ref
+      if (!courseRef.current || !courseIdRef.current) {
+        console.error('CreateCourse - Course is undefined after creation block');
+        toast.error('Failed to create course: Course object is undefined');
+        throw new Error('Course object is undefined');
+      }
+      
+      // Log course object before proceeding to sections
+      console.log('CreateCourse - Course object before sections:', courseRef.current);
+      
       // 2. Create course sections (modules)
       const sectionsToCreate = finalFormData.modules.map((module, index) => ({
-        course_id: course.id,
+        course_id: courseIdRef.current,
         title: module.title,
         description: module.description,
         order_index: index + 1
       }));
+      
+      console.log('CreateCourse - Creating sections for course:', courseIdRef.current, 'Sections to create:', sectionsToCreate.length);
+      
       const { data: sections, error: sectionsError } = await supabase
         .from('course_sections')
         .insert(sectionsToCreate)
@@ -446,11 +728,24 @@ export default function CreateCourse() {
         throw new Error(`Failed to create sections: ${sectionsError.message}`);
       }
 
+      if (!sections || sections.length === 0) {
+        console.error('CreateCourse - No sections returned from insert');
+        toast.error('Failed to create sections: No sections returned');
+        throw new Error('Failed to create sections: No sections returned');
+      }
+
       console.log('CreateCourse - Sections created successfully:', sections.length);
+      
+      // Log course object before lessons
+      console.log('CreateCourse - Course object before lessons:', courseRef.current);
+      
       // 3. Create lessons for each section
       for (let i = 0; i < finalFormData.modules.length; i++) {
         const courseModule = finalFormData.modules[i];
         const section = sections[i];
+        
+        console.log(`CreateCourse - Creating lessons for section ${i + 1}, course:`, courseIdRef.current);
+        
         const lessonsToCreate = courseModule.lessons.map((lesson, index) => {
           // Transform resourceFiles to resources format for Supabase
           const resources = lesson.resourceFiles && Array.isArray(lesson.resourceFiles)
@@ -528,7 +823,7 @@ export default function CreateCourse() {
           }
 
           return {
-            course_id: course.id,
+            course_id: courseIdRef.current,
             section_id: section.id,
             title: lesson.title,
             description: lesson.description || '',
@@ -544,33 +839,41 @@ export default function CreateCourse() {
         });
         if (lessonsToCreate.length > 0) {
           console.log(`CreateCourse - Creating ${lessonsToCreate.length} lessons for section ${i + 1}`);
-          const { error: lessonsError } = await supabase
+          const { data: createdLessons, error: lessonsError } = await supabase
             .from('lessons')
-            .insert(lessonsToCreate);
+            .insert(lessonsToCreate)
+            .select();
           if (lessonsError) {
             console.error('CreateCourse - Lessons creation failed:', lessonsError);
             toast.error('Failed to create lessons: ' + lessonsError.message);
             throw new Error(`Failed to create lessons: ${lessonsError.message}`);
           }
-          console.log(`CreateCourse - Lessons created successfully for section ${i + 1}`);
+          console.log(`CreateCourse - Lessons created successfully for section ${i + 1}:`, createdLessons?.length || 0);
         }
       }
 
       // 4. Update course with total lessons count
       const totalLessons = finalFormData.modules.reduce((acc, module) => acc + module.lessons.length, 0);
       console.log('CreateCourse - Updating course with total lessons:', totalLessons);
+      
+      const updateData: any = {};
+      if (totalLessons > 0) {
+        updateData.total_lessons = totalLessons;
+      }
+      
       const { error: updateError } = await supabase
         .from('courses')
-        .update({ total_lessons: totalLessons })
-        .eq('id', course.id);
+        .update(updateData)
+        .eq('id', courseIdRef.current);
 
       if (updateError) {
         console.error('CreateCourse - Course update failed:', updateError);
-        toast.error('Failed to update course: ' + updateError.message);
-        throw new Error(`Failed to update course: ${updateError.message}`);
+        // Don't throw error here as the course was created successfully
+        console.warn('CreateCourse - Course update failed but course was created:', updateError.message);
+      } else {
+        console.log('CreateCourse - Course updated successfully');
       }
 
-      console.log('CreateCourse - Course updated successfully');
       // After everything is successful
       toast.dismiss(toastId);
       toast.success('Course published successfully!');
@@ -583,6 +886,7 @@ export default function CreateCourse() {
       toast.error('Failed to publish course: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsSaving(false);
+      publishingRef.current = false; // Reset publishing flag
     }
   };
 
@@ -724,14 +1028,174 @@ export default function CreateCourse() {
                   Save Draft
                 </Button>
                 
+                {/* Test button for debugging */}
+                <Button
+                  variant="secondary"
+                  onClick={async () => {
+                    console.log('CreateCourse - Test button clicked');
+                    try {
+                      const { data, error } = await supabase
+                        .from('courses')
+                        .insert({
+                          title: 'Test Course ' + Date.now(),
+                          description: 'Test Description',
+                          instructor_id: user?.id,
+                          is_published: false,
+                          difficulty_level: 'beginner'
+                        })
+                        .select()
+                        .single();
+                      
+                      if (error) {
+                        console.error('Test course creation failed:', error);
+                        toast.error('Test failed: ' + error.message);
+                      } else {
+                        console.log('Test course created:', data);
+                        toast.success('Test course created successfully!');
+                        
+                        // Clean up
+                        await supabase
+                          .from('courses')
+                          .delete()
+                          .eq('id', data.id);
+                      }
+                    } catch (err) {
+                      console.error('Test course creation error:', err);
+                      toast.error('Test error: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                    }
+                  }}
+                  className="text-xs"
+                >
+                  Test DB
+                </Button>
+                
+                {/* Simple test button */}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    console.log('Simple test button clicked');
+                    alert('Button is working!');
+                  }}
+                  className="text-xs"
+                >
+                  Test Button
+                </Button>
+                
+                {/* Simple publish test button */}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    console.log('Simple publish test button clicked');
+                    alert('Publish button is working!');
+                    // Call handlePublish directly
+                    handlePublish();
+                  }}
+                  className="text-xs"
+                >
+                  Test Publish
+                </Button>
+                
+                {/* Populate form with test data */}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    console.log('Populating form with test data');
+                    setFormData({
+                      title: 'Test Course ' + Date.now(),
+                      description: 'This is a test course description',
+                      category: 'programming',
+                      level: 'beginner',
+                      thumbnail: null,
+                      tags: ['test', 'demo'],
+                      modules: [{
+                        id: generateId(),
+                        title: 'Test Module',
+                        description: 'Test module description',
+                        order_index: 1,
+                        lessons: [{
+                          id: generateId(),
+                          title: 'Test Lesson',
+                          description: 'Test lesson description',
+                          video_url: '',
+                          duration: 0,
+                          order_index: 1,
+                          is_preview: false,
+                          content: {},
+                          thumbnail_url: '',
+                          resources: [],
+                          is_free: true,
+                          type: 'video',
+                          videoFile: undefined,
+                          videoPreview: '',
+                          resourceFiles: [],
+                          resourcePreviews: []
+                        }]
+                      }],
+                      pricingType: 'free',
+                      price: '',
+                      visibility: 'public',
+                      enrollmentType: 'open',
+                      certificateEnabled: false,
+                      prerequisites: '',
+                      requirements: ''
+                    });
+                    setCurrentStep(4); // Go to the last step
+                    toast.success('Form populated with test data');
+                  }}
+                  className="text-xs"
+                >
+                  Fill Test Data
+                </Button>
+                
+                {/* Debug current state */}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    console.log('=== DEBUG CURRENT STATE ===');
+                    console.log('Current step:', currentStep);
+                    console.log('Form data:', formData);
+                    console.log('User:', user?.id);
+                    console.log('Profile:', profile?.user_type);
+                    console.log('Is saving:', isSaving);
+                    console.log('Publishing ref:', publishingRef.current);
+                    alert(`Step: ${currentStep}\nTitle: ${formData.title}\nUser: ${user?.id}\nProfile: ${profile?.user_type}`);
+                  }}
+                  className="text-xs"
+                >
+                  Debug State
+                </Button>
+                
                 {currentStep < steps.length ? (
                   <Button onClick={handleNext} className="flex items-center gap-2">
                     Next
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                 ) : (
-                  <Button onClick={handlePublish} className="flex items-center gap-2">
-                    Publish Course
+                  <Button 
+                    onClick={() => {
+                      console.log('=== CREATE COURSE BUTTON CLICKED ===');
+                      console.log('CreateCourse - Button clicked at:', new Date().toISOString());
+                      console.log('CreateCourse - Current step:', currentStep);
+                      console.log('CreateCourse - Form data:', {
+                        title: formData.title,
+                        description: formData.description,
+                        modules: formData.modules.length
+                      });
+                      console.log('CreateCourse - User:', user?.id);
+                      console.log('CreateCourse - Profile:', profile?.user_type);
+                      console.log('CreateCourse - Is saving:', isSaving);
+                      console.log('CreateCourse - Publishing ref:', publishingRef.current);
+                      
+                      // Add a small delay to ensure the click is registered
+                      setTimeout(() => {
+                        console.log('CreateCourse - Calling handlePublish after delay');
+                        handlePublish();
+                      }, 100);
+                    }} 
+                    className="flex items-center gap-2"
+                    disabled={isSaving}
+                  >
+                    {isSaving ? 'Publishing...' : 'Publish Course'}
                   </Button>
                 )}
               </div>

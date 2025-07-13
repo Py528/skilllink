@@ -1,11 +1,11 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils"; // Assuming you have a utility function for class names
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "link" | "danger";
 type ButtonSize = "sm" | "md" | "lg" | "icon";
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends Omit<HTMLMotionProps<"button">, "onDrag"> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   isLoading?: boolean;
