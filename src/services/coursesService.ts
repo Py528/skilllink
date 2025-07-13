@@ -157,6 +157,63 @@ class CoursesService {
       return null;
     }
   }
+
+  async getLessonsByCourseId(courseId: string): Promise<any[]> {
+    try {
+      const { data: lessons, error } = await this.supabase
+        .from('lessons')
+        .select('*')
+        .eq('course_id', courseId)
+        .order('order_index', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching lessons:', error);
+        throw new Error('Failed to fetch lessons');
+      }
+
+      return lessons || [];
+    } catch (error) {
+      console.error('Error in getLessonsByCourseId:', error);
+      return [];
+    }
+  }
+
+  async updateLesson(lessonId: string, updates: any): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('lessons')
+        .update(updates)
+        .eq('id', lessonId);
+
+      if (error) {
+        console.error('Error updating lesson:', error);
+        throw new Error('Failed to update lesson');
+      }
+    } catch (error) {
+      console.error('Error in updateLesson:', error);
+      throw error;
+    }
+  }
+
+  async updateLessons(lessons: any[]): Promise<void> {
+    try {
+      const updatePromises = lessons.map(lesson => 
+        this.supabase
+          .from('lessons')
+          .update({
+            video_url: lesson.video_url,
+            thumbnail_url: lesson.thumbnail_url,
+            resources: lesson.resources
+          })
+          .eq('id', lesson.id)
+      );
+
+      await Promise.all(updatePromises);
+    } catch (error) {
+      console.error('Error in updateLessons:', error);
+      throw error;
+    }
+  }
 }
 
 export const coursesService = new CoursesService(); 

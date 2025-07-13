@@ -13,6 +13,8 @@ import { mockInstructorCourses, mockInstructorStats } from "../../data/mockData"
 import { Navbar } from "../layout/Navbar";
 import { Sidebar } from "../layout/Sidebar";
 import { useRouter } from "next/navigation";
+import { useUser } from "../../context/UserContext";
+import { coursesService, CourseWithInstructor } from "../../services/coursesService";
 
 interface Todo {
   task: string;
@@ -57,6 +59,7 @@ const cardHoverVariants = {
 };
 
 export const InstructorDashboard: React.FC = () => {
+  const { user } = useUser();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeNavItem, setActiveNavItem] = useState("home");
   const [notifications] = useState([
@@ -75,7 +78,30 @@ export const InstructorDashboard: React.FC = () => {
   const [newTodo, setNewTodo] = useState("");
   const [showAddTodo, setShowAddTodo] = useState(false);
 
+  // Real instructor courses state
+  const [realInstructorCourses, setRealInstructorCourses] = useState<CourseWithInstructor[]>([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(true);
+  const [coursesError, setCoursesError] = useState<string | null>(null);
+
   const router = useRouter();
+
+  // Fetch instructor's courses
+  React.useEffect(() => {
+    const fetchCourses = async () => {
+      if (!user || user.role !== 'instructor') return;
+      setIsLoadingCourses(true);
+      setCoursesError(null);
+      try {
+        const courses = await coursesService.getCoursesByInstructor(user.id);
+        setRealInstructorCourses(courses);
+      } catch (error) {
+        setCoursesError('Failed to load your courses');
+      } finally {
+        setIsLoadingCourses(false);
+      }
+    };
+    fetchCourses();
+  }, [user]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -282,22 +308,60 @@ export const InstructorDashboard: React.FC = () => {
                       className="grid grid-cols-1 md:grid-cols-2 gap-4"
                       variants={containerVariants}
                     >
-                      {mockInstructorCourses.slice(0, 4).map((course) => (
-                        <motion.div
-                          key={course.id}
-                          variants={itemVariants}
-                          whileHover="hover"
-                          custom={cardHoverVariants}
-                        >
-                          <CourseCard 
-                            course={{
-                              ...course,
-                              level: course.level as "beginner" | "intermediate" | "advanced",
-                              status: course.status as "published" | "draft" | "archived"
-                            }} 
-                          />
-                        </motion.div>
-                      ))}
+                      {isLoadingCourses ? (
+                        [...Array(4)].map((_, idx) => (
+                          <motion.div key={idx} className="bg-gray-200 dark:bg-secondary-800 rounded-lg min-h-[180px] animate-pulse" />
+                        ))
+                      ) : coursesError ? (
+                        <div className="col-span-2 text-center text-red-500 dark:text-red-400 py-8">{coursesError}</div>
+                      ) : (realInstructorCourses.length > 0 ?
+                        realInstructorCourses.slice(0, 4).map((course) => (
+                          <motion.div
+                            key={course.id}
+                            variants={itemVariants}
+                            whileHover="hover"
+                            custom={cardHoverVariants}
+                            className="relative group"
+                          >
+                            <div onClick={() => router.push(`/courses/${course.id}/edit`)} style={{ cursor: 'pointer' }}>
+                              <CourseCard course={course} />
+                            </div>
+                            <button
+                              className="absolute top-2 right-2 z-10 px-3 py-1 bg-primary-600 text-white text-xs rounded shadow hover:bg-primary-700 transition-opacity opacity-0 group-hover:opacity-100"
+                              onClick={e => { e.stopPropagation(); router.push(`/courses/${course.id}/edit`); }}
+                              title="Edit Course"
+                            >
+                              Edit
+                            </button>
+                          </motion.div>
+                        )) :
+                        mockInstructorCourses.slice(0, 4).map((course) => (
+                          <motion.div
+                            key={course.id}
+                            variants={itemVariants}
+                            whileHover="hover"
+                            custom={cardHoverVariants}
+                            className="relative group"
+                          >
+                            <div onClick={() => router.push(`/courses/${course.id}/edit`)} style={{ cursor: 'pointer' }}>
+                              <CourseCard 
+                                course={{
+                                  ...course,
+                                  level: course.level as "beginner" | "intermediate" | "advanced",
+                                  status: course.status as "published" | "draft" | "archived"
+                                }} 
+                              />
+                            </div>
+                            <button
+                              className="absolute top-2 right-2 z-10 px-3 py-1 bg-primary-600 text-white text-xs rounded shadow hover:bg-primary-700 transition-opacity opacity-0 group-hover:opacity-100"
+                              onClick={e => { e.stopPropagation(); router.push(`/courses/${course.id}/edit`); }}
+                              title="Edit Course"
+                            >
+                              Edit
+                            </button>
+                          </motion.div>
+                        ))
+                      )}
                     </motion.div>
                   </CardContent>
                 </Card>

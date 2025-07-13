@@ -300,7 +300,7 @@ export default function CreateCourse() {
           if (lesson.videoFile && isFile(lesson.videoFile)) {
             try {
               const result = await s3Service.uploadFile(lesson.videoFile, 'videos');
-              video_url = result.key;
+              video_url = result.url; // Use S3 public URL
               videoFileMeta = {
                 id: result.key,
                 name: lesson.videoFile.name,
@@ -312,6 +312,19 @@ export default function CreateCourse() {
             } catch (err) {
               throw err;
             }
+          }
+          // Thumbnail upload (per lesson)
+          let thumbnail_url = lesson.thumbnail_url;
+          if (lesson.thumbnail_url && isFile(lesson.thumbnail_url)) {
+            try {
+              const result = await s3Service.uploadFile(lesson.thumbnail_url, 'thumbnails');
+              thumbnail_url = result.url;
+            } catch (err) {
+              throw err;
+            }
+          } else if (!lesson.thumbnail_url && typeof thumbnailUrl === 'string') {
+            // Fallback to course thumbnail if lesson thumbnail is missing
+            thumbnail_url = thumbnailUrl;
           }
           // Resource files upload
           let resourceFilesMeta: (File | UploadedFile)[] = Array.isArray(lesson.resourceFiles) ? lesson.resourceFiles : [];
@@ -338,7 +351,8 @@ export default function CreateCourse() {
             id: lessonId,
             video_url,
             videoFile: videoFileMeta,
-            resourceFiles: resourceFilesMeta
+            resourceFiles: resourceFilesMeta,
+            thumbnail_url // ensure this is set
           };
         }));
         const moduleId = module.id || generateId();
@@ -364,8 +378,24 @@ export default function CreateCourse() {
         throw new Error('You must be logged in to create a course');
       }
 
+      console.log('CreateCourse - Starting course creation...');
+      console.log('CreateCourse - Course data to insert:', {
+        title: finalFormData.title,
+        description: finalFormData.description,
+        thumbnail_url: typeof thumbnailUrl === 'string' ? thumbnailUrl : null,
+        price: finalFormData.pricingType === 'paid' ? parseFloat(finalFormData.price) : 0,
+        is_published: true,
+        difficulty_level: finalFormData.level,
+        tags: finalFormData.tags,
+        prerequisites: finalFormData.prerequisites.split(',').map(p => p.trim()),
+        learning_objectives: finalFormData.requirements.split(',').map(r => r.trim()),
+        category: finalFormData.category,
+        last_published_at: new Date().toISOString(),
+        instructor_id: user.id
+      });
       // 1. Create the course
-      const { data: course, error: courseError } = await supabase
+      console.log('CreateCourse - Executing Supabase insert...');
+      const courseInsertPromise = supabase
         .from('courses')
         .insert({
           title: finalFormData.title,
@@ -384,11 +414,20 @@ export default function CreateCourse() {
         .select()
         .single();
 
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Course creation timed out after 30 seconds')), 30000);
+      });
+
+      const { data: course, error: courseError } = await Promise.race([courseInsertPromise, timeoutPromise]);
+
       if (courseError) {
+        console.error('CreateCourse - Course creation failed:', courseError);
         toast.error('Failed to create course: ' + courseError.message);
         throw new Error(`Failed to create course: ${courseError.message}`);
       }
 
+      console.log('CreateCourse - Course created successfully:', course.id);
       // 2. Create course sections (modules)
       const sectionsToCreate = finalFormData.modules.map((module, index) => ({
         course_id: course.id,
@@ -402,10 +441,12 @@ export default function CreateCourse() {
         .select();
 
       if (sectionsError) {
+        console.error('CreateCourse - Sections creation failed:', sectionsError);
         toast.error('Failed to create sections: ' + sectionsError.message);
         throw new Error(`Failed to create sections: ${sectionsError.message}`);
       }
 
+      console.log('CreateCourse - Sections created successfully:', sections.length);
       // 3. Create lessons for each section
       for (let i = 0; i < finalFormData.modules.length; i++) {
         const courseModule = finalFormData.modules[i];
@@ -502,32 +543,39 @@ export default function CreateCourse() {
           };
         });
         if (lessonsToCreate.length > 0) {
+          console.log(`CreateCourse - Creating ${lessonsToCreate.length} lessons for section ${i + 1}`);
           const { error: lessonsError } = await supabase
             .from('lessons')
             .insert(lessonsToCreate);
           if (lessonsError) {
+            console.error('CreateCourse - Lessons creation failed:', lessonsError);
             toast.error('Failed to create lessons: ' + lessonsError.message);
             throw new Error(`Failed to create lessons: ${lessonsError.message}`);
           }
+          console.log(`CreateCourse - Lessons created successfully for section ${i + 1}`);
         }
       }
 
       // 4. Update course with total lessons count
       const totalLessons = finalFormData.modules.reduce((acc, module) => acc + module.lessons.length, 0);
+      console.log('CreateCourse - Updating course with total lessons:', totalLessons);
       const { error: updateError } = await supabase
         .from('courses')
         .update({ total_lessons: totalLessons })
         .eq('id', course.id);
 
       if (updateError) {
+        console.error('CreateCourse - Course update failed:', updateError);
         toast.error('Failed to update course: ' + updateError.message);
         throw new Error(`Failed to update course: ${updateError.message}`);
       }
 
+      console.log('CreateCourse - Course updated successfully');
       // After everything is successful
       toast.dismiss(toastId);
       toast.success('Course published successfully!');
       
+      console.log('CreateCourse - Redirecting to dashboard...');
       // Redirect to the course page or dashboard
       router.push('/dashboard');
     } catch (error) {
