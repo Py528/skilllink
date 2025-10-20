@@ -16,7 +16,7 @@ interface FileNode {
   path: string;
   size?: number;
   children?: FileNode[];
-  fileType?: 'video' | 'transcript' | 'subtitle' | 'instruction' | 'other';
+  fileType?: string;
   status?: 'pending' | 'uploading' | 'completed' | 'error';
   progress?: number;
   s3Url?: string;
@@ -170,7 +170,7 @@ export const BulkUploadStep: React.FC<BulkUploadStepProps> = ({
             path: fullPath,
             size: isFile ? file.size : undefined,
             children: isFile ? undefined : [],
-            fileType: isFile ? getFileType(part) as keyof typeof fileTypeConfig : undefined,
+            fileType: isFile ? getFileType(part) : undefined,
             status: 'pending'
           };
           fileMap.set(fullPath, node);
@@ -269,9 +269,10 @@ export const BulkUploadStep: React.FC<BulkUploadStepProps> = ({
           
           // Extract all files from ZIP
           for (const [relativePath, zipEntry] of Object.entries(zipData.files)) {
-            if (!zipEntry.dir) {
-              const content = await zipEntry.async('blob');
-              const file = new File([content], zipEntry.name, { type: 'application/octet-stream' });
+            const entry = zipEntry as any;
+            if (!entry.dir) {
+              const content = await entry.async('blob');
+              const file = new File([content], entry.name, { type: 'application/octet-stream' });
               (file as any).webkitRelativePath = relativePath;
               files.push(file);
             }
@@ -423,14 +424,6 @@ export const BulkUploadStep: React.FC<BulkUploadStepProps> = ({
                   )}
                 </div>
               )}
-              {node.status === 'uploading' && uploadProgress[node.name] !== undefined && (
-                <div className="w-16 bg-gray-700 rounded-full h-1">
-                  <div 
-                    className="bg-blue-400 h-1 rounded-full transition-all duration-300"
-                    style={{ width: `${uploadProgress[node.name]}%` }}
-                  />
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -468,7 +461,7 @@ export const BulkUploadStep: React.FC<BulkUploadStepProps> = ({
           const file = await new Promise<File>((resolve) => {
             (entry as FileSystemFileEntry).file(resolve);
           });
-          file.webkitRelativePath = path + entry.name;
+          (file as any).webkitRelativePath = path + entry.name;
           files.push(file);
         } else if (entry.isDirectory) {
           const reader = (entry as FileSystemDirectoryEntry).createReader();
@@ -592,8 +585,9 @@ export const BulkUploadStep: React.FC<BulkUploadStepProps> = ({
                   <div>
                     <input
                       type="file"
-                      webkitdirectory=""
                       multiple
+                      webkitdirectory="true"
+                      directory="true"
                       accept="video/*,audio/*,image/*,.pdf,.doc,.docx,.txt,.rtf,.odt,.pages,.xls,.xlsx,.csv,.ods,.numbers,.ppt,.pptx,.odp,.key,.zip,.rar,.7z,.tar,.gz,.bz2,.json,.xml,.tsv,.db,.sqlite,.sql,.py,.tsx,.jsx,.js,.ts,.env,.php,.java,.cpp,.c,.cs,.rb,.go,.rs,.swift,.kt,.scala,.r,.matlab,.sh,.bat,.ps1,.yaml,.yml,.toml,.ini,.cfg,.conf,.md,.rst,.tex,.latex,.srt,.vtt,.html"
                       onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
                       className="hidden"

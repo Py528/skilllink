@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import JSZip from 'jszip';
-import { s3Service } from '@/services/s3Upload';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { logger } from '@/lib/logger';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+const s3 = new S3Client({
+  region: process.env.AWS_BUCKET_REGION!,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY!,
+    secretAccessKey: process.env.AWS_SECRET_KEY!,
+  },
+});
 
 interface FileInfo {
   name: string;
@@ -27,42 +36,58 @@ interface CourseStructure {
         path: string;
         size: number;
         s3Url?: string;
+        s3Key?: string;
       }>;
     }>;
   }>;
 }
 
-// File type detection
+// File type configuration for organized S3 structure
 const fileTypeConfig = {
   video: {
-    extensions: ['.mp4', '.mov', '.avi', '.mkv', '.webm'],
+    extensions: ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.3gp'],
     folder: 'videos',
     maxSize: 500 * 1024 * 1024 // 500MB
   },
   transcript: {
     extensions: ['.txt'],
-    folder: 'resources',
+    folder: 'transcripts',
     maxSize: 25 * 1024 * 1024 // 25MB
   },
   subtitle: {
-    extensions: ['.srt', '.vtt'],
-    folder: 'resources',
+    extensions: ['.srt', '.vtt', '.sub'],
+    folder: 'subtitles',
     maxSize: 10 * 1024 * 1024 // 10MB
   },
   instruction: {
-    extensions: ['.html'],
-    folder: 'resources',
+    extensions: ['.html', '.htm'],
+    folder: 'instructions',
     maxSize: 25 * 1024 * 1024 // 25MB
   },
   image: {
-    extensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
-    folder: 'resources',
+    extensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.svg'],
+    folder: 'images',
     maxSize: 10 * 1024 * 1024 // 10MB
   },
   document: {
-    extensions: ['.pdf', '.doc', '.docx'],
-    folder: 'resources',
+    extensions: ['.pdf', '.doc', '.docx', '.rtf', '.odt'],
+    folder: 'documents',
     maxSize: 25 * 1024 * 1024 // 25MB
+  },
+  spreadsheet: {
+    extensions: ['.xls', '.xlsx', '.csv', '.ods'],
+    folder: 'documents',
+    maxSize: 25 * 1024 * 1024 // 25MB
+  },
+  presentation: {
+    extensions: ['.ppt', '.pptx', '.odp'],
+    folder: 'documents',
+    maxSize: 25 * 1024 * 1024 // 25MB
+  },
+  code: {
+    extensions: ['.py', '.tsx', '.jsx', '.js', '.ts', '.env', '.php', '.java', '.cpp', '.c', '.cs', '.rb', '.go', '.rs', '.swift', '.kt', '.scala', '.r', '.matlab', '.sh', '.bat', '.ps1', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf', '.md', '.rst', '.tex', '.latex'],
+    folder: 'documents',
+    maxSize: 10 * 1024 * 1024 // 10MB
   }
 };
 
@@ -74,7 +99,7 @@ function getFileType(filename: string): string {
       return type;
     }
   }
-  return 'other';
+  return 'document';
 }
 
 // Parse folder structure from uploaded files
@@ -129,8 +154,8 @@ function parseFolderStructure(files: FileInfo[]): CourseStructure {
   };
 }
 
-// Upload file to S3
-async function uploadFileToS3(file: FileInfo): Promise<string> {
+// Upload file to S3 with organized folder structure
+async function uploadFileToS3(file: FileInfo, courseFolderId: string): Promise<{ url: string; key: string }> {
   const fileType = getFileType(file.name);
   const config = fileTypeConfig[fileType as keyof typeof fileTypeConfig] || fileTypeConfig.document;
   
@@ -143,11 +168,55 @@ async function uploadFileToS3(file: FileInfo): Promise<string> {
   const hash = await generateFileHash(file.content);
   const ext = file.name.split('.').pop();
   const safeName = `${hash}.${ext}`;
-  const s3Path = `${config.folder}/${safeName}`;
+  const s3Path = `${courseFolderId}/${config.folder}/${safeName}`;
 
   // Upload to S3
-  const result = await s3Service.uploadBuffer(file.content, s3Path);
-  return result.url;
+  const command = new PutObjectCommand({
+    Bucket: process.env.AWS_BUCKET_NAME!,
+    Key: s3Path,
+    Body: file.content,
+    ContentType: getContentType(file.name),
+    Metadata: {
+      'original-filename': file.name,
+      'upload-timestamp': new Date().toISOString(),
+      'file-type': fileType,
+      'folder-structure': config.folder
+    }
+  });
+
+  await s3.send(command);
+  
+  const publicUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_BUCKET_REGION}.amazonaws.com/${s3Path}`;
+  
+  return {
+    url: publicUrl,
+    key: s3Path
+  };
+}
+
+// Get content type based on file extension
+function getContentType(filename: string): string {
+  const ext = filename.toLowerCase().split('.').pop();
+  switch (ext) {
+    case 'mp4': return 'video/mp4';
+    case 'mov': return 'video/quicktime';
+    case 'avi': return 'video/x-msvideo';
+    case 'webm': return 'video/webm';
+    case 'pdf': return 'application/pdf';
+    case 'doc': return 'application/msword';
+    case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'txt': return 'text/plain';
+    case 'html':
+    case 'htm': return 'text/html';
+    case 'srt': return 'text/plain';
+    case 'vtt': return 'text/vtt';
+    case 'jpg':
+    case 'jpeg': return 'image/jpeg';
+    case 'png': return 'image/png';
+    case 'gif': return 'image/gif';
+    case 'webp': return 'image/webp';
+    default: return 'application/octet-stream';
+  }
 }
 
 // Generate file hash for deduplication
@@ -237,6 +306,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Generate course folder ID for S3 organization
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    const courseFolderId = `course_${timestamp}_${random}`;
+
     // Parse course structure
     const courseStructure = parseFolderStructure(files);
 
@@ -247,125 +321,118 @@ export async function POST(request: NextRequest) {
           const fileInfo = files.find(f => f.path === file.path);
           if (fileInfo) {
             try {
-              const s3Url = await uploadFileToS3(fileInfo);
-              file.s3Url = s3Url;
+              const { url, key } = await uploadFileToS3(fileInfo, courseFolderId);
+              file.s3Url = url;
+              file.s3Key = key;
             } catch (error) {
-              console.error(`Failed to upload ${file.name}:`, error);
-              // Continue with other files
+              logger.error('Failed to upload file', { 
+                fileName: file.name, 
+                error: error instanceof Error ? error.message : error 
+              }, 'BULK_UPLOAD');
+              // Continue with other files even if one fails
             }
           }
         }
       }
     }
 
-    // Create sections and lessons in database
-    const { data: course, error: courseError } = await supabase
-      .from('courses')
-      .select('*')
-      .eq('id', courseId)
-      .single();
+    // Create course sections and lessons in Supabase
+    const createdSections = [];
+    const createdLessons = [];
 
-    if (courseError || !course) {
-      return NextResponse.json(
-        { error: 'Course not found' },
-        { status: 404 }
-      );
-    }
-
-    // Create sections
-    for (let i = 0; i < courseStructure.sections.length; i++) {
-      const section = courseStructure.sections[i];
+    for (let sectionIndex = 0; sectionIndex < courseStructure.sections.length; sectionIndex++) {
+      const section = courseStructure.sections[sectionIndex];
       
-      const { data: sectionData, error: sectionError } = await supabase
-        .from('sections')
+      // Create section
+      const { data: createdSection, error: sectionError } = await supabase
+        .from('course_sections')
         .insert({
           course_id: courseId,
           title: section.name,
-          description: `Section ${i + 1}: ${section.name}`,
-          order_index: i,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          order_index: sectionIndex,
+          description: `Section ${sectionIndex + 1}: ${section.name}`
         })
         .select()
         .single();
 
       if (sectionError) {
-        console.error('Failed to create section:', sectionError);
+        logger.error('Error creating section', { 
+          sectionName: section.name, 
+          error: sectionError.message 
+        }, 'BULK_UPLOAD');
         continue;
       }
 
+      createdSections.push(createdSection);
+
       // Create lessons for this section
-      for (let j = 0; j < section.lessons.length; j++) {
-        const lesson = section.lessons[j];
+      for (let lessonIndex = 0; lessonIndex < section.lessons.length; lessonIndex++) {
+        const lesson = section.lessons[lessonIndex];
         
-        // Find video file for duration
+        // Find video file for this lesson
         const videoFile = lesson.files.find(f => f.type === 'video');
-        let duration = 0;
+        const resourceFiles = lesson.files.filter(f => f.type !== 'video');
         
-        if (videoFile && videoFile.s3Url) {
-          // In a real implementation, you'd extract duration from video metadata
-          // For now, we'll use a placeholder
-          duration = 300; // 5 minutes placeholder
-        }
-
-        // Find transcript file
-        const transcriptFile = lesson.files.find(f => f.type === 'transcript');
-        const subtitleFile = lesson.files.find(f => f.type === 'subtitle');
-        const instructionFile = lesson.files.find(f => f.type === 'instruction');
-
-        const { error: lessonError } = await supabase
+        // Create lesson
+        const { data: createdLesson, error: lessonError } = await supabase
           .from('lessons')
           .insert({
             course_id: courseId,
-            section_id: sectionData.id,
+            section_id: createdSection.id,
             title: lesson.name,
-            description: `Lesson ${j + 1}: ${lesson.name}`,
-            type: videoFile ? 'video' : 'text',
-            duration: duration,
+            description: `Lesson ${lessonIndex + 1}: ${lesson.name}`,
             video_url: videoFile?.s3Url || null,
-            thumbnail_url: null, // Could be extracted from video or separate image
-            transcript_url: transcriptFile?.s3Url || null,
-            subtitle_url: subtitleFile?.s3Url || null,
-            instruction_url: instructionFile?.s3Url || null,
-            resources: lesson.files
-              .filter(f => f.type !== 'video' && f.type !== 'transcript' && f.type !== 'subtitle' && f.type !== 'instruction')
-              .map(f => ({
+            order_index: lessonIndex,
+            type: 'video',
+            content: {
+              course_folder_id: courseFolderId,
+              resources: resourceFiles.map(f => ({
                 name: f.name,
                 type: f.type,
                 url: f.s3Url,
+                key: f.s3Key,
                 size: f.size
-              })),
-            status: 'draft',
-            order_index: j,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+              }))
+            }
           })
           .select()
           .single();
 
         if (lessonError) {
-          console.error('Failed to create lesson:', lessonError);
+          logger.error('Error creating lesson', { 
+            lessonName: lesson.name, 
+            error: lessonError.message 
+          }, 'BULK_UPLOAD');
+          continue;
         }
+
+        createdLessons.push(createdLesson);
       }
     }
 
+    // Update course with folder ID
+    await supabase
+      .from('courses')
+      .update({
+        content_folder_id: courseFolderId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', courseId);
+
     return NextResponse.json({
       success: true,
-      message: 'Course structure created successfully',
-      structure: courseStructure,
-      stats: {
-        sections: courseStructure.sections.length,
-        lessons: courseStructure.sections.reduce((acc, s) => acc + s.lessons.length, 0),
-        files: courseStructure.sections.reduce((acc, s) => 
-          acc + s.lessons.reduce((acc2, l) => acc2 + l.files.length, 0), 0
-        )
-      }
+      courseFolderId,
+      courseStructure,
+      sectionsCreated: createdSections.length,
+      lessonsCreated: createdLessons.length
     });
 
   } catch (error) {
-    console.error('Bulk upload error:', error);
+    logger.error('Bulk upload error', { 
+      error: error instanceof Error ? error.message : error 
+    }, 'BULK_UPLOAD');
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to process bulk upload' },
       { status: 500 }
     );
   }

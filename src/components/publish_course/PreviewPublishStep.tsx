@@ -1,12 +1,13 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, Globe, Clock, Users, BookOpen, AlertCircle, Check, ChevronRight, Play, Download, Search, FileText, Video, HelpCircle, AlignCenter as Assignment, FileVideo, File, Image, FileCode, File as FilePdf, ExternalLink, BarChart3, PlayCircle, FileIcon } from 'lucide-react';
+import { Eye, Globe, Clock, Users, BookOpen, AlertCircle, Check, ChevronRight, Play, Download, Search, FileText, Video, HelpCircle, AlignCenter as Assignment, FileVideo, File, Image as ImageIcon, FileCode, File as FilePdf, ExternalLink, BarChart3, PlayCircle, FileIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/publish_course/Card';
 import { Badge } from '@/components/publish_course/Badge';
 import { Button } from '@/components/publish_course/Button';
 import { Select } from '@/components/publish_course/Select';
 import { Input } from '@/components/publish_course/Input';
 import { toast } from '@/components/ui/sonner';
+import Image from 'next/image';
 
 interface UploadedFile {
   id: string;
@@ -79,7 +80,7 @@ const contentTypes = [
 const fileTypeIcons = {
   video: { icon: FileVideo, color: 'text-purple-400' },
   pdf: { icon: FilePdf, color: 'text-red-400' },
-  image: { icon: Image, color: 'text-blue-400' },
+  image: { icon: ImageIcon, color: 'text-blue-400' },
   document: { icon: FileText, color: 'text-green-400' },
   code: { icon: FileCode, color: 'text-yellow-400' },
   other: { icon: File, color: 'text-gray-400' }
@@ -92,7 +93,6 @@ function isUploadedFile(file: File | UploadedFile): file is UploadedFile {
 
 export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
   formData,
-  updateFormData,
   onPublish
 }) => {
   const [publishType, setPublishType] = React.useState('now');
@@ -101,6 +101,8 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [filterType, setFilterType] = React.useState('all');
   const [publishStatus, setPublishStatus] = React.useState<'idle' | 'success' | 'error'>('idle');
+  const [uploadProgress] = React.useState<number>(0);
+  const [uploadToastId, setUploadToastId] = React.useState<string | number | null>(null);
 
   // Calculate course statistics
   const modules: Module[] = formData.modules || [];
@@ -249,6 +251,45 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
       }, 800);
     }
   }, [publishStatus]);
+
+  // --- Progress Toast Effect ---
+  React.useEffect(() => {
+    const roundedProgress = Math.round(uploadProgress);
+    if (roundedProgress > 0 && roundedProgress < 100) {
+      // Show or update the progress toast
+      if (!uploadToastId) {
+        const id = toast.loading('Uploading course files...', {
+          description: `Progress: ${roundedProgress}%`,
+          duration: Infinity,
+        });
+        setUploadToastId(id);
+      } else {
+        toast.loading('Uploading course files...', {
+          id: uploadToastId,
+          description: `Progress: ${roundedProgress}%`,
+          duration: Infinity,
+        });
+      }
+    } else if (roundedProgress >= 100 && uploadToastId) {
+      toast.success('Upload complete!', {
+        id: uploadToastId,
+        description: 'All files uploaded successfully.',
+      });
+      setUploadToastId(null);
+    }
+  }, [uploadProgress, uploadToastId]);
+
+  // --- Example: Simulate Progress (replace with real upload logic) ---
+  // You should call setUploadProgress(value) from your actual upload handler
+  // React.useEffect(() => {
+  //   let interval: any;
+  //   if (uploadProgress < 100) {
+  //     interval = setInterval(() => {
+  //       setUploadProgress((prev) => Math.min(prev + 10, 100));
+  //     }, 500);
+  //   }
+  //   return () => clearInterval(interval);
+  // }, [uploadProgress]);
 
   const handlePublish = async () => {
     console.log('PreviewPublishStep - handlePublish called');
@@ -434,9 +475,11 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
                                 variant="ghost"
                                 onClick={() => {
                                   const link = document.createElement('a');
-                                  link.href = file.url;
-                                  link.download = file.name;
-                                  link.click();
+                                  if (isUploadedFile(file)) {
+                                    link.href = file.url;
+                                    link.download = file.name;
+                                    link.click();
+                                  }
                                 }}
                               >
                                 <Download className="w-3 h-3" />
@@ -547,11 +590,12 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
             </h3>
             <Card className="overflow-hidden" hover>
               {formData.thumbnail && (
-                <div className="aspect-video bg-[#111111]">
-                  <img
-                    src={typeof formData.thumbnail === 'string' ? formData.thumbnail : formData.thumbnailPreview || undefined}
+                <div className="aspect-video bg-[#111111] relative">
+                  <Image
+                    src={typeof formData.thumbnail === 'string' ? formData.thumbnail : (formData.thumbnailPreview as string) || '/default-course-thumbnail.svg'}
                     alt={formData.title || 'Untitled Course'}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 </div>
               )}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import './ide.css'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IDEActivityBar } from '@/components/ide/ide-activity-bar'
 import { IDESidebar } from '@/components/ide/ide-sidebar'
@@ -23,7 +24,8 @@ export function IDEInterface({ course, currentLesson }: IDEInterfaceProps) {
   
   return (
     <div className="h-full flex flex-col bg-[var(--vscode-editor-background)]">
-      <div className="vscode-title-bar flex items-center px-2">
+      {/* Title Bar */}
+      <div className="h-8 bg-[var(--vscode-titleBar-activeBackground)] border-b border-[var(--vscode-titleBar-border)] flex items-center px-2">
         <div className="flex-1 flex items-center gap-2 text-xs text-[var(--vscode-titleBar-activeForeground)]">
           <span>Course Learning Interface</span>
           {course && (
@@ -41,36 +43,48 @@ export function IDEInterface({ course, currentLesson }: IDEInterfaceProps) {
         </div>
       </div>
       
+      {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
+        {/* Activity Bar */}
         <AnimatePresence>
           {!isMinimized && (
             <motion.div
               initial={{ width: 48 }}
               animate={{ width: 48 }}
               exit={{ width: 0 }}
-              className="vscode-activity-bar"
+              className="border-r border-[var(--vscode-activityBar-border)]"
             >
               <IDEActivityBar activeView={activeView} setActiveView={setActiveView} />
             </motion.div>
           )}
         </AnimatePresence>
 
+        {/* Sidebar and Editor */}
         <div className="flex-1 flex">
+          {/* Sidebar */}
           <AnimatePresence>
             {!isMinimized && (
-              <div className="w-80 vscode-sidebar">
+              <motion.div
+                initial={{ width: 320 }}
+                animate={{ width: 320 }}
+                exit={{ width: 0 }}
+                className="border-r border-[var(--vscode-sideBar-border)]"
+              >
                 <IDESidebar activeView={activeView} course={course} currentLesson={currentLesson} />
-              </div>
+              </motion.div>
             )}
           </AnimatePresence>
 
+          {/* Editor and Terminal */}
           <div className="flex-1 flex flex-col">
-            <div className="flex-1 vscode-editor">
+            {/* Editor */}
+            <div className="flex-1 border-b border-[var(--vscode-panel-border)]">
               <IDEEditor course={course} currentLesson={currentLesson} />
             </div>
 
+            {/* Terminal */}
             {showTerminal && (
-              <div className="h-48 vscode-panel">
+              <div className="h-48">
                 <IDETerminal setShowTerminal={setShowTerminal} course={course} currentLesson={currentLesson} />
               </div>
             )}
@@ -78,6 +92,7 @@ export function IDEInterface({ course, currentLesson }: IDEInterfaceProps) {
         </div>
       </div>
 
+      {/* Status Bar */}
       <IDEStatusBar 
         setShowTerminal={setShowTerminal} 
         showTerminal={showTerminal}

@@ -1,8 +1,6 @@
 "use client"
 
 import { motion } from 'framer-motion'
-import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { 
   Files, 
   Search, 
@@ -28,65 +26,47 @@ export function IDEActivityBar({ activeView, setActiveView }: IDEActivityBarProp
   ]
   
   return (
-    <div className="h-full w-12 bg-muted flex flex-col items-center py-2 border-r">
-      <TooltipProvider delayDuration={300}>
-        <div className="flex flex-col items-center gap-2">
-          {activities.map((activity) => (
-            <Tooltip key={activity.id}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-10 w-10 rounded-md ${
-                    activeView === activity.id
-                      ? 'bg-accent text-accent-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-                  }`}
-                  onClick={() => setActiveView(activity.id)}
-                >
-                  <activity.icon size={22} />
-                  {activeView === activity.id && (
-                    <motion.div
-                      className="absolute left-0 w-0.5 h-5 bg-primary rounded-full"
-                      layoutId="activity-indicator"
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">{activity.label}</TooltipContent>
-            </Tooltip>
-          ))}
-        </div>
+    <div className="h-full w-12 bg-[var(--vscode-activityBar-background)] flex flex-col items-center py-2 border-r border-[var(--vscode-activityBar-border)]">
+      <div className="flex flex-col items-center gap-2">
+        {activities.map((activity) => (
+          <div key={activity.id} className="relative">
+            <button
+              className={`h-10 w-10 rounded-md flex items-center justify-center transition-colors ${
+                activeView === activity.id
+                  ? 'bg-[var(--vscode-activityBar-activeBackground)] text-[var(--vscode-activityBar-activeForeground)]'
+                  : 'text-[var(--vscode-activityBar-inactiveForeground)] hover:text-[var(--vscode-activityBar-activeForeground)] hover:bg-[var(--vscode-activityBar-hoverBackground)]'
+              }`}
+              onClick={() => setActiveView(activity.id)}
+              title={activity.label}
+            >
+              <activity.icon size={22} />
+              {activeView === activity.id && (
+                <motion.div
+                  className="absolute left-0 w-0.5 h-5 bg-[var(--vscode-activityBar-activeBorder)] rounded-full"
+                  layoutId="activity-indicator"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+            </button>
+          </div>
+        ))}
+      </div>
+      
+      <div className="mt-auto flex flex-col items-center gap-2">
+        <button
+          className="h-10 w-10 rounded-md text-[var(--vscode-activityBar-inactiveForeground)] hover:text-[var(--vscode-activityBar-activeForeground)] hover:bg-[var(--vscode-activityBar-hoverBackground)] flex items-center justify-center"
+          title="Account"
+        >
+          <User size={22} />
+        </button>
         
-        <div className="mt-auto flex flex-col items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50"
-              >
-                <User size={22} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">Account</TooltipContent>
-          </Tooltip>
-          
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50"
-              >
-                <Settings size={22} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">Settings</TooltipContent>
-          </Tooltip>
-        </div>
-      </TooltipProvider>
+        <button
+          className="h-10 w-10 rounded-md text-[var(--vscode-activityBar-inactiveForeground)] hover:text-[var(--vscode-activityBar-activeForeground)] hover:bg-[var(--vscode-activityBar-hoverBackground)] flex items-center justify-center"
+          title="Settings"
+        >
+          <Settings size={22} />
+        </button>
+      </div>
     </div>
   )
 }

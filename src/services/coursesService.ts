@@ -86,35 +86,47 @@ class CoursesService {
 
   async getCoursesByInstructor(instructorId: string): Promise<CourseWithInstructor[]> {
     try {
+      const start = Date.now();
+      
+      // Use faster query with optimized field selection
       const { data: courses, error } = await this.supabase
         .from('courses')
         .select(`
-          *,
+          id, title, description, thumbnail_url, instructor_id, price, is_published, 
+          difficulty_level, estimated_duration, tags, created_at, updated_at, category,
           instructor:profiles!courses_instructor_id_fkey(
             full_name,
             avatar_url
           )
         `)
         .eq('instructor_id', instructorId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(10); // Limit results for faster loading
 
       if (error) {
         console.error('Error fetching instructor courses:', error);
         throw new Error('Failed to fetch instructor courses');
       }
 
-      return courses?.map(course => ({
-        ...course,
-        instructor: {
-          name: course.instructor?.full_name || 'Unknown Instructor',
-          avatar: course.instructor?.avatar_url || '/default-avatar.svg'
-        },
-        duration: course.estimated_duration ? `${course.estimated_duration}h` : 'N/A',
-        students: 0,
-        rating: 4.5,
-        lessons: 0,
-        category: course.tags?.[0] || 'General'
-      })) || [];
+      console.log('Fetched instructor courses in', Date.now() - start, 'ms');
+
+      // Process data in parallel for better performance
+      const processedCourses = await Promise.all(
+        (courses || []).map(async (course) => ({
+          ...course,
+          instructor: {
+            name: course.instructor?.full_name || 'Unknown Instructor',
+            avatar: course.instructor?.avatar_url || '/default-avatar.svg'
+          },
+          duration: course.estimated_duration ? `${course.estimated_duration}h` : 'N/A',
+          students: 0,
+          rating: 4.5,
+          lessons: 0,
+          category: course.tags?.[0] || 'General'
+        }))
+      );
+
+      return processedCourses;
     } catch (error) {
       console.error('Error in getCoursesByInstructor:', error);
       return [];

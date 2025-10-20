@@ -1,0 +1,91 @@
+/* Video Player Performance Optimizations */
+
+.video-player-container {
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: transform;
+  contain: layout style paint;
+  
+  /* Smooth rendering */
+  backface-visibility: hidden;
+  perspective: 1000px;
+  
+  /* Optimize for video */
+  image-rendering: optimizeSpeed;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: optimize-contrast;
+}
+
+.video-player-container video {
+  /* Hardware acceleration for video element */
+  transform: translateZ(0);
+  will-change: transform;
+  
+  /* Smooth video rendering */
+  backface-visibility: hidden;
+  image-rendering: optimizeSpeed;
+  
+  /* Prevent video stuttering */
+  object-fit: contain;
+  width: 100%;
+  height: 100%;
+}
+
+/* Smooth progress bar animations */
+.progress-fill {
+  transform: translateZ(0);
+  will-change: width;
+  transition: width 75ms ease-out;
+}
+
+.progress-handle {
+  transform: translateZ(0) translateY(-50%);
+  will-change: left;
+  transition: left 75ms ease-out;
+}
+
+/* Optimize controls overlay */
+.controls-overlay {
+  transform: translateZ(0);
+  will-change: opacity;
+  backface-visibility: hidden;
+}
+
+/* Smooth button interactions */
+.control-button {
+  transform: translateZ(0);
+  will-change: transform;
+  transition: transform 200ms ease-out;
+}
+
+.control-button:hover {
+  transform: translateZ(0) scale(1.05);
+}
+
+/* Optimize for mobile */
+@media (max-width: 768px) {
+  .video-player-container {
+    /* Reduce motion on mobile for better performance */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+  
+  .progress-fill {
+    transition: width 50ms ease-out;
+  }
+  
+  .progress-handle {
+    transition: left 50ms ease-out;
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill,
+  .progress-handle,
+  .control-button {
+    transition: none;
+  }
+}
+

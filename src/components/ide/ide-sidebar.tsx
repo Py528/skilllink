@@ -2,10 +2,6 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { 
   FolderOpen, 
   File, 
@@ -24,7 +20,15 @@ import {
   FileJson,
   FileText,
   BookOpen,
-  Video
+  Video,
+  FileVideo,
+  FileImage,
+  FileArchive,
+  FileAudio,
+  AlertTriangle,
+  Loader2,
+  Cloud,
+  CloudOff
 } from 'lucide-react'
 import { Course, Lesson } from '@/types/index'
 
@@ -34,43 +38,107 @@ interface IDESidebarProps {
   currentLesson?: Lesson
 }
 
-// Mock file system data - this could be enhanced to show course-specific files
-const getFileSystem = (course?: Course, currentLesson?: Lesson) => ({
-  name: course?.title || 'project',
-  type: 'folder' as const,
-  children: [
-    {
-      name: 'src',
-      type: 'folder' as const,
-      children: [
-        {
-          name: 'components',
-          type: 'folder' as const,
-          children: [
-            { name: 'Button.tsx', type: 'file' as const, icon: FileCode },
-            { name: 'Card.tsx', type: 'file' as const, icon: FileCode },
-            { name: 'Input.tsx', type: 'file' as const, icon: FileCode },
-          ],
-        },
-        { name: 'App.tsx', type: 'file' as const, icon: FileCode },
-        { name: 'index.css', type: 'file' as const, icon: FileText },
-        { name: 'main.tsx', type: 'file' as const, icon: FileCode },
-      ],
-    },
-    { name: 'package.json', type: 'file' as const, icon: FileJson },
-    { name: 'tsconfig.json', type: 'file' as const, icon: FileJson },
-    { name: 'README.md', type: 'file' as const, icon: FileText },
-    ...(currentLesson ? [{ 
-      name: `${currentLesson.title}.md`, 
-      type: 'file' as const, 
-      icon: BookOpen 
-    }] : []),
-  ],
-})
+// Generate file system based on course and lesson data
+const getFileSystem = (course?: Course, currentLesson?: Lesson) => {
+  const courseStructure = {
+    name: course?.title || 'Course',
+    type: 'folder' as const,
+    children: [
+      {
+        name: 'course-info',
+        type: 'folder' as const,
+        children: [
+          { name: 'course-overview.md', type: 'file' as const, icon: FileText },
+          { name: 'course-structure.json', type: 'file' as const, icon: FileJson },
+        ],
+      },
+      {
+        name: 'lessons',
+        type: 'folder' as const,
+        children: currentLesson ? [
+          { 
+            name: `${currentLesson.title.replace(/[^a-zA-Z0-9]/g, '_')}.md`, 
+            type: 'file' as const, 
+            icon: BookOpen 
+          }
+        ] : [],
+      },
+      {
+        name: 'resources',
+        type: 'folder' as const,
+        children: currentLesson?.resources?.map((resource, index) => {
+          const extension = resource.name.split('.').pop()?.toLowerCase();
+          let icon = File;
+          
+          switch (extension) {
+            case 'mp4':
+            case 'mov':
+            case 'avi':
+            case 'webm':
+              icon = FileVideo;
+              break;
+            case 'pdf':
+              icon = FileText;
+              break;
+            case 'jpg':
+            case 'jpeg':
+            case 'png':
+            case 'gif':
+            case 'webp':
+              icon = FileImage;
+              break;
+            case 'zip':
+            case 'rar':
+            case '7z':
+              icon = FileArchive;
+              break;
+            case 'mp3':
+            case 'wav':
+            case 'aac':
+              icon = FileAudio;
+              break;
+            case 'txt':
+            case 'md':
+              icon = FileText;
+              break;
+            case 'js':
+            case 'ts':
+            case 'tsx':
+            case 'jsx':
+            case 'py':
+            case 'html':
+            case 'css':
+              icon = FileCode;
+              break;
+            default:
+              icon = File;
+          }
+          
+          return {
+            name: resource.name,
+            type: 'file' as const,
+            icon,
+            size: resource.size,
+            url: resource.url
+          };
+        }) || [],
+      },
+    ],
+  };
+
+  return courseStructure;
+};
 
 export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProps) {
-  const [expandedFolders, setExpandedFolders] = useState<string[]>(['project', 'src', 'components'])
+  const [expandedFolders, setExpandedFolders] = useState<string[]>(['Course', 'course-info', 'lessons', 'resources'])
   const [searchText, setSearchText] = useState('')
+  const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set())
+  const [fileErrors, setFileErrors] = useState<Map<string, string>>(new Map())
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [gitConnected, setGitConnected] = useState(false)
+  const [gitBranch, setGitBranch] = useState('main')
+  const [lastCommit, setLastCommit] = useState('Latest commit')
   
   const fileSystem = getFileSystem(course, currentLesson)
   
@@ -81,45 +149,138 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
         : [...prev, path]
     )
   }
+
+  // Simulate file fetching from S3/Supabase
+  const fetchFileContent = async (filePath: string, fileUrl?: string) => {
+    setLoadingFiles(prev => new Set(prev).add(filePath))
+    setFileErrors(prev => {
+      const newMap = new Map(prev)
+      newMap.delete(filePath)
+      return newMap
+    })
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000))
+      
+      if (Math.random() < 0.3) {
+        throw new Error('Failed to fetch from S3/Supabase')
+      }
+
+      console.log(`Opening file: ${filePath}`)
+      
+    } catch (error) {
+      setFileErrors(prev => new Map(prev).set(filePath, error instanceof Error ? error.message : 'Unknown error'))
+    } finally {
+      setLoadingFiles(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(filePath)
+        return newSet
+      })
+    }
+  }
+
+  // Search functionality
+  const handleSearch = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([])
+      return
+    }
+
+    setIsSearching(true)
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const mockResults = [
+        { name: 'course-overview.md', path: 'course-info/course-overview.md', type: 'file', matches: 3 },
+        { name: 'lesson-content.md', path: 'lessons/lesson-content.md', type: 'file', matches: 1 },
+        { name: 'video-resource.mp4', path: 'resources/video-resource.mp4', type: 'file', matches: 1 }
+      ].filter(result => 
+        result.name.toLowerCase().includes(query.toLowerCase()) ||
+        result.path.toLowerCase().includes(query.toLowerCase())
+      )
+      
+      setSearchResults(mockResults)
+    } catch (error) {
+      console.error('Search failed:', error)
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }
   
   const FileSystemItem = ({ item, path = '', level = 0 }: any) => {
     const fullPath = path ? `${path}/${item.name}` : item.name
     const isExpanded = expandedFolders.includes(fullPath)
+    const isLoading = loadingFiles.has(fullPath)
+    const error = fileErrors.get(fullPath)
     
     return (
       <div>
         <motion.div 
-          className={`flex items-center h-6 text-sm rounded-sm px-2 hover:bg-accent group cursor-pointer`}
+          className={`flex items-center h-6 text-sm rounded-sm px-2 hover:bg-[var(--vscode-list-hoverBackground)] group cursor-pointer relative`}
           whileHover={{ x: 2 }}
           transition={{ duration: 0.1 }}
           style={{ paddingLeft: `${level * 16 + 4}px` }}
+          onClick={() => {
+            if (item.type === 'file') {
+              fetchFileContent(fullPath, item.url)
+            }
+          }}
         >
           {item.type === 'folder' ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-4 w-4 p-0 mr-1 rounded-sm hover:bg-accent/50"
+            <button
+              className="h-4 w-4 p-0 mr-1 rounded-sm hover:bg-[var(--vscode-list-hoverBackground)]"
               onClick={(e) => {
                 e.stopPropagation()
                 toggleFolder(fullPath)
               }}
             >
               {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            </Button>
+            </button>
           ) : (
             <span className="w-5"></span>
           )}
           
           {item.type === 'folder' ? (
-            <FolderOpen size={16} className="mr-1 text-amber-500" />
+            <FolderOpen size={16} className="mr-1 text-[var(--vscode-icon-foreground)]" />
           ) : item.icon ? (
-            <item.icon size={16} className="mr-1 text-blue-500" />
+            <item.icon size={16} className="mr-1 text-[var(--vscode-icon-foreground)]" />
           ) : (
-            <File size={16} className="mr-1 text-blue-500" />
+            <File size={16} className="mr-1 text-[var(--vscode-icon-foreground)]" />
           )}
           
-          <span className="flex-1 truncate">{item.name}</span>
+          <span className="flex-1 truncate text-[var(--vscode-foreground)]">{item.name}</span>
+          
+          <div className="flex items-center gap-1">
+            {isLoading && <Loader2 size={12} className="animate-spin text-[var(--vscode-progressBar-background)]" />}
+            {error && <AlertTriangle size={12} className="text-[var(--vscode-errorForeground)]" />}
+            {item.size && (
+              <span className="text-xs text-[var(--vscode-descriptionForeground)] ml-2">
+                {Math.floor(item.size / 1024)}KB
+              </span>
+            )}
+          </div>
         </motion.div>
+        
+        {error && (
+          <div className="absolute left-0 top-6 z-50 bg-[var(--vscode-errorBackground)] text-[var(--vscode-errorForeground)] text-xs p-2 rounded shadow-lg max-w-xs">
+            <div className="flex items-center gap-1">
+              <AlertTriangle size={12} />
+              <span>Could not load from S3/Supabase</span>
+            </div>
+            <div className="mt-1 text-xs opacity-80">{error}</div>
+            <button
+              className="mt-2 px-2 py-1 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded text-xs hover:bg-[var(--vscode-button-hoverBackground)]"
+              onClick={(e) => {
+                e.stopPropagation()
+                fetchFileContent(fullPath, item.url)
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
         
         {item.type === 'folder' && isExpanded && item.children && (
           <div>
@@ -134,235 +295,292 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
   
   const renderExplorer = () => (
     <div className="h-full flex flex-col">
-      <div className="p-2 text-sm font-medium flex items-center justify-between">
+      <div className="p-2 text-sm font-medium flex items-center justify-between text-[var(--vscode-foreground)]">
         <span>EXPLORER</span>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
+          <button className="h-6 w-6 rounded-md hover:bg-[var(--vscode-toolbar-hoverBackground)] flex items-center justify-center">
             <Plus size={14} />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
+          </button>
+          <button className="h-6 w-6 rounded-md hover:bg-[var(--vscode-toolbar-hoverBackground)] flex items-center justify-center">
             <RefreshCw size={14} />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
+          </button>
+          <button className="h-6 w-6 rounded-md hover:bg-[var(--vscode-toolbar-hoverBackground)] flex items-center justify-center">
             <ChevronDown size={14} />
-          </Button>
+          </button>
         </div>
       </div>
       
-      <Accordion type="single" collapsible defaultValue="project">
-        <AccordionItem value="project">
-          <AccordionTrigger className="w-full">
-            <div className="flex items-center justify-between p-1 px-2 hover:bg-accent rounded-sm">
-              <span className="text-xs font-medium">
-                {course ? course.title.toUpperCase() : 'PROJECT'}
-              </span>
-              <ChevronDown size={14} />
-            </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <ScrollArea className="h-[calc(100vh-160px)]">
-              <div className="p-1">
-                <FileSystemItem item={fileSystem} />
-              </div>
-            </ScrollArea>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      <div className="flex-1 overflow-auto">
+        <div className="p-1">
+          <FileSystemItem item={fileSystem} />
+        </div>
+      </div>
     </div>
   )
   
   const renderSearch = () => (
     <div className="h-full flex flex-col">
-      <div className="p-2 text-sm font-medium flex items-center justify-between">
+      <div className="p-2 text-sm font-medium flex items-center justify-between text-[var(--vscode-foreground)]">
         <span>SEARCH</span>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
+          <button 
+            className="h-6 w-6 rounded-md hover:bg-[var(--vscode-toolbar-hoverBackground)] flex items-center justify-center"
+            onClick={() => handleSearch(searchText)}
+          >
             <RefreshCw size={14} />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
+          </button>
+          <button className="h-6 w-6 rounded-md hover:bg-[var(--vscode-toolbar-hoverBackground)] flex items-center justify-center">
             <ChevronDown size={14} />
-          </Button>
+          </button>
         </div>
       </div>
       
       <div className="p-2 space-y-2">
-        <div className="flex items-center rounded-sm border bg-background">
-          <Input 
+        <div className="flex items-center rounded-sm border border-[var(--vscode-input-border)] bg-[var(--vscode-input-background)]">
+          <input 
             placeholder="Search in files"
-            className="h-7 text-xs border-0 focus-visible:ring-0 px-2"
+            className="h-7 text-xs border-0 focus:outline-none px-2 bg-transparent text-[var(--vscode-input-foreground)] placeholder-[var(--vscode-input-placeholderForeground)]"
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={(e) => {
+              setSearchText(e.target.value)
+              if (e.target.value.trim()) {
+                handleSearch(e.target.value)
+              } else {
+                setSearchResults([])
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSearch(searchText)
+              }
+            }}
           />
           {searchText && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-7 w-7 rounded-none" 
-              onClick={() => setSearchText('')}
+            <button 
+              className="h-7 w-7 rounded-none hover:bg-[var(--vscode-toolbar-hoverBackground)] flex items-center justify-center"
+              onClick={() => {
+                setSearchText('')
+                setSearchResults([])
+              }}
             >
               <X size={14} />
-            </Button>
+            </button>
           )}
         </div>
         
-        <div className="flex flex-col text-xs space-y-1">
-          <div className="flex items-center gap-1">
-            <span className="font-medium">Match Case</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="font-medium">Match Whole Word</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="font-medium">Use Regular Expression</span>
+        <div className="flex-1 overflow-auto">
+          <div className="space-y-1">
+            {isSearching ? (
+              <div className="flex items-center gap-2 text-xs text-[var(--vscode-descriptionForeground)] px-2">
+                <Loader2 size={12} className="animate-spin" />
+                <span>Searching...</span>
+              </div>
+            ) : searchResults.length > 0 ? (
+              searchResults.map((result, index) => (
+                <motion.div
+                  key={index}
+                  className="flex items-center gap-2 p-2 hover:bg-[var(--vscode-list-hoverBackground)] rounded-sm cursor-pointer"
+                  whileHover={{ x: 2 }}
+                  transition={{ duration: 0.1 }}
+                  onClick={() => fetchFileContent(result.path)}
+                >
+                  <File size={14} className="text-[var(--vscode-icon-foreground)]" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium truncate text-[var(--vscode-foreground)]">{result.name}</div>
+                    <div className="text-xs text-[var(--vscode-descriptionForeground)] truncate">{result.path}</div>
+                  </div>
+                  <div className="text-xs text-[var(--vscode-descriptionForeground)]">
+                    {result.matches} match{result.matches !== 1 ? 'es' : ''}
+                  </div>
+                </motion.div>
+              ))
+            ) : searchText ? (
+              <div className="text-xs text-[var(--vscode-descriptionForeground)] px-2">
+                No results found for "{searchText}"
+              </div>
+            ) : (
+              <div className="text-xs text-[var(--vscode-descriptionForeground)] px-2">
+                Enter a search term to find files
+              </div>
+            )}
           </div>
         </div>
-      </div>
-      
-      <div className="p-2 text-sm text-muted-foreground italic">
-        {searchText ? 'No results found' : 'Type to search'}
       </div>
     </div>
   )
   
-  const renderSourceControl = () => (
-    <div className="h-full flex flex-col">
-      <div className="p-2 text-sm font-medium flex items-center justify-between">
-        <span>SOURCE CONTROL</span>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
-            <RefreshCw size={14} />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
-            <ChevronDown size={14} />
-          </Button>
-        </div>
-      </div>
-      
-      <div className="p-4 flex flex-col items-center justify-center text-center h-40 gap-2">
-        <GitBranch size={24} className="text-muted-foreground" />
-        <div className="text-sm text-muted-foreground">No changes detected</div>
-        <div className="text-xs text-muted-foreground">Any changes to files will appear here</div>
-      </div>
-      
-      <div className="mt-auto p-2 border-t">
-        <div className="flex items-center justify-between text-xs">
+  const renderSourceControl = () => {
+    const connectGit = () => {
+      console.log('Connecting to Git repository...')
+      setGitConnected(true)
+    }
+    
+    return (
+      <div className="h-full flex flex-col">
+        <div className="p-2 text-sm font-medium flex items-center justify-between text-[var(--vscode-foreground)]">
+          <span>SOURCE CONTROL</span>
           <div className="flex items-center gap-1">
-            <GitBranch size={14} />
-            <span>main</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <GitCommit size={14} />
-            <span>0 changes</span>
+            <button 
+              className="h-6 w-6 rounded-md hover:bg-[var(--vscode-toolbar-hoverBackground)] flex items-center justify-center"
+              onClick={() => {
+                if (gitConnected) {
+                  console.log('Refreshing Git status...')
+                } else {
+                  connectGit()
+                }
+              }}
+            >
+              <RefreshCw size={14} />
+            </button>
+            <button className="h-6 w-6 rounded-md hover:bg-[var(--vscode-toolbar-hoverBackground)] flex items-center justify-center">
+              <ChevronDown size={14} />
+            </button>
           </div>
         </div>
+        
+        <div className="p-2 space-y-2">
+          {!gitConnected ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-xs text-[var(--vscode-descriptionForeground)]">
+                <CloudOff size={14} />
+                <span>Git not connected</span>
+              </div>
+              <button 
+                className="w-full h-8 text-xs bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded hover:bg-[var(--vscode-button-hoverBackground)]"
+                onClick={connectGit}
+              >
+                Connect to Git Repository
+              </button>
+              <div className="text-xs text-[var(--vscode-descriptionForeground)]">
+                Connect to GitHub, GitLab, or other Git hosting service
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-[var(--vscode-foreground)]">
+                <GitBranch size={14} />
+                <span>{gitBranch}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-[var(--vscode-descriptionForeground)]">
+                <GitCommit size={14} />
+                <span>{lastCommit}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-[var(--vscode-testing-iconPassed)]">
+                <Cloud size={14} />
+                <span>Connected</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
   
   const renderRun = () => (
     <div className="h-full flex flex-col">
-      <div className="p-2 text-sm font-medium flex items-center justify-between">
+      <div className="p-2 text-sm font-medium flex items-center justify-between text-[var(--vscode-foreground)]">
         <span>RUN AND DEBUG</span>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
+          <button className="h-6 w-6 rounded-md hover:bg-[var(--vscode-toolbar-hoverBackground)] flex items-center justify-center">
             <Play size={14} />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
-            <ChevronDown size={14} />
-          </Button>
+          </button>
+          <button className="h-6 w-6 rounded-md hover:bg-[var(--vscode-toolbar-hoverBackground)] flex items-center justify-center">
+            <Bug size={14} />
+          </button>
         </div>
       </div>
       
-      <div className="p-4 flex flex-col items-center justify-center text-center h-40 gap-2">
-        <Bug size={24} className="text-muted-foreground" />
-        <div className="text-sm text-muted-foreground">No debug configurations</div>
-        <Button variant="outline" className="text-xs h-7 mt-2">Create a launch.json file</Button>
+      <div className="p-2 space-y-2">
+        <div className="text-xs text-[var(--vscode-descriptionForeground)]">
+          No launch configuration
+        </div>
       </div>
     </div>
   )
   
   const renderExtensions = () => (
     <div className="h-full flex flex-col">
-      <div className="p-2 text-sm font-medium flex items-center justify-between">
+      <div className="p-2 text-sm font-medium flex items-center justify-between text-[var(--vscode-foreground)]">
         <span>EXTENSIONS</span>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
-            <RefreshCw size={14} />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md">
+          <button className="h-6 w-6 rounded-md hover:bg-[var(--vscode-toolbar-hoverBackground)] flex items-center justify-center">
+            <PackageOpen size={14} />
+          </button>
+          <button className="h-6 w-6 rounded-md hover:bg-[var(--vscode-toolbar-hoverBackground)] flex items-center justify-center">
             <ChevronDown size={14} />
-          </Button>
+          </button>
         </div>
       </div>
       
-      <div className="p-2">
-        <Input 
-          placeholder="Search Extensions"
-          className="h-7 text-xs"
-        />
-      </div>
-      
-      <div className="p-2 space-y-4">
-        <div>
-          <h4 className="text-xs font-medium mb-2">INSTALLED</h4>
-          <div className="space-y-2">
-            <div className="flex items-start gap-2 p-1 hover:bg-accent rounded-sm">
-              <div className="w-8 h-8 bg-primary/20 rounded flex items-center justify-center">
-                <FileCode size={16} />
-              </div>
-              <div>
-                <div className="text-xs font-medium">TypeScript</div>
-                <div className="text-xs text-muted-foreground">v2.0.1</div>
-              </div>
-            </div>
-            <div className="flex items-start gap-2 p-1 hover:bg-accent rounded-sm">
-              <div className="w-8 h-8 bg-primary/20 rounded flex items-center justify-center">
-                <PackageOpen size={16} />
-              </div>
-              <div>
-                <div className="text-xs font-medium">ES7+ React Snippets</div>
-                <div className="text-xs text-muted-foreground">v1.2.3</div>
-              </div>
-            </div>
-          </div>
+      <div className="p-2 space-y-2">
+        <div className="text-xs text-[var(--vscode-descriptionForeground)] mb-4">
+          No extensions installed
         </div>
         
-        <div>
-          <h4 className="text-xs font-medium mb-2">RECOMMENDED</h4>
-          <div className="space-y-2">
-            <div className="flex items-start gap-2 p-1 hover:bg-accent rounded-sm">
-              <div className="w-8 h-8 bg-primary/20 rounded flex items-center justify-center">
-                <FileCode size={16} />
-              </div>
-              <div>
-                <div className="text-xs font-medium">ESLint</div>
-                <div className="text-xs text-muted-foreground">JavaScript linting</div>
-              </div>
-            </div>
+        <button 
+          className="w-full h-8 text-xs bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded hover:bg-[var(--vscode-button-hoverBackground)]"
+          onClick={() => {
+            console.log('Opening extension marketplace')
+          }}
+        >
+          Browse Extensions
+        </button>
+        
+        <div className="mt-4 space-y-2">
+          <div className="text-xs font-medium text-[var(--vscode-descriptionForeground)]">Recommended</div>
+          <div className="space-y-1">
+            {[
+              { name: 'TypeScript', description: 'TypeScript language support', installed: false },
+              { name: 'Prettier', description: 'Code formatter', installed: false },
+              { name: 'ESLint', description: 'JavaScript linter', installed: false },
+            ].map((ext, index) => (
+              <motion.div
+                key={index}
+                className="flex items-center justify-between p-2 hover:bg-[var(--vscode-list-hoverBackground)] rounded-sm cursor-pointer"
+                whileHover={{ x: 2 }}
+                transition={{ duration: 0.1 }}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium truncate text-[var(--vscode-foreground)]">{ext.name}</div>
+                  <div className="text-xs text-[var(--vscode-descriptionForeground)] truncate">{ext.description}</div>
+                </div>
+                <button
+                  className="h-6 text-xs bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] rounded px-2 hover:bg-[var(--vscode-button-secondaryHoverBackground)]"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    console.log(`Installing ${ext.name}`)
+                  }}
+                >
+                  Install
+                </button>
+              </motion.div>
+            ))}
           </div>
         </div>
       </div>
     </div>
   )
   
+  const renderView = () => {
+    switch (activeView) {
+      case 'explorer':
+        return renderExplorer()
+      case 'search':
+        return renderSearch()
+      case 'source-control':
+        return renderSourceControl()
+      case 'run':
+        return renderRun()
+      case 'extensions':
+        return renderExtensions()
+      default:
+        return renderExplorer()
+    }
+  }
+  
   return (
-    <div className="h-full bg-background border-r">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeView}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 10 }}
-          transition={{ duration: 0.2 }}
-          className="h-full"
-        >
-          {activeView === 'explorer' && renderExplorer()}
-          {activeView === 'search' && renderSearch()}
-          {activeView === 'source-control' && renderSourceControl()}
-          {activeView === 'run' && renderRun()}
-          {activeView === 'extensions' && renderExtensions()}
-        </motion.div>
-      </AnimatePresence>
+    <div className="h-full bg-[var(--vscode-sideBar-background)] text-[var(--vscode-sideBar-foreground)]">
+      {renderView()}
     </div>
   )
 }

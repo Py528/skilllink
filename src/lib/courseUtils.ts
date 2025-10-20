@@ -1,3 +1,5 @@
+import { logger } from './logger';
+
 // Types for course resources
 export interface CourseResource {
   key: string;
@@ -135,8 +137,11 @@ export function canPreviewResource(resource: CourseResource): boolean {
   return category === 'image' || category === 'pdf' || category === 'video';
 }
 
-// S3 public bucket base URL
+// S3 public bucket base URL (for public assets)
 export const S3_BASE_URL = 'https://courses-skilllearn.s3.us-east-1.amazonaws.com/';
+
+// Cache for signed URLs to avoid repeated API calls
+const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
 
 // Helper to construct a full S3 URL from a key or relative path
 export function getS3Url(pathOrUrl?: string): string | undefined {
@@ -145,4 +150,103 @@ export function getS3Url(pathOrUrl?: string): string | undefined {
   if (/^https?:\/\//.test(pathOrUrl)) return pathOrUrl;
   // Otherwise, treat as S3 key or relative path
   return S3_BASE_URL + pathOrUrl.replace(/^\/+/, '');
+}
+
+// Function to get signed URL for private S3 files
+export async function getSignedS3Url(key: string, expiresIn: number = 3600): Promise<string | null> {
+  try {
+    // Check cache first
+    const cached = signedUrlCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.url;
+    }
+
+    // Generate new signed URL
+    const response = await fetch('/api/s3-presign-download', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ key, expiresIn }),
+    });
+
+    if (!response.ok) {
+      logger.error('Failed to get signed URL', { key, status: response.status }, 'S3');
+      return null;
+    }
+
+    const data = await response.json();
+    
+    // Cache the signed URL
+    signedUrlCache.set(key, {
+      url: data.url,
+      expiresAt: Date.now() + (expiresIn * 1000) - 60000, // Expire 1 minute early
+    });
+
+    return data.url;
+  } catch (error) {
+    logger.error('Error getting signed URL', { key, error: error instanceof Error ? error.message : error }, 'S3');
+    return null;
+  }
+}
+
+// Function to get signed URL for video files
+export async function getSignedVideoUrl(videoPath: string): Promise<string | null> {
+  if (!videoPath) return null;
+  
+  // If it's already a full URL, return as is
+  if (/^https?:\/\//.test(videoPath)) {
+    return videoPath;
+  }
+  
+  // Extract the key from the path
+  let key = videoPath;
+  if (videoPath.startsWith('https://courses-skilllearn.s3.us-east-1.amazonaws.com/')) {
+    key = videoPath.replace('https://courses-skilllearn.s3.us-east-1.amazonaws.com/', '');
+  } else if (videoPath.startsWith('videos/') || videoPath.startsWith('course_')) {
+    key = videoPath;
+  } else {
+    key = `videos/${videoPath}`;
+  }
+  
+  logger.debug('Getting signed URL for video', { key }, 'VIDEO');
+  
+  // Try to get signed URL, but don't fail if S3 access is not available
+  try {
+    const url = await getSignedS3Url(key, 7200); // 2 hours for videos
+    if (url) {
+      logger.info('Successfully generated signed URL', { key }, 'VIDEO');
+      return url;
+    }
+  } catch (error) {
+    logger.warn('Failed to generate signed URL', { key, error: error instanceof Error ? error.message : error }, 'VIDEO');
+  }
+  
+  // Fallback: return the original URL if signed URL generation fails
+  logger.debug('Using fallback URL', { videoPath }, 'VIDEO');
+  return videoPath;
+}
+
+// Function to get signed URL for resource files
+export async function getSignedResourceUrl(resourcePath: string): Promise<string | null> {
+  if (!resourcePath) return null;
+  
+  // If it's already a full URL, return as is
+  if (/^https?:\/\//.test(resourcePath)) {
+    return resourcePath;
+  }
+  
+  // Extract the key from the path
+  let key = resourcePath;
+  if (resourcePath.startsWith('https://courses-skilllearn.s3.us-east-1.amazonaws.com/')) {
+    key = resourcePath.replace('https://courses-skilllearn.s3.us-east-1.amazonaws.com/', '');
+  } else if (resourcePath.startsWith('documents/') || resourcePath.startsWith('transcripts/') || 
+             resourcePath.startsWith('subtitles/') || resourcePath.startsWith('instructions/') ||
+             resourcePath.startsWith('course_')) {
+    key = resourcePath;
+  } else {
+    key = `documents/${resourcePath}`;
+  }
+  
+  return await getSignedS3Url(key, 3600); // 1 hour for resources
 } 

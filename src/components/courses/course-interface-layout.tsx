@@ -8,6 +8,8 @@ import { useTheme } from 'next-themes'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { toast } from 'sonner'
 import { Course, Lesson } from '@/types/index'
+import { Button } from '@/components/ui/button'
+import { Keyboard, HelpCircle } from 'lucide-react'
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -26,9 +28,11 @@ interface CourseInterfaceLayoutProps {
   currentLesson?: Lesson
   lessons?: Lesson[]
   progress?: number
+  onLessonChange?: (lessonId: string) => void
+  isSwitchingLesson?: boolean
 }
 
-export function CourseInterfaceLayout({ course, currentLesson, lessons = [], progress = 0 }: CourseInterfaceLayoutProps) {
+export function CourseInterfaceLayout({ course, currentLesson, lessons = [], progress = 0, onLessonChange, isSwitchingLesson = false }: CourseInterfaceLayoutProps) {
   const [isMounted, setIsMounted] = useState(false)
   const { theme } = useTheme()
   
@@ -38,8 +42,17 @@ export function CourseInterfaceLayout({ course, currentLesson, lessons = [], pro
     // Show welcome toast with animation
     setTimeout(() => {
       toast("Welcome to the course learning interface", {
-        description: "Explore the VS Code-like environment to enhance your learning experience",
+        description: "Explore the VS Code-like environment to enhance your learning experience. Click lessons in the navigation to switch between them!",
         duration: 5000,
+        action: {
+          label: "View Shortcuts",
+          onClick: () => {
+            toast.info("Keyboard Shortcuts", {
+              description: "Space: Play/Pause, Arrow Keys: Skip/Volume, M: Mute, F: Fullscreen, Click lessons to switch",
+              duration: 4000,
+            });
+          },
+        },
       })
     }, 800)
   }, [])
@@ -55,11 +68,24 @@ export function CourseInterfaceLayout({ course, currentLesson, lessons = [], pro
       transition={{ duration: 0.5 }}
     >
       <motion.div 
-        className="absolute top-4 right-4 z-50"
+        className="absolute top-4 right-4 z-50 flex items-center gap-2"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, duration: 0.3 }}
       >
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            toast.info("Course Interface Help", {
+              description: "• Use keyboard shortcuts for video control\n• Click lessons in the navigation to switch\n• Explore resources and transcripts\n• Use the IDE for hands-on practice",
+              duration: 6000,
+            });
+          }}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <HelpCircle className="w-4 h-4" />
+        </Button>
         <ThemeToggle />
       </motion.div>
       
@@ -70,13 +96,15 @@ export function CourseInterfaceLayout({ course, currentLesson, lessons = [], pro
           animate="animate"
           exit="exit"
           transition={{ duration: 0.3, delay: 0.2 }}
-          className="w-1/2 transition-all duration-200 ease-in-out"
+          className={`w-1/2 transition-all duration-200 ease-in-out ${isSwitchingLesson ? 'opacity-75' : 'opacity-100'}`}
         >
           <CourseContent 
             course={course} 
             currentLesson={currentLesson} 
             lessons={lessons} 
-            progress={progress} 
+            progress={progress}
+            onLessonChange={onLessonChange}
+            isSwitchingLesson={isSwitchingLesson}
           />
         </motion.div>
         
@@ -88,7 +116,7 @@ export function CourseInterfaceLayout({ course, currentLesson, lessons = [], pro
           animate="animate"
           exit="exit"
           transition={{ duration: 0.3, delay: 0.4 }}
-          className="w-1/2"
+          className={`w-1/2 transition-opacity duration-200 ${isSwitchingLesson ? 'opacity-50' : 'opacity-100'}`}
         >
           <IDEInterface course={course} currentLesson={currentLesson} />
         </motion.div>

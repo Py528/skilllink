@@ -5,6 +5,7 @@ ADD COLUMN IF NOT EXISTS instructor_avatar text,
 ADD COLUMN IF NOT EXISTS student_count integer DEFAULT 0,
 ADD COLUMN IF NOT EXISTS rating numeric DEFAULT 0,
 ADD COLUMN IF NOT EXISTS thumbnail_s3_key text,
+ADD COLUMN IF NOT EXISTS content_folder_id text,
 ADD COLUMN IF NOT EXISTS visibility text DEFAULT 'public' CHECK (visibility IN ('public', 'private', 'draft')),
 ADD COLUMN IF NOT EXISTS enrollment_type text DEFAULT 'open' CHECK (enrollment_type IN ('open', 'approval', 'invite')),
 ADD COLUMN IF NOT EXISTS certificate_enabled boolean DEFAULT false,
@@ -31,4 +32,5 @@ AND courses.instructor_name IS NULL;
 -- Create index for better performance
 CREATE INDEX IF NOT EXISTS idx_courses_instructor_name ON public.courses(instructor_name);
 CREATE INDEX IF NOT EXISTS idx_courses_visibility ON public.courses(visibility);
-CREATE INDEX IF NOT EXISTS idx_lessons_type ON public.lessons(type); 
+CREATE INDEX IF NOT EXISTS idx_lessons_type ON public.lessons(type);
+CREATE INDEX IF NOT EXISTS idx_courses_content_folder_id ON public.courses(content_folder_id); 

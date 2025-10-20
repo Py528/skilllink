@@ -14,6 +14,7 @@ export interface Course {
   category?: string
   thumbnail_url?: string
   thumbnail_s3_key?: string
+  content_folder_id?: string
   price?: number
   rating?: number
   average_rating?: number

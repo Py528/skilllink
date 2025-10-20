@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Users, BookOpen, DollarSign, Award, Eye, 
@@ -15,6 +15,20 @@ import { Sidebar } from "../layout/Sidebar";
 import { useRouter } from "next/navigation";
 import { useUser } from "../../context/UserContext";
 import { coursesService, CourseWithInstructor } from "../../services/coursesService";
+
+// Optimized data fetching with caching
+const courseCache = new Map<string, { data: CourseWithInstructor[], timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Preload critical data
+const preloadData = () => {
+  // Preload user data
+  if (typeof window !== 'undefined') {
+    // Preload course images
+    const imagePreload = new Image();
+    imagePreload.src = '/api/courses/preload-images';
+  }
+};
 
 interface Todo {
   task: string;
@@ -40,7 +54,7 @@ const itemVariants = {
     opacity: 1,
     y: 0,
     transition: {
-      type: "spring",
+      type: "spring" as const,
       stiffness: 100,
       damping: 15
     }
@@ -51,23 +65,221 @@ const cardHoverVariants = {
   hover: {
     y: -5,
     transition: {
-      type: "spring",
+      type: "spring" as const,
       stiffness: 400,
       damping: 10
     }
   }
 };
 
+// Skeleton animation variants
+const skeletonVariants = {
+  animate: {
+    opacity: [0.5, 1, 0.5],
+    transition: {
+      duration: 1.5,
+      repeat: Infinity,
+      ease: "easeInOut" as const
+    }
+  }
+};
+
+// Skeleton base component
+const Skeleton: React.FC<{ className?: string }> = ({ className = "" }) => (
+  <motion.div
+    variants={skeletonVariants}
+    animate="animate"
+    className={`bg-gray-200 dark:bg-secondary-700 rounded ${className}`}
+  />
+);
+
+// Course card skeleton
+const CourseCardSkeleton: React.FC = () => (
+  <div className="bg-white dark:bg-secondary-800 rounded-xl border border-secondary-200 dark:border-secondary-700 overflow-hidden">
+    <div className="aspect-video bg-gray-200 dark:bg-secondary-700 relative">
+      <Skeleton className="absolute inset-0" />
+    </div>
+    <div className="p-4 space-y-3">
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-3 w-full" />
+      <Skeleton className="h-3 w-2/3" />
+      <div className="flex items-center justify-between pt-2">
+        <Skeleton className="h-6 w-16" />
+        <Skeleton className="h-6 w-20" />
+      </div>
+    </div>
+  </div>
+);
+
+// Todo item skeleton
+const TodoItemSkeleton: React.FC = () => (
+  <div className="flex items-center justify-between p-3 rounded-lg">
+    <div className="flex items-center space-x-3">
+      <Skeleton className="w-5 h-5 rounded" />
+      <Skeleton className="h-4 w-32" />
+    </div>
+    <Skeleton className="h-5 w-12" />
+  </div>
+);
+
+// Activity feed item skeleton
+const ActivityItemSkeleton: React.FC = () => (
+  <div className="p-4 border-b border-secondary-200 dark:border-secondary-700 last:border-b-0">
+    <div className="flex items-start space-x-3">
+      <Skeleton className="w-8 h-8 rounded-lg" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-3/4" />
+        <div className="flex items-center space-x-2">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-4 w-12" />
+        </div>
+      </div>
+      <Skeleton className="w-4 h-4" />
+    </div>
+  </div>
+);
+
+// Header skeleton
+const HeaderSkeleton: React.FC = () => (
+  <div className="relative overflow-hidden rounded-2xl bg-secondary-900/40 backdrop-blur-xl dark:bg-secondary-900 p-8">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center space-x-4">
+        <Skeleton className="w-12 h-12 rounded-full" />
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+      </div>
+      <div className="hidden md:flex items-center space-x-4">
+        <Skeleton className="h-8 w-32 rounded-lg" />
+        <Skeleton className="h-8 w-24 rounded-lg" />
+      </div>
+    </div>
+  </div>
+);
+
+// Course management section skeleton
+const CourseManagementSkeleton: React.FC = () => (
+  <div className="bg-white dark:bg-secondary-800 rounded-xl border border-secondary-200 dark:border-secondary-700 overflow-hidden">
+    <div className="border-b border-secondary-200 dark:border-secondary-700 p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Skeleton className="w-9 h-9 rounded-lg" />
+          <div>
+            <Skeleton className="h-5 w-32 mb-1" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-8 w-28" />
+        </div>
+      </div>
+    </div>
+    <div className="p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {[...Array(4)].map((_, idx) => (
+          <CourseCardSkeleton key={idx} />
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+// Quick tasks skeleton
+const QuickTasksSkeleton: React.FC = () => (
+  <div className="bg-white dark:bg-secondary-800 rounded-xl border border-secondary-200 dark:border-secondary-700">
+    <div className="border-b border-secondary-200 dark:border-secondary-700 p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Skeleton className="w-9 h-9 rounded-lg" />
+          <Skeleton className="h-5 w-24" />
+        </div>
+        <Skeleton className="w-8 h-8 rounded" />
+      </div>
+    </div>
+    <div className="p-4 space-y-3">
+      {[...Array(4)].map((_, idx) => (
+        <TodoItemSkeleton key={idx} />
+      ))}
+    </div>
+  </div>
+);
+
+// Activity feed skeleton
+const ActivityFeedSkeleton: React.FC = () => (
+  <div className="bg-white dark:bg-secondary-800 rounded-xl border border-secondary-200 dark:border-secondary-700 overflow-hidden">
+    <div className="border-b border-secondary-200 dark:border-secondary-700 p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Skeleton className="w-9 h-9 rounded-lg" />
+          <Skeleton className="h-5 w-24" />
+        </div>
+        <Skeleton className="h-5 w-12" />
+      </div>
+    </div>
+    <div className="divide-y divide-secondary-200 dark:divide-secondary-700">
+      {[...Array(4)].map((_, idx) => (
+        <ActivityItemSkeleton key={idx} />
+      ))}
+    </div>
+  </div>
+);
+
+// Quick stats skeleton
+const QuickStatsSkeleton: React.FC = () => (
+  <div className="bg-white dark:bg-secondary-800 rounded-xl border border-secondary-200 dark:border-secondary-700">
+    <div className="border-b border-secondary-200 dark:border-secondary-700 p-4">
+      <div className="flex items-center space-x-2">
+        <Skeleton className="w-9 h-9 rounded-lg" />
+        <Skeleton className="h-5 w-24" />
+      </div>
+    </div>
+    <div className="p-4 space-y-4">
+      {[...Array(4)].map((_, idx) => (
+        <div key={idx} className="flex items-center justify-between py-2">
+          <div className="flex items-center space-x-2">
+            <Skeleton className="w-4 h-4" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Skeleton className="h-4 w-12" />
+            <Skeleton className="h-5 w-8" />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Dashboard skeleton wrapper
+const DashboardSkeleton: React.FC = () => (
+  <div className="space-y-8">
+    <HeaderSkeleton />
+    <div className="grid lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2">
+        <CourseManagementSkeleton />
+      </div>
+      <div className="space-y-6">
+        <QuickTasksSkeleton />
+        <ActivityFeedSkeleton />
+        <QuickStatsSkeleton />
+      </div>
+    </div>
+  </div>
+);
+
 export const InstructorDashboard: React.FC = () => {
   const { user } = useUser();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeNavItem, setActiveNavItem] = useState("home");
-  const [notifications] = useState([
+  // Memoized static data to prevent unnecessary re-renders
+  const notifications = useMemo(() => [
     { id: 1, type: "review", message: "New review on React Course", time: "2h ago", rating: 5 },
     { id: 2, type: "enrollment", message: "15 new enrollments", time: "5h ago", count: 15 },
     { id: 3, type: "comment", message: "New question in Module 3", time: "1d ago" },
     { id: 4, type: "revenue", message: "Monthly revenue goal reached!", time: "1d ago", amount: 5000 }
-  ]);
+  ], []);
 
   const [todos, setTodos] = useState<Todo[]>(
     mockInstructorStats.todos.map(todo => ({
@@ -85,40 +297,85 @@ export const InstructorDashboard: React.FC = () => {
 
   const router = useRouter();
 
-  // Fetch instructor's courses
-  React.useEffect(() => {
-    const fetchCourses = async () => {
-      if (!user || user.role !== 'instructor') return;
-      setIsLoadingCourses(true);
-      setCoursesError(null);
-      try {
-        const courses = await coursesService.getCoursesByInstructor(user.id);
+  // Optimized course fetching with caching, faster routes, and lazy loading
+  const fetchCoursesOptimized = useCallback(async () => {
+    if (!user || user.role !== 'instructor') return;
+    
+    // Check cache first
+    const cacheKey = `courses_${user.id}`;
+    const cached = courseCache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      setRealInstructorCourses(cached.data);
+      setIsLoadingCourses(false);
+      return;
+    }
+    
+    setIsLoadingCourses(true);
+    setCoursesError(null);
+    
+    try {
+      // Use faster timeout and parallel loading
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 5000) // Reduced timeout
+      );
+      
+      // Parallel data fetching with faster routes
+      const [coursesPromise] = await Promise.allSettled([
+        Promise.race([
+          coursesService.getCoursesByInstructor(user.id),
+          timeoutPromise
+        ])
+      ]);
+      
+      if (coursesPromise.status === 'fulfilled') {
+        const courses = coursesPromise.value as CourseWithInstructor[];
+        
+        // Cache the results
+        courseCache.set(cacheKey, {
+          data: courses,
+          timestamp: Date.now()
+        });
+        
         setRealInstructorCourses(courses);
-      } catch (error) {
-        setCoursesError('Failed to load your courses');
-      } finally {
-        setIsLoadingCourses(false);
+      } else {
+        throw new Error('Failed to fetch courses');
       }
-    };
-    fetchCourses();
+    } catch (error) {
+      console.error('Failed to fetch courses:', error);
+      setCoursesError('Failed to load your courses');
+    } finally {
+      setIsLoadingCourses(false);
+    }
   }, [user]);
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+  // Preload data on mount
+  React.useEffect(() => {
+    preloadData();
+  }, []);
 
-  const handleNavItemClick = (item: string) => {
+  // Fetch courses with optimized loading
+  React.useEffect(() => {
+    fetchCoursesOptimized();
+  }, [fetchCoursesOptimized]);
+
+  // Memoized handlers to prevent unnecessary re-renders
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarOpen(!isSidebarOpen);
+  }, [isSidebarOpen]);
+
+  const handleNavItemClick = useCallback((item: string) => {
     if (item === "toggle-menu") {
       toggleSidebar();
     } else {
       setActiveNavItem(item);
     }
-  };
+  }, [toggleSidebar]);
 
-  const addTodo = () => {
+  const addTodo = useCallback(() => {
     if (newTodo.trim()) {
-      setTodos([
-        ...todos,
+      setTodos(prev => [
+        ...prev,
         {
           task: newTodo,
           dueDate: "Today",
@@ -129,13 +386,53 @@ export const InstructorDashboard: React.FC = () => {
       setNewTodo("");
       setShowAddTodo(false);
     }
-  };
+  }, [newTodo]);
 
-  const toggleTodo = (index: number) => {
-    const newTodos = [...todos];
-    newTodos[index].completed = !newTodos[index].completed;
-    setTodos(newTodos);
-  };
+  const toggleTodo = useCallback((index: number) => {
+    setTodos(prev => {
+      const newTodos = [...prev];
+      newTodos[index].completed = !newTodos[index].completed;
+      return newTodos;
+    });
+  }, []);
+
+  // Memoize course data to prevent unnecessary re-renders
+  const displayCourses = useMemo(() => {
+    if (realInstructorCourses.length > 0) {
+      return realInstructorCourses.slice(0, 4);
+    }
+    return mockInstructorCourses.slice(0, 4).map(course => ({
+      ...course,
+      duration: course.duration.toString(),
+      difficulty_level: course.level as "beginner" | "intermediate" | "advanced",
+      is_published: course.status === "published"
+    }));
+  }, [realInstructorCourses]);
+
+  // Show skeleton loading while data is being fetched
+  if (isLoadingCourses && realInstructorCourses.length === 0) {
+    return (
+      <motion.div 
+        className="min-h-screen bg-white dark:bg-secondary-900"
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+      >
+        <Navbar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
+        <Sidebar 
+          isOpen={isSidebarOpen}
+          onNavItemClick={handleNavItemClick}
+          activeNavItem={activeNavItem}
+        />
+        
+        <main className={`pt-16 transition-all duration-300 ${isSidebarOpen ? 'lg:pl-64' : ''}`}>
+          <div className="p-8">
+            <DashboardSkeleton />
+          </div>
+        </main>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div 
@@ -308,60 +605,28 @@ export const InstructorDashboard: React.FC = () => {
                       className="grid grid-cols-1 md:grid-cols-2 gap-4"
                       variants={containerVariants}
                     >
-                      {isLoadingCourses ? (
-                        [...Array(4)].map((_, idx) => (
-                          <motion.div key={idx} className="bg-gray-200 dark:bg-secondary-800 rounded-lg min-h-[180px] animate-pulse" />
-                        ))
-                      ) : coursesError ? (
+                      {coursesError ? (
                         <div className="col-span-2 text-center text-red-500 dark:text-red-400 py-8">{coursesError}</div>
-                      ) : (realInstructorCourses.length > 0 ?
-                        realInstructorCourses.slice(0, 4).map((course) => (
-                          <motion.div
-                            key={course.id}
-                            variants={itemVariants}
-                            whileHover="hover"
-                            custom={cardHoverVariants}
-                            className="relative group"
+                      ) : displayCourses.map((course) => (
+                        <motion.div
+                          key={course.id}
+                          variants={itemVariants}
+                          whileHover="hover"
+                          custom={cardHoverVariants}
+                          className="relative group"
+                        >
+                          <div onClick={() => router.push(`/courses/${course.id}/edit`)} style={{ cursor: 'pointer' }}>
+                            <CourseCard course={course} />
+                          </div>
+                          <button
+                            className="absolute top-2 right-2 z-10 px-3 py-1 bg-primary-600 text-white text-xs rounded shadow hover:bg-primary-700 transition-opacity opacity-0 group-hover:opacity-100"
+                            onClick={e => { e.stopPropagation(); router.push(`/courses/${course.id}/edit`); }}
+                            title="Edit Course"
                           >
-                            <div onClick={() => router.push(`/courses/${course.id}/edit`)} style={{ cursor: 'pointer' }}>
-                              <CourseCard course={course} />
-                            </div>
-                            <button
-                              className="absolute top-2 right-2 z-10 px-3 py-1 bg-primary-600 text-white text-xs rounded shadow hover:bg-primary-700 transition-opacity opacity-0 group-hover:opacity-100"
-                              onClick={e => { e.stopPropagation(); router.push(`/courses/${course.id}/edit`); }}
-                              title="Edit Course"
-                            >
-                              Edit
-                            </button>
-                          </motion.div>
-                        )) :
-                        mockInstructorCourses.slice(0, 4).map((course) => (
-                          <motion.div
-                            key={course.id}
-                            variants={itemVariants}
-                            whileHover="hover"
-                            custom={cardHoverVariants}
-                            className="relative group"
-                          >
-                            <div onClick={() => router.push(`/courses/${course.id}/edit`)} style={{ cursor: 'pointer' }}>
-                              <CourseCard 
-                                course={{
-                                  ...course,
-                                  level: course.level as "beginner" | "intermediate" | "advanced",
-                                  status: course.status as "published" | "draft" | "archived"
-                                }} 
-                              />
-                            </div>
-                            <button
-                              className="absolute top-2 right-2 z-10 px-3 py-1 bg-primary-600 text-white text-xs rounded shadow hover:bg-primary-700 transition-opacity opacity-0 group-hover:opacity-100"
-                              onClick={e => { e.stopPropagation(); router.push(`/courses/${course.id}/edit`); }}
-                              title="Edit Course"
-                            >
-                              Edit
-                            </button>
-                          </motion.div>
-                        ))
-                      )}
+                            Edit
+                          </button>
+                        </motion.div>
+                      ))}
                     </motion.div>
                   </CardContent>
                 </Card>

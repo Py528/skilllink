@@ -1,0 +1,339 @@
+/* IDE Styling for VS Code-like appearance using CSS custom properties */
+
+/* Import VS Code theme variables */
+:root {
+  /* Activity Bar */
+  --vscode-activityBar-background: #333333;
+  --vscode-activityBar-foreground: #cccccc;
+  --vscode-activityBar-inactiveForeground: #666666;
+  --vscode-activityBar-activeBackground: #37373d;
+  --vscode-activityBar-activeForeground: #ffffff;
+  --vscode-activityBar-hoverBackground: #2a2d2e;
+  --vscode-activityBar-border: #454545;
+  --vscode-activityBar-activeBorder: #007acc;
+
+  /* Sidebar */
+  --vscode-sideBar-background: #252526;
+  --vscode-sideBar-foreground: #cccccc;
+  --vscode-sideBar-border: #454545;
+
+  /* Editor */
+  --vscode-editor-background: #1e1e1e;
+  --vscode-editor-foreground: #d4d4d4;
+  --vscode-editor-border: #454545;
+
+  /* Panel */
+  --vscode-panel-background: #1e1e1e;
+  --vscode-panel-foreground: #cccccc;
+  --vscode-panel-border: #454545;
+  --vscode-panelTitle-background: #2d2d30;
+  --vscode-panelTitle-foreground: #cccccc;
+
+  /* Tabs */
+  --vscode-tab-activeBackground: #1e1e1e;
+  --vscode-tab-activeForeground: #ffffff;
+  --vscode-tab-inactiveBackground: #2d2d30;
+  --vscode-tab-inactiveForeground: #969696;
+  --vscode-tab-hoverBackground: #2a2d2e;
+  --vscode-tab-border: #454545;
+
+  /* Status Bar */
+  --vscode-statusBar-background: #007acc;
+  --vscode-statusBar-foreground: #ffffff;
+  --vscode-statusBar-hoverForeground: #ffffff;
+  --vscode-statusBar-border: #454545;
+
+  /* Title Bar */
+  --vscode-titleBar-activeBackground: #3c3c3c;
+  --vscode-titleBar-activeForeground: #cccccc;
+  --vscode-titleBar-border: #454545;
+
+  /* Lists */
+  --vscode-list-hoverBackground: #2a2d2e;
+  --vscode-list-activeSelectionBackground: #094771;
+  --vscode-list-activeSelectionForeground: #ffffff;
+
+  /* Input */
+  --vscode-input-background: #3c3c3c;
+  --vscode-input-foreground: #cccccc;
+  --vscode-input-border: #454545;
+  --vscode-input-placeholderForeground: #969696;
+
+  /* Buttons */
+  --vscode-button-background: #0e639c;
+  --vscode-button-foreground: #ffffff;
+  --vscode-button-hoverBackground: #1177bb;
+  --vscode-button-secondaryBackground: #3c3c3c;
+  --vscode-button-secondaryForeground: #cccccc;
+  --vscode-button-secondaryHoverBackground: #4a4a4a;
+
+  /* Toolbar */
+  --vscode-toolbar-hoverBackground: #2a2d2e;
+
+  /* Icons */
+  --vscode-icon-foreground: #cccccc;
+
+  /* Descriptions */
+  --vscode-descriptionForeground: #969696;
+
+  /* Terminal */
+  --vscode-terminal-background: #1e1e1e;
+  --vscode-terminal-foreground: #cccccc;
+
+  /* Testing */
+  --vscode-testing-iconPassed: #4ec9b0;
+  --vscode-testing-iconFailed: #f14c4c;
+  --vscode-testing-iconQueued: #ffcc02;
+
+  /* Error */
+  --vscode-errorBackground: #5a1d1d;
+  --vscode-errorForeground: #f48771;
+
+  /* Progress Bar */
+  --vscode-progressBar-background: #0e639c;
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] {
+  --vscode-activityBar-background: #333333;
+  --vscode-sideBar-background: #252526;
+  --vscode-editor-background: #1e1e1e;
+  --vscode-panel-background: #1e1e1e;
+  --vscode-statusBar-background: #007acc;
+  --vscode-titleBar-activeBackground: #3c3c3c;
+}
+
+/* Light theme overrides */
+[data-theme="light"] {
+  --vscode-activityBar-background: #f3f3f3;
+  --vscode-activityBar-foreground: #333333;
+  --vscode-activityBar-inactiveForeground: #666666;
+  --vscode-sideBar-background: #f3f3f3;
+  --vscode-sideBar-foreground: #333333;
+  --vscode-editor-background: #ffffff;
+  --vscode-editor-foreground: #333333;
+  --vscode-panel-background: #ffffff;
+  --vscode-panel-foreground: #333333;
+  --vscode-statusBar-background: #0078d4;
+  --vscode-titleBar-activeBackground: #f3f3f3;
+  --vscode-titleBar-activeForeground: #333333;
+}
+
+/* Base IDE styling */
+.ide-container {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Activity Bar */
+.vscode-activity-bar {
+  background: var(--vscode-activityBar-background);
+  color: var(--vscode-activityBar-foreground);
+  border-right: 1px solid var(--vscode-activityBar-border);
+}
+
+/* Sidebar */
+.vscode-sidebar {
+  background: var(--vscode-sideBar-background);
+  color: var(--vscode-sideBar-foreground);
+  border-right: 1px solid var(--vscode-sideBar-border);
+}
+
+/* Editor */
+.vscode-editor {
+  background: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+}
+
+/* Panel */
+.vscode-panel {
+  background: var(--vscode-panel-background);
+  color: var(--vscode-panel-foreground);
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+/* File system item hover effects */
+.file-item:hover {
+  background: var(--vscode-list-hoverBackground);
+  color: var(--vscode-list-hoverForeground);
+}
+
+.file-item.selected {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+/* Search results styling */
+.search-result {
+  transition: all 0.1s ease;
+}
+
+.search-result:hover {
+  background: var(--vscode-list-hoverBackground);
+  transform: translateX(2px);
+}
+
+/* Error tooltip styling */
+.error-tooltip {
+  background: var(--vscode-errorBackground);
+  color: var(--vscode-errorForeground);
+  border: 1px solid var(--vscode-errorForeground);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Loading spinner */
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Connection status indicators */
+.connection-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.connection-indicator.connected {
+  color: var(--vscode-testing-iconPassed);
+}
+
+.connection-indicator.disconnected {
+  color: var(--vscode-testing-iconFailed);
+}
+
+/* Terminal styling */
+.terminal-line {
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  line-height: 1.4;
+}
+
+.terminal-prompt {
+  color: var(--vscode-terminal-foreground);
+}
+
+.terminal-output {
+  color: var(--vscode-terminal-foreground);
+}
+
+.terminal-error {
+  color: var(--vscode-testing-iconFailed);
+}
+
+.terminal-success {
+  color: var(--vscode-testing-iconPassed);
+}
+
+/* Extensions styling */
+.extension-item {
+  transition: all 0.1s ease;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.extension-item:hover {
+  background: var(--vscode-list-hoverBackground);
+  transform: translateX(2px);
+}
+
+/* Git integration styling */
+.git-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.git-branch {
+  color: var(--vscode-gitDecoration-branchForeground);
+}
+
+.git-commit {
+  color: var(--vscode-gitDecoration-commitForeground);
+}
+
+/* Status bar improvements */
+.status-bar-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+}
+
+.status-bar-separator {
+  width: 1px;
+  height: 16px;
+  background: var(--vscode-statusBar-border);
+  margin: 0 4px;
+}
+
+/* Monaco Editor customizations */
+.monaco-editor {
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .vscode-sidebar {
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .status-bar-section {
+    gap: 4px;
+    padding: 0 4px;
+  }
+  
+  .status-bar-section span {
+    font-size: 10px;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--vscode-scrollbarSlider-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground);
+}
+
+/* Focus styles */
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+/* Animation improvements */
+.fade-in {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-10px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
