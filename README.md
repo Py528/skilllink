@@ -120,4 +120,3 @@ For support, feedback, or collaboration:
 ---
 
 **SkillLink** © 2025 – Open-source enterprise learning platform.
-

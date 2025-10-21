@@ -13,7 +13,8 @@
     "test:e2e": "playwright test",
     "analyze": "cross-env ANALYZE=true next build",
     "type-check": "tsc --noEmit",
-    "preview": "next build && next start"
+    "preview": "next build && next start",
+    "setup": "node setup-env.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.832.0",

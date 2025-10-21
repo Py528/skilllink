@@ -21,6 +21,7 @@ import {
 import { getSignedVideoUrl } from '@/lib/courseUtils';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { VideoPlayerFallback } from './video-player-fallback';
 import './video-player.css';
 
 interface VideoPlayerProps {
@@ -48,6 +49,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showFallback, setShowFallback] = useState(false);
   
   // UI state
   const [showControls, setShowControls] = useState(true);
@@ -61,14 +63,28 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Get signed URL for video
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
 
+  // Local progress persistence
+  const storageKey = React.useMemo(() => {
+    // Use src as stable key; if signed, prefer original src to avoid expiring URLs
+    return `video-progress:${src}`;
+  }, [src]);
+
   useEffect(() => {
     const fetchSignedUrl = async () => {
       try {
         setIsLoading(true);
+        setError(null);
+        setShowFallback(false);
         const url = await getSignedVideoUrl(src);
-        setSignedUrl(url);
+        if (url) {
+          setSignedUrl(url);
+        } else {
+          setError('Failed to load video URL');
+          setShowFallback(true);
+        }
       } catch (err) {
         setError('Failed to load video');
+        setShowFallback(true);
         console.error('Error fetching signed URL:', err);
       } finally {
         setIsLoading(false);
@@ -79,6 +95,28 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       fetchSignedUrl();
     }
   }, [src]);
+
+  // Retry function for fallback
+  const handleRetry = async () => {
+    setShowFallback(false);
+    setError(null);
+    setIsLoading(true);
+    
+    try {
+      const url = await getSignedVideoUrl(src);
+      if (url) {
+        setSignedUrl(url);
+        setShowFallback(false);
+      } else {
+        setShowFallback(true);
+      }
+    } catch (err) {
+      setShowFallback(true);
+      console.error('Retry failed:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Auto-hide controls
   useEffect(() => {
@@ -206,6 +244,53 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     console.error('Video player error:', error);
   }, []);
 
+  // Resume from last saved position when player is ready and URL available
+  useEffect(() => {
+    if (!signedUrl || !playerRef.current) return;
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const savedSeconds = parseFloat(saved);
+        if (!Number.isNaN(savedSeconds) && savedSeconds > 0) {
+          // Seek slightly earlier to provide context
+          const resumeAt = Math.max(0, savedSeconds - 2);
+          playerRef.current.seekTo(resumeAt);
+        }
+      }
+    } catch (_) {
+      // ignore storage errors
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedUrl]);
+
+  // Persist progress periodically (every ~5s) and on unmount
+  const lastSavedRef = useRef<number>(0);
+  useEffect(() => {
+    if (!duration) return;
+    const shouldSave = Math.floor(playedSeconds) % 5 === 0 && Math.floor(playedSeconds) !== Math.floor(lastSavedRef.current);
+    if (shouldSave) {
+      try {
+        localStorage.setItem(storageKey, String(playedSeconds));
+        lastSavedRef.current = playedSeconds;
+      } catch (_) {
+        // ignore storage errors
+      }
+    }
+  }, [playedSeconds, duration, storageKey]);
+
+  useEffect(() => {
+    return () => {
+      try {
+        if (playedSeconds > 0) {
+          localStorage.setItem(storageKey, String(playedSeconds));
+        }
+      } catch (_) {
+        // ignore
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (isLoading) {
     return (
       <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
@@ -220,6 +305,17 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }
 
   if (error || !signedUrl) {
+    // Show fallback component when S3/Supabase is not available
+    if (showFallback) {
+      return (
+        <VideoPlayerFallback 
+          src={src} 
+          title={title} 
+          onRetry={handleRetry}
+        />
+      );
+    }
+    
     return (
       <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
