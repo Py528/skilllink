@@ -143,7 +143,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     const file = uploadedFiles.find(f => f.id === id);
     if (file?.result) {
       try {
-        await s3Service.deleteFile(file.result.key);
+        // await s3Service.deleteFile(file.result.key);
+        console.log('File deletion from S3 not implemented yet:', file.result.key);
       } catch (error) {
         console.error('Failed to delete file from S3:', error);
       }

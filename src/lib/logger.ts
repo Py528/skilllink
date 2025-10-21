@@ -8,7 +8,7 @@ type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 interface LogEntry {
   level: LogLevel;
   message: string;
-  data?: any;
+  data?: unknown;
   timestamp: string;
   context?: string;
 }
@@ -22,7 +22,7 @@ class Logger {
     this.isProduction = process.env.NODE_ENV === 'production';
   }
 
-  private formatMessage(level: LogLevel, message: string, data?: any, context?: string): LogEntry {
+  private formatMessage(level: LogLevel, message: string, data?: unknown, context?: string): LogEntry {
     return {
       level,
       message,
@@ -73,40 +73,40 @@ class Logger {
     }
   }
 
-  debug(message: string, data?: any, context?: string): void {
+  debug(message: string, data?: unknown, context?: string): void {
     this.output(this.formatMessage('debug', message, data, context));
   }
 
-  info(message: string, data?: any, context?: string): void {
+  info(message: string, data?: unknown, context?: string): void {
     this.output(this.formatMessage('info', message, data, context));
   }
 
-  warn(message: string, data?: any, context?: string): void {
+  warn(message: string, data?: unknown, context?: string): void {
     this.output(this.formatMessage('warn', message, data, context));
   }
 
-  error(message: string, data?: any, context?: string): void {
+  error(message: string, data?: unknown, context?: string): void {
     this.output(this.formatMessage('error', message, data, context));
   }
 
   // Convenience methods for common use cases
-  s3(message: string, data?: any): void {
+  s3(message: string, data?: unknown): void {
     this.info(message, data, 'S3');
   }
 
-  auth(message: string, data?: any): void {
+  auth(message: string, data?: unknown): void {
     this.info(message, data, 'AUTH');
   }
 
-  video(message: string, data?: any): void {
+  video(message: string, data?: unknown): void {
     this.info(message, data, 'VIDEO');
   }
 
-  course(message: string, data?: any): void {
+  course(message: string, data?: unknown): void {
     this.info(message, data, 'COURSE');
   }
 
-  api(message: string, data?: any): void {
+  api(message: string, data?: unknown): void {
     this.info(message, data, 'API');
   }
 }

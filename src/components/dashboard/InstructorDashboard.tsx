@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Users, BookOpen, DollarSign, Award, Eye, 
   CheckCircle, MessageSquare, Star, Plus, TrendingUp,
-  Bell, ChevronRight, Target, MoreVertical
+  Bell, ChevronRight, Target, MoreVertical,
+  BarChart3, Settings
 } from "lucide-react";
 import { CourseCard } from "./CourseCard";
 import { Card, CardHeader, CardContent } from "../common/Card";
 import { Button } from "../common/Button";
 import { Badge } from "../common/Badge";
+import { Breadcrumb, QuickActions } from "../common/Breadcrumb";
 import { mockInstructorCourses, mockInstructorStats } from "../../data/mockData";
 import { Navbar } from "../layout/Navbar";
 import { Sidebar } from "../layout/Sidebar";
@@ -450,6 +452,58 @@ export const InstructorDashboard: React.FC = () => {
       
       <main className={`pt-16 transition-all duration-300 ${isSidebarOpen ? 'lg:pl-64' : ''}`}>
         <div className="p-8">
+          {/* Breadcrumb Navigation */}
+          <motion.div
+            variants={itemVariants}
+            className="mb-6"
+          >
+            <Breadcrumb 
+              items={[
+                { label: 'Overview', icon: <BarChart3 className="h-4 w-4" /> }
+              ]} 
+              className="text-gray-400"
+            />
+          </motion.div>
+
+          {/* Quick Actions */}
+          <motion.div
+            variants={itemVariants}
+            className="mb-8"
+          >
+            <QuickActions 
+              actions={[
+                {
+                  label: 'Create Course',
+                  href: '/courses/create',
+                  icon: <Plus className="h-5 w-5 text-white" />,
+                  description: 'Start a new course',
+                  color: 'bg-[#0CF2A0]'
+                },
+                {
+                  label: 'Analytics',
+                  href: '/dashboard/analytics',
+                  icon: <BarChart3 className="h-5 w-5 text-white" />,
+                  description: 'View performance',
+                  color: 'bg-blue-500'
+                },
+                {
+                  label: 'Students',
+                  href: '/dashboard/students',
+                  icon: <Users className="h-5 w-5 text-white" />,
+                  description: 'Manage learners',
+                  color: 'bg-purple-500'
+                },
+                {
+                  label: 'Settings',
+                  href: '/dashboard/settings',
+                  icon: <Settings className="h-5 w-5 text-white" />,
+                  description: 'Account settings',
+                  color: 'bg-gray-500'
+                }
+              ]}
+            />
+          </motion.div>
+
           <motion.div 
             className="space-y-8"
             variants={containerVariants}
@@ -555,7 +609,7 @@ export const InstructorDashboard: React.FC = () => {
                 className="lg:col-span-2"
                 variants={itemVariants}
               >
-                <Card className="overflow-hidden border border-secondary-200/50 dark:border-secondary-700/50">
+                <Card className="card-elevated overflow-hidden">
                   <CardHeader className="border-b border-secondary-200 dark:border-secondary-700/50">
                     <motion.div 
                       className="flex items-center justify-between"
@@ -581,7 +635,7 @@ export const InstructorDashboard: React.FC = () => {
                           <Button
                             variant="primary"
                             size="sm"
-                            className="dark:bg-primary-600 dark:hover:bg-primary-700"
+                            className="btn-primary dark:bg-primary-600 dark:hover:bg-primary-700 hover-lift"
                             onClick={() => router.push("/courses/create")}
                           >
                             Create New Course
@@ -639,7 +693,7 @@ export const InstructorDashboard: React.FC = () => {
               >
                 {/* Quick Tasks */}
                 <motion.div variants={itemVariants}>
-                <Card className="border border-secondary-200/50 dark:border-secondary-700/50">
+                <Card className="card-elevated">
                   <CardHeader className="border-b border-secondary-200 dark:border-secondary-700/50">
                       <motion.div 
                         className="flex items-center justify-between"
@@ -848,7 +902,7 @@ export const InstructorDashboard: React.FC = () => {
 
                 {/* Quick Stats */}
                 <motion.div variants={itemVariants}>
-                <Card className="border border-secondary-200/50 dark:border-secondary-700/50">
+                <Card className="card-elevated">
                   <CardHeader className="border-b border-secondary-200 dark:border-secondary-700/50">
                       <motion.div 
                         className="flex items-center space-x-2"

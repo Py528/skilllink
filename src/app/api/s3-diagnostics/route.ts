@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { S3Client, HeadObjectCommand, GetObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -10,7 +10,7 @@ const s3 = new S3Client({
   },
 });
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const diagnostics = {
     environment: {
       bucket: !!process.env.AWS_BUCKET_NAME,
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       accessKey: !!process.env.AWS_ACCESS_KEY,
       secretKey: !!process.env.AWS_SECRET_KEY,
     },
-    tests: [] as any[],
+    tests: [] as Array<{ test: string; status: string; message?: string; details?: unknown; error?: string; code?: number }>,
     recommendations: [] as string[],
   };
 
@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
     diagnostics.tests.push({
       test: 'Environment Variables',
       status: 'FAILED',
+      message: 'Missing required AWS environment variables',
       error: 'Missing required AWS environment variables',
     });
     diagnostics.recommendations.push('Add all required AWS environment variables to .env.local');
@@ -36,6 +37,7 @@ export async function GET(req: NextRequest) {
   diagnostics.tests.push({
     test: 'Environment Variables',
     status: 'PASSED',
+    message: 'All required AWS environment variables are present',
     details: {
       bucket: process.env.AWS_BUCKET_NAME,
       region: process.env.AWS_BUCKET_REGION,
@@ -63,12 +65,12 @@ export async function GET(req: NextRequest) {
           })) || [],
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       diagnostics.tests.push({
         test: 'Bucket Access (List)',
         status: 'FAILED',
-        error: error.message,
-        code: error.$metadata?.httpStatusCode,
+        error: (error as Error).message,
+        code: (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode,
       });
       diagnostics.recommendations.push('Check AWS credentials have s3:ListBucket permission');
     }
@@ -87,8 +89,8 @@ export async function GET(req: NextRequest) {
         status: 'PASSED',
         details: { key: sampleKey },
       });
-    } catch (error: any) {
-      if (error.$metadata?.httpStatusCode === 404) {
+    } catch (error: unknown) {
+      if ((error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404) {
         diagnostics.tests.push({
           test: 'Object Access (Head)',
           status: 'PASSED',
@@ -98,8 +100,8 @@ export async function GET(req: NextRequest) {
         diagnostics.tests.push({
           test: 'Object Access (Head)',
           status: 'FAILED',
-          error: error.message,
-          code: error.$metadata?.httpStatusCode,
+          error: (error as Error).message,
+          code: (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode,
         });
         diagnostics.recommendations.push('Check AWS credentials have s3:GetObject permission');
       }
@@ -122,12 +124,12 @@ export async function GET(req: NextRequest) {
           urlLength: signedUrl.length,
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       diagnostics.tests.push({
         test: 'Signed URL Generation',
         status: 'FAILED',
-        error: error.message,
-        code: error.$metadata?.httpStatusCode,
+        error: (error as Error).message,
+        code: (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode,
       });
       diagnostics.recommendations.push('Check AWS credentials have s3:GetObject permission for signed URL generation');
     }
@@ -150,19 +152,19 @@ export async function GET(req: NextRequest) {
       if (!response.ok) {
         diagnostics.recommendations.push('Bucket is private (good for security). Ensure signed URLs are working.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       diagnostics.tests.push({
         test: 'Public Bucket Access',
         status: 'FAILED',
-        error: error.message,
+        error: (error as Error).message,
       });
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     diagnostics.tests.push({
       test: 'General S3 Connection',
       status: 'FAILED',
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
     diagnostics.recommendations.push('Check AWS credentials and region configuration');
   }

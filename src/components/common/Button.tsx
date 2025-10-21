@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils"; // Assuming you have a utility function for cl
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "link" | "danger";
 type ButtonSize = "sm" | "md" | "lg" | "icon";
 
-interface ButtonProps extends Omit<HTMLMotionProps<"button">, "onDrag"> {
+interface ButtonProps extends Omit<HTMLMotionProps<"button">, "onDrag" | "children"> {
+  children: React.ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
   isLoading?: boolean;

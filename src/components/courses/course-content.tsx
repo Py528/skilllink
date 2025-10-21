@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
-import { VideoPlayer } from '@/components/courses/video-player'
+import { VideoPlayer } from '@/components/courses/video-player-simple'
 import { CourseNavigation } from '@/components/courses/course-navigation'
 import { Separator } from '@/components/ui/separator'
 import { Home, ChevronRight, BookOpen, Video, FileText, Download, ExternalLink, FileVideo, File, Image, FileCode, Clock, Star, CheckCircle, Loader2 } from 'lucide-react'
@@ -312,7 +312,7 @@ export function CourseContent({ course, currentLesson, lessons = [], progress = 
                             <h3 className="text-lg font-medium text-primary">Lesson Resources</h3>
                             
                             {(() => {
-                              const groupedResources = groupResourcesByType(currentLesson.resources);
+                              const groupedResources = groupResourcesByType(currentLesson.resources as CourseResource[]);
                               const sections = [];
                               
                               // Videos section

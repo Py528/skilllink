@@ -24,10 +24,70 @@ export default function CourseLearnPage() {
 
   // --- COURSE FETCH LOGIC ---
   useEffect(() => {
+    const fetchCourseData = async () => {
+      if (!courseId) return;
+      
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Fetch course data
+        const courseResponse = await fetch(`${supabaseUrl}/rest/v1/courses?id=eq.${courseId}&select=*`, {
+          headers: {
+            'apikey': supabaseKey!,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!courseResponse.ok) {
+          throw new Error('Failed to fetch course');
+        }
+
+        const courseData = await courseResponse.json();
+        if (courseData && courseData.length > 0) {
+          setCourse(courseData[0]);
+        } else {
+          setError('Course not found');
+        }
+
+        // Fetch lessons data
+        const lessonsResponse = await fetch(`${supabaseUrl}/rest/v1/lessons?course_id=eq.${courseId}&select=*&order=order_index.asc`, {
+          headers: {
+            'apikey': supabaseKey!,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (lessonsResponse.ok) {
+          const lessonsData = await lessonsResponse.json();
+          setLessons(lessonsData || []);
+          
+          // Set current lesson from URL or first lesson
+          const lessonId = searchParams.get('lesson');
+          if (lessonId && lessonsData) {
+            const lesson = lessonsData.find((l: Lesson) => l.id === lessonId);
+            if (lesson) {
+              setCurrentLesson(lesson);
+            }
+          } else if (lessonsData && lessonsData.length > 0) {
+            setCurrentLesson(lessonsData[0]);
+          }
+        }
+
+      } catch (err) {
+        console.error('Error fetching course data:', err);
+        setError('Failed to load course data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     if (courseId) {
-      fetchCourseData()
+      fetchCourseData();
     }
-  }, [courseId])
+  }, [courseId, searchParams, supabaseUrl, supabaseKey])
 
   // --- LESSON SWITCHING LOGIC ---
   const handleLessonChange = async (lessonId: string) => {
@@ -260,76 +320,6 @@ export default function CourseLearnPage() {
     
     if (courseId) fetchLessons();
   }, [courseId]);
-
-  const fetchCourseData = async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-
-      console.log('Fetching course data for:', courseId);
-
-      // Fetch course data using direct fetch
-      const courseResponse = await fetch(`${supabaseUrl}/rest/v1/courses?id=eq.${courseId}&select=*`, {
-        headers: {
-          'apikey': supabaseKey!,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!courseResponse.ok) {
-        throw new Error(`HTTP error! status: ${courseResponse.status}`)
-      }
-
-      const courseData = await courseResponse.json()
-
-      if (!courseData || courseData.length === 0) {
-        throw new Error('Course not found')
-      }
-
-      const courseInfo = courseData[0]
-      console.log('Course info:', courseInfo);
-
-      // Process course data
-      let thumbnailUrl = courseInfo.thumbnail_url
-      if (courseInfo.thumbnail_s3_key && !thumbnailUrl) {
-        thumbnailUrl = `https://courses-skilllearn.s3.us-east-1.amazonaws.com/${courseInfo.thumbnail_s3_key}`
-      }
-      // Handle relative thumbnail paths
-      if (thumbnailUrl && !thumbnailUrl.startsWith('http://') && !thumbnailUrl.startsWith('https://')) {
-        if (thumbnailUrl.startsWith('thumbnails/') || thumbnailUrl.startsWith('images/')) {
-          thumbnailUrl = `https://courses-skilllearn.s3.us-east-1.amazonaws.com/${thumbnailUrl}`
-        } else {
-          // If it's just a filename, assume it's in the thumbnails folder
-          thumbnailUrl = `https://courses-skilllearn.s3.us-east-1.amazonaws.com/thumbnails/${thumbnailUrl}`
-        }
-      }
-
-      const processedCourse: Course = {
-        ...courseInfo,
-        thumbnail_url: thumbnailUrl,
-        instructor_name: courseInfo.instructor_name || 'Unknown Instructor',
-        student_count: courseInfo.total_enrollments || 0,
-        rating: courseInfo.average_rating || 0,
-        duration: courseInfo.estimated_duration ? `${Math.floor(courseInfo.estimated_duration / 60)}h ${courseInfo.estimated_duration % 60}m` : 'Not specified',
-        level: courseInfo.difficulty_level || 'Beginner',
-        category: courseInfo.category || 'Uncategorized',
-        price: courseInfo.price || 0,
-        created_at: courseInfo.created_at,
-        updated_at: courseInfo.updated_at,
-        content_folder_id: courseInfo.content_folder_id
-      }
-
-      console.log('Processed course:', processedCourse);
-      setCourse(processedCourse)
-
-    } catch (err) {
-      console.error('Error fetching course data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch course data')
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   if (isLoading) {
     return (

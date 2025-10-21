@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
+import NextImage from "next/image";
 import { 
   Card, CardHeader, CardContent 
 } from "@/components/common/Card";
@@ -10,7 +11,7 @@ import { Input } from "@/components/publish_course/Input";
 import { 
   X, ChevronRight, ChevronDown, Plus, Edit3, 
   Eye, Upload, Move, Copy, Search, Grid, List, Filter,
-  Clock, Users, BookOpen, Video, FileText, Image, Download,
+  Clock, Users, BookOpen, Video, FileText, ImageIcon, Download,
   BarChart3, Settings, Home, Layers, FolderOpen,
   Save, Undo, Redo, ExternalLink,
   Calendar, TrendingUp, Star, Play, MoreHorizontal
@@ -117,28 +118,17 @@ export default function SidebarCourseManagement() {
       };
 
       // Transform lessons data
-      const transformedLessons: LessonData[] = lessonRows.map((lesson: { 
-        id: string; 
-        title: string; 
-        description?: string; 
-        type?: string; 
-        duration?: number; 
-        video_url?: string; 
-        thumbnail_url?: string; 
-        resources?: Array<{ url: string; name: string; type: string }>; 
-        status?: string; 
-        order_index?: number; 
-      }) => ({
-        id: lesson.id,
-        title: lesson.title,
-        description: lesson.description,
+      const transformedLessons: LessonData[] = lessonRows.map((lesson: Record<string, unknown>) => ({
+        id: lesson.id as string,
+        title: lesson.title as string,
+        description: lesson.description as string,
         type: (lesson.type || 'video') as 'video' | 'text' | 'quiz' | 'assignment',
-        duration: lesson.duration || 0,
-        video_url: lesson.video_url,
-        thumbnail_url: lesson.thumbnail_url,
-        resources: lesson.resources || [],
+        duration: (lesson.duration || 0) as number,
+        video_url: lesson.video_url as string,
+        thumbnail_url: lesson.thumbnail_url as string,
+        resources: (lesson.resources || []) as Array<{ url: string; name: string; type: string }>,
         status: (lesson.status || 'draft') as 'draft' | 'published',
-        order_index: lesson.order_index || 0,
+        order_index: (lesson.order_index || 0) as number,
         section_id: 'default-section',
         views: Math.floor(Math.random() * 1000),
         completion_rate: Math.floor(Math.random() * 40) + 60
@@ -151,7 +141,7 @@ export default function SidebarCourseManagement() {
           type: 'lesson_updated',
           title: 'Updated "Introduction to React"',
           timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          target_id: lessonRows[0]?.id
+          target_id: lessonRows[0]?.id as string
         },
         {
           id: '2',
@@ -767,7 +757,7 @@ export default function SidebarCourseManagement() {
         />
         <FileTypeCard
           title="Images"
-          icon={<Image className="w-6 h-6" />}
+          icon={<ImageIcon className="w-6 h-6" />}
           count={lessons.filter(l => l.thumbnail_url).length}
           color="green"
         />
@@ -992,9 +982,11 @@ export default function SidebarCourseManagement() {
     <Card className="group hover:shadow-lg transition-shadow cursor-pointer">
       <div className="aspect-video bg-secondary-100 dark:bg-secondary-800 rounded-t-lg relative overflow-hidden">
         {lesson.thumbnail_url ? (
-          <img
+          <NextImage
             src={lesson.thumbnail_url}
             alt={lesson.title}
+            width={400}
+            height={225}
             className="w-full h-full object-cover"
           />
         ) : (
@@ -1040,9 +1032,11 @@ export default function SidebarCourseManagement() {
         <div className="flex items-center gap-4">
           <div className="w-16 h-12 bg-secondary-100 dark:bg-secondary-800 rounded overflow-hidden flex-shrink-0">
             {lesson.thumbnail_url ? (
-              <img
+              <NextImage
                 src={lesson.thumbnail_url}
                 alt={lesson.title}
+                width={64}
+                height={48}
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -1108,7 +1102,7 @@ export default function SidebarCourseManagement() {
       {type === 'video' ? (
         <div className="w-full h-full relative">
           {thumbnail ? (
-            <img src={thumbnail} alt={name} className="w-full h-full object-cover" />
+            <NextImage src={thumbnail} alt={name} width={200} height={200} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <Video className="w-8 h-8 text-secondary-400" />
@@ -1119,7 +1113,7 @@ export default function SidebarCourseManagement() {
           </div>
         </div>
       ) : type === 'image' ? (
-        <img src={url} alt={name} className="w-full h-full object-cover" />
+        <NextImage src={url} alt={name} width={200} height={200} className="w-full h-full object-cover" />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
           <FileText className="w-8 h-8 text-secondary-400" />

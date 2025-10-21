@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, FileText, Download, ExternalLink } from 'lucide-react'
+import { X } from 'lucide-react'
 import MonacoEditor from 'react-monaco-editor'
 import { Course, Lesson } from '@/types/index'
 
@@ -91,9 +91,9 @@ ${currentLesson.video_url ? `**Video URL:** ${currentLesson.video_url}` : 'No vi
 
 ${currentLesson.resources && currentLesson.resources.length > 0 
   ? currentLesson.resources.map((resource, index) => 
-      `${index + 1}. **${resource.name}** (${resource.size ? `${Math.floor(resource.size / 1024)}KB` : 'Unknown size'})
-         - Type: ${resource.type || 'Unknown'}
-         - URL: ${resource.url || 'Not available'}`
+      `${index + 1}. **${(resource as { name?: string }).name || 'Resource'}** (${(resource as { size?: number }).size ? `${Math.floor((resource as { size: number }).size / 1024)}KB` : 'Unknown size'})
+         - Type: ${(resource as { type?: string }).type || 'Unknown'}
+         - URL: ${(resource as { url?: string }).url || 'Not available'}`
     ).join('\n\n')
   : 'No additional resources available for this lesson'
 }
@@ -126,6 +126,7 @@ export function IDEEditor({ course, currentLesson }: IDEEditorProps) {
   const [activeTab, setActiveTab] = useState('course-overview')
   const [openTabs, setOpenTabs] = useState(['course-overview'])
   const [mounted, setMounted] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null)
   
   const files = getFiles(course, currentLesson)

@@ -16,7 +16,7 @@ interface FormData {
   thumbnail: File | string | null;
   thumbnailPreview?: string;
   tags: string[];
-  modules: Array<any>;
+  modules: Array<{ id: string; title: string; description: string; lessons: Array<{ id: string; title: string; description: string }> }>;
   pricingType: 'free' | 'paid';
   price: string;
   visibility: 'public' | 'private' | 'draft';

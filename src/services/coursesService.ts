@@ -69,8 +69,8 @@ class CoursesService {
       return courses?.map(course => ({
         ...course,
         instructor: {
-          name: course.instructor?.full_name || 'Unknown Instructor',
-          avatar: course.instructor?.avatar_url || '/default-avatar.svg'
+          name: (course.instructor as { full_name?: string })?.full_name || 'Unknown Instructor',
+          avatar: (course.instructor as { avatar_url?: string })?.avatar_url || '/default-avatar.svg'
         },
         duration: course.estimated_duration ? `${course.estimated_duration}h` : 'N/A',
         students: 0,
@@ -115,8 +115,8 @@ class CoursesService {
         (courses || []).map(async (course) => ({
           ...course,
           instructor: {
-            name: course.instructor?.full_name || 'Unknown Instructor',
-            avatar: course.instructor?.avatar_url || '/default-avatar.svg'
+            name: (course.instructor as { full_name?: string })?.full_name || 'Unknown Instructor',
+            avatar: (course.instructor as { avatar_url?: string })?.avatar_url || '/default-avatar.svg'
           },
           duration: course.estimated_duration ? `${course.estimated_duration}h` : 'N/A',
           students: 0,
@@ -170,7 +170,7 @@ class CoursesService {
     }
   }
 
-  async getLessonsByCourseId(courseId: string): Promise<any[]> {
+  async getLessonsByCourseId(courseId: string): Promise<Record<string, unknown>[]> {
     try {
       const { data: lessons, error } = await this.supabase
         .from('lessons')
@@ -190,7 +190,7 @@ class CoursesService {
     }
   }
 
-  async updateLesson(lessonId: string, updates: any): Promise<void> {
+  async updateLesson(lessonId: string, updates: Record<string, unknown>): Promise<void> {
     try {
       const { error } = await this.supabase
         .from('lessons')
@@ -207,7 +207,7 @@ class CoursesService {
     }
   }
 
-  async updateLessons(lessons: any[]): Promise<void> {
+  async updateLessons(lessons: Record<string, unknown>[]): Promise<void> {
     try {
       const updatePromises = lessons.map(lesson => 
         this.supabase

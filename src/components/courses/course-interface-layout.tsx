@@ -1,21 +1,14 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { CourseContent } from '@/components/courses/course-content'
 import { IDEInterface } from '@/components/ide/ide-interface'
-import { useTheme } from 'next-themes'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { toast } from 'sonner'
 import { Course, Lesson } from '@/types/index'
 import { Button } from '@/components/ui/button'
-import { Keyboard, HelpCircle } from 'lucide-react'
-
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 }
-}
+import { HelpCircle } from 'lucide-react'
 
 const slideIn = {
   initial: { opacity: 0, x: -20 },
@@ -34,7 +27,6 @@ interface CourseInterfaceLayoutProps {
 
 export function CourseInterfaceLayout({ course, currentLesson, lessons = [], progress = 0, onLessonChange, isSwitchingLesson = false }: CourseInterfaceLayoutProps) {
   const [isMounted, setIsMounted] = useState(false)
-  const { theme } = useTheme()
   
   useEffect(() => {
     setIsMounted(true)

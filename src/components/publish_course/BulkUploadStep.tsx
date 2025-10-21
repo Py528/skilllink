@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   Upload, Folder, File, Video, FileText, Image, 
   AlertCircle, CheckCircle, Loader2,
@@ -144,150 +144,67 @@ export const BulkUploadStep: React.FC<BulkUploadStepProps> = ({
     return 'other';
   };
 
-  // Parse folder structure from uploaded files
-  const parseFolderStructure = (files: FileList): FileNode => {
-    const root: FileNode = {
-      name: 'Course Root',
-      type: 'folder',
-      path: '',
-      children: []
-    };
+  // Parse folder structure from uploaded files (moved inside handleFileUpload callback)
+  // const parseFolderStructure = (files: FileList): FileNode => {
+  //   // Implementation moved to handleFileUpload callback
+  // };
 
-    const fileMap = new Map<string, FileNode>();
+  // Extract course structure from file tree (moved inside handleFileUpload callback)
+  // const extractCourseStructure = (fileTree: FileNode): CourseStructure => {
+  //   // Implementation moved to handleFileUpload callback
+  // };
 
-    Array.from(files).forEach(file => {
-      const pathParts = file.webkitRelativePath.split('/');
-      let currentPath = '';
-      
-      pathParts.forEach((part, index) => {
-        const isFile = index === pathParts.length - 1;
-        const fullPath = currentPath ? `${currentPath}/${part}` : part;
-        
-        if (!fileMap.has(fullPath)) {
-          const node: FileNode = {
-            name: part,
-            type: isFile ? 'file' : 'folder',
-            path: fullPath,
-            size: isFile ? file.size : undefined,
-            children: isFile ? undefined : [],
-            fileType: isFile ? getFileType(part) : undefined,
-            status: 'pending'
-          };
-          fileMap.set(fullPath, node);
-        }
-        
-        // Always add the current node as a child of its parent (if parent exists)
-        if (fileMap.has(currentPath)) {
-          const parent = fileMap.get(currentPath)!;
-          if (parent.children && !parent.children.find(child => child.name === part)) {
-            parent.children.push(fileMap.get(fullPath)!);
-          }
-        }
-        
-        currentPath = fullPath;
-      });
-    });
-
-    // Find the root folder (first level folder)
-    const rootFolders = Array.from(fileMap.values()).filter(node => 
-      node.type === 'folder' && !node.path.includes('/')
-    );
-
-    root.children = rootFolders;
-    return root;
-  };
-
-  // Extract course structure from file tree
-  const extractCourseStructure = (fileTree: FileNode): CourseStructure => {
-    const sections: CourseStructure['sections'] = [];
-
-    fileTree.children?.forEach(sectionNode => {
-      if (sectionNode.type === 'folder') {
-        const section = {
-          name: sectionNode.name,
-          lessons: [] as CourseStructure['sections'][0]['lessons']
-        };
-
-        sectionNode.children?.forEach(lessonNode => {
-          if (lessonNode.type === 'folder') {
-            const lesson = {
-              name: lessonNode.name,
-              files: [] as CourseStructure['sections'][0]['lessons'][0]['files']
-            };
-
-            // Recursively collect all files in lesson folder
-            const collectFiles = (node: FileNode) => {
-              if (node.type === 'file') {
-                lesson.files.push({
-                  name: node.name,
-                  type: node.fileType || 'other',
-                  path: node.path,
-                  size: node.size || 0
-                });
-              } else if (node.children) {
-                node.children.forEach(collectFiles);
-              }
-            };
-
-            collectFiles(lessonNode);
-            section.lessons.push(lesson);
-          }
-        });
-
-        sections.push(section);
-      }
-    });
-
-    return { sections };
-  };
-
-  // Update file status in tree
-  const updateFileStatus = (node: FileNode, path: string, status: FileNode['status'], s3Url?: string, s3Key?: string): FileNode => {
-    if (node.path === path) {
-      return { ...node, status, s3Url, s3Key };
-    }
-    if (node.children) {
-      return {
-        ...node,
-        children: node.children.map(child => updateFileStatus(child, path, status, s3Url, s3Key))
-      };
-    }
-    return node;
-  };
+  // Update file status in tree (currently unused but kept for future functionality)
+  // const updateFileStatus = (node: FileNode, path: string, status: FileNode['status'], s3Url?: string, s3Key?: string): FileNode => {
+  //   if (node.path === path) {
+  //     return { ...node, status, s3Url, s3Key };
+  //   }
+  //   if (node.children) {
+  //     return {
+  //       ...node,
+  //       children: node.children.map(child => updateFileStatus(child, path, status, s3Url, s3Key))
+  //     };
+  //   }
+  //   return node;
+  // };
 
   // Extract ZIP file contents
   const extractZipFile = async (zipFile: File): Promise<FileList> => {
     return new Promise((resolve, reject) => {
-      const JSZip = require('jszip');
-      const zip = new JSZip();
-      
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const zipData = await zip.loadAsync(e.target?.result);
-          const files: File[] = [];
-          
-          // Extract all files from ZIP
-          for (const [relativePath, zipEntry] of Object.entries(zipData.files)) {
-            const entry = zipEntry as any;
-            if (!entry.dir) {
-              const content = await entry.async('blob');
-              const file = new File([content], entry.name, { type: 'application/octet-stream' });
-              (file as any).webkitRelativePath = relativePath;
-              files.push(file);
+      // Dynamic import for JSZip to avoid require() warning
+      import('jszip').then(JSZip => {
+        const zip = new JSZip.default();
+        
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const zipData = await zip.loadAsync(e.target?.result as ArrayBuffer);
+            const files: File[] = [];
+            
+            // Extract all files from ZIP
+            for (const [relativePath, zipEntry] of Object.entries(zipData.files)) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const entry = zipEntry as any;
+              if (!entry.dir) {
+                const content = await entry.async('blob');
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const file = new (File as any)([content], entry.name, { type: 'application/octet-stream' });
+                (file as File & { webkitRelativePath: string }).webkitRelativePath = relativePath;
+                files.push(file);
+              }
             }
+            
+            // Convert to FileList
+            const dataTransfer = new DataTransfer();
+            files.forEach(file => dataTransfer.items.add(file));
+            resolve(dataTransfer.files);
+          } catch (error) {
+            reject(error);
           }
-          
-          // Convert to FileList
-          const dataTransfer = new DataTransfer();
-          files.forEach(file => dataTransfer.items.add(file));
-          resolve(dataTransfer.files);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      reader.onerror = () => reject(new Error('Failed to read ZIP file'));
-      reader.readAsArrayBuffer(zipFile);
+        };
+        reader.onerror = () => reject(new Error('Failed to read ZIP file'));
+        reader.readAsArrayBuffer(zipFile);
+      }).catch(reject);
     });
   };
 
@@ -321,6 +238,103 @@ export const BulkUploadStep: React.FC<BulkUploadStepProps> = ({
       setCourseFolderId(folderId);
       console.log('Course folder ID:', folderId);
 
+      // Parse the folder structure (moved inside callback to avoid dependency issues)
+      const parseFolderStructure = (files: FileList): FileNode => {
+        const root: FileNode = {
+          name: 'Course Root',
+          type: 'folder',
+          path: '',
+          children: []
+        };
+
+        const fileMap = new Map<string, FileNode>();
+
+        Array.from(files).forEach(file => {
+          const pathParts = file.webkitRelativePath.split('/');
+          let currentPath = '';
+          
+          pathParts.forEach((part, index) => {
+            const isFile = index === pathParts.length - 1;
+            const fullPath = currentPath ? `${currentPath}/${part}` : part;
+            
+            if (!fileMap.has(fullPath)) {
+              const node: FileNode = {
+                name: part,
+                type: isFile ? 'file' : 'folder',
+                path: fullPath,
+                size: isFile ? file.size : undefined,
+                children: isFile ? undefined : [],
+                fileType: isFile ? getFileType(part) : undefined,
+                status: 'pending'
+              };
+              fileMap.set(fullPath, node);
+            }
+            
+            // Always add the current node as a child of its parent (if parent exists)
+            if (fileMap.has(currentPath)) {
+              const parent = fileMap.get(currentPath)!;
+              if (parent.children && !parent.children.find(child => child.name === part)) {
+                parent.children.push(fileMap.get(fullPath)!);
+              }
+            }
+            
+            currentPath = fullPath;
+          });
+        });
+
+        // Find the root folder (first level folder)
+        const rootFolders = Array.from(fileMap.values()).filter(node => 
+          node.type === 'folder' && !node.path.includes('/')
+        );
+
+        root.children = rootFolders;
+        return root;
+      };
+
+      // Extract course structure (moved inside callback to avoid dependency issues)
+      const extractCourseStructure = (fileTree: FileNode): CourseStructure => {
+        const sections: CourseStructure['sections'] = [];
+
+        fileTree.children?.forEach(sectionNode => {
+          if (sectionNode.type === 'folder') {
+            const section = {
+              name: sectionNode.name,
+              lessons: [] as CourseStructure['sections'][0]['lessons']
+            };
+
+            sectionNode.children?.forEach(lessonNode => {
+              if (lessonNode.type === 'folder') {
+                const lesson = {
+                  name: lessonNode.name,
+                  files: [] as CourseStructure['sections'][0]['lessons'][0]['files']
+                };
+
+                // Recursively collect all files in lesson folder
+                const collectFiles = (node: FileNode) => {
+                  if (node.type === 'file') {
+                    lesson.files.push({
+                      name: node.name,
+                      type: node.fileType || 'other',
+                      path: node.path,
+                      size: node.size || 0
+                    });
+                  } else if (node.children) {
+                    node.children.forEach(collectFiles);
+                  }
+                };
+
+                collectFiles(lessonNode);
+                section.lessons.push(lesson);
+              }
+            });
+
+            sections.push(section);
+          }
+        });
+
+        return { sections };
+      };
+
       // Parse the folder structure
       const structure = parseFolderStructure(files);
       setFileTree(structure);
@@ -349,7 +363,7 @@ export const BulkUploadStep: React.FC<BulkUploadStepProps> = ({
     } finally {
       setUploading(false);
     }
-  }, [onStructureCreated, onComplete, parseFolderStructure, extractCourseStructure]);
+  }, [onStructureCreated, onComplete]);
 
   // Toggle folder expansion
   const toggleFolder = (path: string) => {
@@ -461,7 +475,7 @@ export const BulkUploadStep: React.FC<BulkUploadStepProps> = ({
           const file = await new Promise<File>((resolve) => {
             (entry as FileSystemFileEntry).file(resolve);
           });
-          (file as any).webkitRelativePath = path + entry.name;
+          (file as File & { webkitRelativePath: string }).webkitRelativePath = path + entry.name;
           files.push(file);
         } else if (entry.isDirectory) {
           const reader = (entry as FileSystemDirectoryEntry).createReader();
@@ -497,11 +511,7 @@ export const BulkUploadStep: React.FC<BulkUploadStepProps> = ({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
+    <div className="space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-white mb-2">Bulk Course Upload</h2>
         <p className="text-gray-400">
@@ -560,8 +570,8 @@ export const BulkUploadStep: React.FC<BulkUploadStepProps> = ({
                   <div className="text-left">
                     <h4 className="font-semibold text-white mb-2">Supported Structure:</h4>
                     <ul className="text-sm text-gray-400 space-y-1">
-                      <li>• Section folders (e.g., "01_introduction")</li>
-                      <li>• Lesson folders (e.g., "01_welcome")</li>
+                      <li>• Section folders (e.g., &quot;01_introduction&quot;)</li>
+                      <li>• Lesson folders (e.g., &quot;01_welcome&quot;)</li>
                       <li>• Video files (.mp4, .mov, .avi)</li>
                       <li>• Transcripts (.txt)</li>
                       <li>• Subtitles (.srt, .vtt)</li>
@@ -586,8 +596,8 @@ export const BulkUploadStep: React.FC<BulkUploadStepProps> = ({
                     <input
                       type="file"
                       multiple
-                      webkitdirectory="true"
-                      directory="true"
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      {...({ webkitdirectory: "true", directory: "true" } as any)}
                       accept="video/*,audio/*,image/*,.pdf,.doc,.docx,.txt,.rtf,.odt,.pages,.xls,.xlsx,.csv,.ods,.numbers,.ppt,.pptx,.odp,.key,.zip,.rar,.7z,.tar,.gz,.bz2,.json,.xml,.tsv,.db,.sqlite,.sql,.py,.tsx,.jsx,.js,.ts,.env,.php,.java,.cpp,.c,.cs,.rb,.go,.rs,.swift,.kt,.scala,.r,.matlab,.sh,.bat,.ps1,.yaml,.yml,.toml,.ini,.cfg,.conf,.md,.rst,.tex,.latex,.srt,.vtt,.html"
                       onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
                       className="hidden"
@@ -686,6 +696,6 @@ export const BulkUploadStep: React.FC<BulkUploadStepProps> = ({
           </CardContent>
         </Card>
       )}
-    </motion.div>
+    </div>
   );
 }; 

@@ -3,19 +3,22 @@ import { Course,FAQ,Step,Testimonial } from "../types/index";
 
 export const courses: Course[] = [
   {
+    id: "1",
     title: "Advanced React Patterns",
     level: "Intermediate",
-    instructor: "Sarah Chen",
+    instructor_name: "Sarah Chen",
   },
   {
+    id: "2",
     title: "System Design Fundamentals",
     level: "Advanced",
-    instructor: "Michael Ross",
+    instructor_name: "Michael Ross",
   },
   {
+    id: "3",
     title: "API Development with Node.js",
     level: "Intermediate",
-    instructor: "David Kim",
+    instructor_name: "David Kim",
   },
 ];
 

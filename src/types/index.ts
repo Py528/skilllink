@@ -48,9 +48,11 @@ export interface Lesson {
   is_preview: boolean
   content: Record<string, unknown>
   thumbnail_url?: string
-  resources: CourseResource[]
+  resources: CourseResource[] | Record<string, unknown>[]
   is_free: boolean
-  section_id: string
+  section_id?: string
+  videoFile?: File | { id: string; name: string; url: string; key: string }
+  resourceFiles?: (File | { id: string; name: string; url: string; key: string })[]
 }
 
 export interface CourseResource {
@@ -113,4 +115,18 @@ export interface RotatingTextProps {
   exit?: { y: string; opacity: number };
   transition?: object;
   rotationInterval?: number;
+}
+
+export interface Module {
+  id: string;
+  title: string;
+  description: string;
+  order_index: number;
+  lessons: Lesson[];
+}
+
+export interface CourseData extends Course {
+  modules?: Module[];
+  is_paid?: boolean;
+  preview_lessons?: Lesson[];
 }

@@ -32,11 +32,17 @@ export async function GET(
     }
 
     // First try to get lessons directly from the course (legacy approach)
-    let { data: lessonsData, error: lessonsError } = await supabase
+    const { error: lessonsError } = await supabase
       .from('lessons')
       .select('*')
       .eq('course_id', courseId)
       .order('order_index', { ascending: true });
+    
+    let lessonsData = (await supabase
+      .from('lessons')
+      .select('*')
+      .eq('course_id', courseId)
+      .order('order_index', { ascending: true })).data;
 
     if (lessonsError) {
       console.error('Error fetching direct lessons:', lessonsError);
@@ -99,7 +105,7 @@ export async function GET(
       
       // If no video_url is set, try to find the first video resource
       if (!videoUrl || videoUrl === '') {
-        const videoResources = lesson.resources?.filter((resource: any) => 
+        const videoResources = lesson.resources?.filter((resource: { type: string; name: string; url: string }) => 
           resource.type === 'video/mp4' || 
           resource.name.endsWith('.mp4') ||
           resource.name.endsWith('.mov') ||
@@ -122,9 +128,9 @@ export async function GET(
       }
 
       // Process resources from content field (bulk upload format)
-      let resources = [];
+      let resources: Array<{ url: string; name: string; size: number; type: string; key?: string }> = [];
       if (lesson.content && lesson.content.resources) {
-        resources = lesson.content.resources.map((resource: any) => {
+        resources = lesson.content.resources.map((resource: { url: string; name: string; size: number; type: string; key?: string }) => {
           let resourceUrl = resource.url;
           if (resourceUrl && !resourceUrl.startsWith('http://') && !resourceUrl.startsWith('https://')) {
             // If it's a relative path, assume it's in the S3 bucket
@@ -146,7 +152,7 @@ export async function GET(
 
       // Also process legacy resources field if it exists
       if (lesson.resources && Array.isArray(lesson.resources)) {
-        const legacyResources = lesson.resources.map((resource: any) => {
+        const legacyResources = lesson.resources.map((resource: { url: string; name: string; size: number; type: string; key?: string }) => {
           let resourceUrl = resource.url;
           if (resourceUrl && !resourceUrl.startsWith('http://') && !resourceUrl.startsWith('https://')) {
             // If it's a relative path, assume it's in the S3 bucket
@@ -165,7 +171,7 @@ export async function GET(
           };
         });
         // Merge with content resources, avoiding duplicates
-        resources = [...resources, ...legacyResources.filter(legacy => 
+        resources = [...resources, ...legacyResources.filter((legacy: { name: string }) =>
           !resources.some(r => r.name === legacy.name)
         )];
       }

@@ -12,7 +12,7 @@ export interface UploadResult {
 }
 
 // Queue for managing uploads to prevent rate limiting
-const uploadQueue: Array<() => Promise<any>> = [];
+const uploadQueue: Array<() => Promise<unknown>> = [];
 let isProcessingQueue = false;
 
 const processQueue = async () => {

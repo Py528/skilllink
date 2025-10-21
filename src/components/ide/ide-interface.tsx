@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import './ide.css'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IDEActivityBar } from '@/components/ide/ide-activity-bar'
@@ -18,8 +18,6 @@ interface IDEInterfaceProps {
 export function IDEInterface({ course, currentLesson }: IDEInterfaceProps) {
   const [activeView, setActiveView] = useState('explorer')
   const [showTerminal, setShowTerminal] = useState(false)
-  const [sidebarWidth, setSidebarWidth] = useState(300)
-  const [terminalHeight, setTerminalHeight] = useState(200)
   const [isMinimized, setIsMinimized] = useState(false)
   
   return (

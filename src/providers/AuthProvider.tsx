@@ -19,10 +19,10 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<User>;
-  register: (name: string, email: string, password: string, userType?: 'instructor' | 'learner') => Promise<User>;
+  register: (name: string, email: string, password: string, userType?: 'instructor' | 'learner') => Promise<User | null>;
   logout: () => Promise<void>;
-  loginWithGithub: () => Promise<any>;
-  loginWithGoogle: () => Promise<any>;
+  loginWithGithub: () => Promise<{ provider: string; url: string }>;
+  loginWithGoogle: () => Promise<{ provider: string; url: string }>;
   updateUserType: (userType: 'instructor' | 'learner') => Promise<UserProfile | undefined>;
   refreshProfile: () => Promise<void>;
 }

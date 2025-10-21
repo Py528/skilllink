@@ -10,6 +10,9 @@ import { BasicInformationStep } from '@/components/publish_course/BasicInformati
 import { CourseContentStep } from '@/components/publish_course/CourseContentStep';
 import { PricingSettingsStep } from '@/components/publish_course/PricingSettingsStep';
 import { PreviewPublishStep } from '@/components/publish_course/PreviewPublishStep';
+import { ValidationIndicator, ProgressIndicator, CompletionTips } from '@/components/publish_course/ValidationIndicator';
+import { CourseValidationService, ValidationError } from '@/lib/courseValidation';
+import { CourseData } from '@/types/index';
 import { s3Service } from '@/services/s3Upload';
 import { toast } from '@/components/ui/sonner';
 import { useSupabase } from '@/providers/SupabaseProvider';
@@ -37,7 +40,7 @@ interface Lesson {
   thumbnail_url?: string;
   resources: Record<string, unknown>[];
   is_free: boolean;
-  type?: string;
+  type: string;
   videoFile?: File | UploadedFile;
   videoPreview?: string;
   resourceFiles: (File | UploadedFile)[];
@@ -52,7 +55,7 @@ interface Module {
   lessons: Lesson[];
 }
 
-interface FormData {
+interface CourseFormData {
   title: string;
   description: string;
   category: string;
@@ -77,8 +80,8 @@ const steps = [
   { id: 4, title: 'Preview & Publish', description: 'Review and go live' }
 ];
 
-function isFile(obj: any): obj is File {
-  return obj && typeof obj === 'object' && typeof obj.arrayBuffer === 'function';
+function isFile(obj: unknown): obj is File {
+  return Boolean(obj && typeof obj === 'object' && typeof (obj as File).arrayBuffer === 'function');
 }
 
 // Helper to generate unique id
@@ -86,8 +89,8 @@ function generateId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 }
 
-function isUploadedFile(file: any): file is UploadedFile {
-  return file && typeof file === 'object' && typeof file.url === 'string';
+function isUploadedFile(file: unknown): file is UploadedFile {
+  return Boolean(file && typeof file === 'object' && typeof (file as UploadedFile).url === 'string');
 }
 
 export default function CreateCourse() {
@@ -95,7 +98,7 @@ export default function CreateCourse() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<CourseFormData>({
     title: '',
     description: '',
     category: '',
@@ -114,10 +117,34 @@ export default function CreateCourse() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   
+  // Validation state
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [validationWarnings, setValidationWarnings] = useState<ValidationError[]>([]);
+  const [completionPercentage, setCompletionPercentage] = useState(0);
+  
   // Use refs to persist data across re-renders (React Strict Mode fix)
-  const courseRef = useRef<any>(null);
+  const courseRef = useRef<{ id: string; title: string; description: string; thumbnail_url?: string } | null>(null);
   const courseIdRef = useRef<string | null>(null);
   const publishingRef = useRef(false);
+
+  // Validation effect
+  useEffect(() => {
+    const courseData = {
+      title: formData.title,
+      description: formData.description,
+      category: formData.category,
+      level: formData.level,
+      modules: formData.modules,
+      is_paid: formData.pricingType === 'paid',
+      price: formData.pricingType === 'paid' ? parseFloat(formData.price) : 0,
+      preview_lessons: formData.modules.flatMap(m => m.lessons.filter(l => l.is_preview))
+    } as Partial<CourseData>;
+
+    const validation = CourseValidationService.validateAll(courseData);
+    setValidationErrors(validation.errors);
+    setValidationWarnings(validation.warnings);
+    setCompletionPercentage(CourseValidationService.getCompletionPercentage(courseData));
+  }, [formData]);
 
   // Check authentication and user type
   useEffect(() => {
@@ -189,7 +216,7 @@ export default function CreateCourse() {
     );
   }
 
-  const updateFormData = (newData: Partial<FormData>) => {
+  const updateFormData = (newData: Partial<CourseFormData>) => {
     setFormData(prev => ({ ...prev, ...newData }));
     // Clear errors for updated fields
     const updatedFields = Object.keys(newData);
@@ -283,7 +310,7 @@ export default function CreateCourse() {
         .single();
         
       // Race between timeout and test
-      const { data, error } = await Promise.race([testPromise, timeoutPromise]) as any;
+      const { data, error } = await Promise.race([testPromise, timeoutPromise]) as { data: unknown; error: unknown };
         
       if (error) {
         console.error('CreateCourse - Basic course creation test failed:', error);
@@ -297,7 +324,7 @@ export default function CreateCourse() {
         await supabase
           .from('courses')
           .delete()
-          .eq('id', data.id);
+          .eq('id', (data as { id: string }).id);
       } catch (cleanupError) {
         console.warn('CreateCourse - Failed to cleanup test course:', cleanupError);
       }
@@ -392,13 +419,13 @@ export default function CreateCourse() {
 
       // 0. Handle bulk upload files FIRST (upload to S3 only now)
       console.log('CreateCourse - Checking for bulk upload files...');
-      let bulkUploadFiles: File[] = [];
+      const bulkUploadFiles: File[] = [];
       let updatedFormData = { ...formData };
       
       if (formData.modules && formData.modules.length > 0) {
         // Check if any modules have bulk upload files
-        for (const module of formData.modules) {
-          for (const lesson of module.lessons) {
+        for (const courseModule of formData.modules) {
+          for (const lesson of courseModule.lessons) {
             // Check if lesson has bulk upload files stored
             if (lesson.resourceFiles && Array.isArray(lesson.resourceFiles)) {
               for (const file of lesson.resourceFiles) {
@@ -638,7 +665,7 @@ export default function CreateCourse() {
         let course, courseError;
         try {
           console.log('CreateCourse - Starting Supabase insert with timeout...');
-          ({ data: course, error: courseError } = await Promise.race([courseInsertPromise, timeoutPromise]));
+          ({ data: course, error: courseError } = await Promise.race([courseInsertPromise, timeoutPromise]) as { data: unknown; error: unknown });
           console.log('CreateCourse - Supabase insert completed successfully');
         } catch (err) {
           console.error('CreateCourse - Supabase insert threw error:', err);
@@ -676,8 +703,9 @@ export default function CreateCourse() {
 
         if (courseError) {
           console.error('CreateCourse - Course creation failed:', courseError, 'User:', user?.id);
-          toast.error('Failed to create course: ' + courseError.message);
-          throw new Error(`Failed to create course: ${courseError.message}`);
+          const errorMessage = courseError instanceof Error ? courseError.message : 'Unknown error';
+          toast.error('Failed to create course: ' + errorMessage);
+          throw new Error(`Failed to create course: ${errorMessage}`);
         }
         if (!course) {
           console.error('CreateCourse - No course returned from insert, possible RLS or network issue. User:', user?.id, 'Response:', { course, courseError });
@@ -749,7 +777,7 @@ export default function CreateCourse() {
         const lessonsToCreate = courseModule.lessons.map((lesson, index) => {
           // Transform resourceFiles to resources format for Supabase
           const resources = lesson.resourceFiles && Array.isArray(lesson.resourceFiles)
-            ? lesson.resourceFiles.map((file: any) => ({
+            ? lesson.resourceFiles.map((file: File | UploadedFile) => ({
                 key: isUploadedFile(file) ? file.key : undefined,
                 name: file.name,
                 type: file.type,
@@ -856,7 +884,7 @@ export default function CreateCourse() {
       const totalLessons = finalFormData.modules.reduce((acc, module) => acc + module.lessons.length, 0);
       console.log('CreateCourse - Updating course with total lessons:', totalLessons);
       
-      const updateData: any = {};
+      const updateData: { total_lessons?: number; estimated_duration?: number } = {};
       if (totalLessons > 0) {
         updateData.total_lessons = totalLessons;
       }
@@ -904,10 +932,8 @@ export default function CreateCourse() {
 
     return (
       <StepComponent
-        formData={formData as FormData}
-        updateFormData={updateFormData as (data: Partial<FormData>) => void}
-        errors={errors}
-        onPublish={currentStep === 4 ? handlePublish : undefined}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        {...({ formData, updateFormData, errors, onPublish: currentStep === 4 ? handlePublish : undefined } as any)}
       />
     );
   };
@@ -933,11 +959,25 @@ export default function CreateCourse() {
                   <div className="space-y-4">
                     <div>
                       <h3 className="font-semibold text-white mb-2">Progress</h3>
-                      <Progress value={(currentStep / steps.length) * 100} showLabel />
+                      <ProgressIndicator 
+                        currentStep={currentStep}
+                        totalSteps={steps.length}
+                        completionPercentage={completionPercentage}
+                      />
+                    </div>
+                    
+                    {/* Validation Status */}
+                    <div>
+                      <h3 className="font-semibold text-white mb-2">Validation</h3>
+                      <ValidationIndicator 
+                        errors={validationErrors}
+                        warnings={validationWarnings}
+                        step={currentStep}
+                      />
                     </div>
                     
                     <div className="space-y-2">
-                      {steps.map((step, index) => (
+                      {steps.map((step) => (
                         <motion.div
                           key={step.id}
                           className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
@@ -1000,7 +1040,15 @@ export default function CreateCourse() {
               </Card>
             </motion.div>
 
-            {/* Navigation Buttons */}
+            {/* Completion Tips */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="mt-6"
+            >
+              <CompletionTips step={currentStep} />
+            </motion.div>
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

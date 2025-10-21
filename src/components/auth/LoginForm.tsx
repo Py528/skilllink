@@ -158,7 +158,7 @@ export default function LoginForm() {
         variants={formVariants}
         initial="hidden"
         animate="visible"
-        className="bg-[#1a1a1a]/80 backdrop-blur-md p-8 rounded-xl border border-gray-800/50 shadow-xl"
+        className="card-glass bg-[#1a1a1a]/80 backdrop-blur-md p-8 rounded-xl border border-gray-800/50 shadow-xl"
       >
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center justify-center mb-6">
@@ -214,7 +214,7 @@ export default function LoginForm() {
                 onFocus={() => setFocusedField('email')}
                 onBlur={() => setFocusedField(null)}
                 disabled={isAnyLoading}
-                className={`w-full bg-[#111111] border ${
+                className={`input-primary w-full bg-[#111111] border ${
                   errors.email ? 'border-red-500' : focusedField === 'email' ? 'border-[#0CF2A0]' : 'border-gray-700'
                 } rounded-lg py-3 pl-10 pr-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0CF2A0]/30 focus:border-[#0CF2A0] transition-all duration-200 disabled:opacity-50`}
               />
@@ -256,7 +256,7 @@ export default function LoginForm() {
                 onFocus={() => setFocusedField('password')}
                 onBlur={() => setFocusedField(null)}
                 disabled={isAnyLoading}
-                className={`w-full bg-[#111111] border ${
+                className={`input-primary w-full bg-[#111111] border ${
                   errors.password ? 'border-red-500' : focusedField === 'password' ? 'border-[#0CF2A0]' : 'border-gray-700'
                 } rounded-lg py-3 pl-10 pr-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0CF2A0]/30 focus:border-[#0CF2A0] transition-all duration-200 disabled:opacity-50`}
               />
@@ -312,7 +312,7 @@ export default function LoginForm() {
           <motion.button
             type="submit"
             disabled={isAnyLoading}
-            className="w-full flex items-center justify-center bg-[#0CF2A0] text-[#111111] rounded-lg py-3 font-medium hover:bg-[#0CF2A0]/90 transition-colors duration-200 disabled:opacity-70 relative overflow-hidden group"
+            className="btn-primary w-full flex items-center justify-center bg-[#0CF2A0] text-[#111111] rounded-lg py-3 font-medium hover:bg-[#0CF2A0]/90 transition-colors duration-200 disabled:opacity-70 relative overflow-hidden group hover-lift hover-glow"
             whileHover={{ scale: isAnyLoading ? 1 : 1.02 }}
             whileTap={{ scale: isAnyLoading ? 1 : 0.98 }}
           >
@@ -343,7 +343,7 @@ export default function LoginForm() {
               type="button"
               onClick={handleGithubLogin}
               disabled={isAnyLoading}
-              className="w-full flex items-center justify-center gap-2 bg-[#24292F] text-white rounded-lg py-3 font-medium hover:bg-[#24292F]/90 transition-colors duration-200 disabled:opacity-70 relative overflow-hidden group"
+              className="btn-secondary w-full flex items-center justify-center gap-2 bg-[#24292F] text-white rounded-lg py-3 font-medium hover:bg-[#24292F]/90 transition-colors duration-200 disabled:opacity-70 relative overflow-hidden group hover-lift"
               whileHover={{ scale: isAnyLoading ? 1 : 1.02 }}
               whileTap={{ scale: isAnyLoading ? 1 : 0.98 }}
             >
@@ -364,7 +364,7 @@ export default function LoginForm() {
               type="button"
               onClick={handleGoogleLogin}
               disabled={isAnyLoading}
-              className="w-full flex items-center justify-center gap-2 bg-white text-gray-900 rounded-lg py-3 font-medium hover:bg-gray-50 transition-colors duration-200 disabled:opacity-70 relative overflow-hidden group"
+              className="btn-outline w-full flex items-center justify-center gap-2 bg-white text-gray-900 rounded-lg py-3 font-medium hover:bg-gray-50 transition-colors duration-200 disabled:opacity-70 relative overflow-hidden group hover-lift"
               whileHover={{ scale: isAnyLoading ? 1 : 1.02 }}
               whileTap={{ scale: isAnyLoading ? 1 : 0.98 }}
             >

@@ -627,26 +627,26 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
 
       {uploadMode === 'bulk' ? (
         <BulkUploadStep
-          onStructureCreated={(structure: any) => {
+          onStructureCreated={(structure: { sections: Array<{ name: string; lessons: Array<{ name: string; files: Array<{ type: string; s3Url?: string }> }> }> }) => {
             console.log('CourseContentStep - Bulk upload structure received:', structure);
             
             // Convert the bulk upload structure to modules/lessons
-            const convertedModules = structure.sections.map((section: any, sectionIndex: number) => ({
+            const convertedModules = structure.sections.map((section: { name: string; lessons: Array<{ name: string; files: Array<{ type: string; s3Url?: string }> }> }, sectionIndex: number) => ({
               id: `module_${Date.now()}_${sectionIndex}`,
               title: section.name,
               description: `Section ${sectionIndex + 1}: ${section.name}`,
               order_index: sectionIndex,
-              lessons: section.lessons.map((lesson: any, lessonIndex: number) => {
+              lessons: section.lessons.map((lesson: { name: string; files: Array<{ type: string; s3Url?: string }> }, lessonIndex: number) => {
                 // Find video file for this lesson
-                const videoFile = lesson.files.find((f: any) => f.type === 'video');
+                const videoFile = lesson.files.find((f: { type: string; s3Url?: string }) => f.type === 'video');
                 
                 // Convert files to File objects if they exist in the structure
                 const lessonResourceFiles: (File | UploadedFile)[] = [];
                 
                 // Check if the structure has the actual files stored
-                if (structure._files && Array.isArray(structure._files)) {
+                if ((structure as { _files?: File[] })._files && Array.isArray((structure as { _files?: File[] })._files)) {
                   // Find files that belong to this lesson
-                  const lessonFiles = structure._files.filter((file: File) => {
+                  const lessonFiles = ((structure as { _files?: File[] })._files || []).filter((file: File) => {
                     const filePath = file.webkitRelativePath || file.name;
                     return filePath.includes(lesson.name) || filePath.includes(`lesson_${lessonIndex}`);
                   });
@@ -669,16 +669,16 @@ export const CourseContentStep: React.FC<CourseContentStepProps> = ({
                     chapters: [],
                     notes: ''
                   },
-                  resources: lesson.files
-                    .filter((f: any) => f.type !== 'video')
-                    .map((file: any) => ({
+                  resources: (lesson.files as { name: string; type: string; s3Url?: string; path?: string; size?: number }[])
+                    .filter((f) => f.type !== 'video')
+                    .map((file) => ({
                       name: file.name,
                       type: file.type,
-                      url: file.s3Url || file.path, // Use S3 URL if available, fallback to path
-                      size: file.size
+                      url: file.s3Url || file.path || '', // Use S3 URL if available, fallback to path
+                      size: file.size || 0
                     })),
                   is_free: false,
-                  type: lesson.files.find((f: any) => f.type === 'video') ? 'video' : 'text',
+                  type: lesson.files.find((f: { type: string }) => f.type === 'video') ? 'video' : 'text',
                   videoFile: videoFile ? undefined : undefined, // Will be set during upload
                   resourceFiles: lessonResourceFiles // Store actual File objects for later upload
                 };

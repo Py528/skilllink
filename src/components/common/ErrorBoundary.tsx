@@ -130,7 +130,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
 // Hook for functional components to trigger error boundary
 export const useErrorHandler = () => {
-  return (error: Error, errorInfo?: any) => {
+  return (error: Error, errorInfo?: unknown) => {
     logger.error('Error caught by useErrorHandler', {
       error: error.message,
       stack: error.stack,

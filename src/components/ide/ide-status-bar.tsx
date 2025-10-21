@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useTheme } from 'next-themes'
 import { 
   GitBranch, 
-  AlertCircle, 
   Check, 
   Terminal, 
   BellRing, 
@@ -13,7 +12,6 @@ import {
   CloudOff,
   Save,
   RefreshCw,
-  GitCommit
 } from 'lucide-react'
 
 interface IDEStatusBarProps {
@@ -23,13 +21,13 @@ interface IDEStatusBarProps {
   setIsMinimized?: (minimized: boolean) => void
 }
 
-export function IDEStatusBar({ setShowTerminal, showTerminal, isMinimized, setIsMinimized }: IDEStatusBarProps) {
+export function IDEStatusBar({ setShowTerminal, showTerminal }: IDEStatusBarProps) {
   const { theme } = useTheme()
   const [gitConnected, setGitConnected] = useState(false)
-  const [s3Connected, setS3Connected] = useState(true)
-  const [supabaseConnected, setSupabaseConnected] = useState(true)
-  const [autoSave, setAutoSave] = useState(true)
-  const [syncStatus, setSyncStatus] = useState('synced')
+  const [s3Connected] = useState(true)
+  const [supabaseConnected] = useState(true)
+  const [autoSave] = useState(true)
+  const [syncStatus] = useState<'synced' | 'syncing'>('synced')
   
   return (
     <div className="h-6 bg-[var(--vscode-statusBar-background)] text-[var(--vscode-statusBar-foreground)] flex items-center justify-between px-2 text-xs border-t border-[var(--vscode-statusBar-border)]">

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { X, Plus, Maximize2, Minimize2 } from 'lucide-react'
+import { X, Plus } from 'lucide-react'
 import { Course, Lesson } from '@/types/index'
 
 interface IDETerminalProps {
@@ -124,10 +124,13 @@ export function IDETerminal({ setShowTerminal, course, currentLesson }: IDETermi
           '  💾 Auto-save: Enabled',
           '  🔄 Sync: Active'
         ]
+      } else if (command === 'history') {
+        response = ['Command history:', ...commandHistory]
       } else if (command === 'exit') {
+        response = ['Closing terminal...']
         setShowTerminal(false)
       } else {
-        response = [`Command not found: ${command}`]
+        response = [`Command not found: ${command}`, 'Type "help" for a list of commands']
       }
       
       setOutput(prev => [...prev, `> ${command}`, ...response, '> '])
@@ -155,9 +158,6 @@ export function IDETerminal({ setShowTerminal, course, currentLesson }: IDETermi
         <div className="flex items-center">
           <button className="h-6 w-6 hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded flex items-center justify-center">
             <Plus size={14} />
-          </button>
-          <button className="h-6 w-6 hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded flex items-center justify-center">
-            <Maximize2 size={14} />
           </button>
           <button 
             className="h-6 w-6 hover:bg-[var(--vscode-toolbar-hoverBackground)] rounded flex items-center justify-center" 

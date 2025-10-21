@@ -231,7 +231,7 @@ Let's start by understanding what React is and why it's so popular for building 
 };
 
 // Helper function to get default content for a lesson type
-export function getDefaultContent(lessonType: string): any {
+export function getDefaultContent(lessonType: string): { type: string; [key: string]: unknown } {
   switch (lessonType) {
     case 'text':
       return {

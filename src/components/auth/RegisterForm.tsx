@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { User, Mail, Lock, Github, ArrowRight, Loader2, Sparkles, CheckCircle2, Briefcase, GraduationCap } from 'lucide-react';
+import { Github, Sparkles } from 'lucide-react';
 import { FcGoogle } from "react-icons/fc";
 import { useAuth } from '@/providers/AuthProvider';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -69,13 +69,14 @@ export const RegisterForm: React.FC = () => {
     return newErrors.length === 0;
   };
 
+  const { supabase } = useSupabase();
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
     setIsLoading(true);
     try {
-      const { supabase, session, user } = useSupabase();
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formState.email,
@@ -114,14 +115,13 @@ export const RegisterForm: React.FC = () => {
     }
   };
 
-  const { register, loginWithGithub, loginWithGoogle } = useAuth();
+  const { loginWithGithub, loginWithGoogle } = useAuth();
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email.trim());
   };
 
   const [showWelcome, setShowWelcome] = useState(true);
-  const [focusedField, setFocusedField] = useState<'name' | 'email' | 'password' | 'confirmPassword' | null>(null);
   const [formProgress, setFormProgress] = useState(0);
   const [generalError, setGeneralError] = useState('');
   
@@ -147,9 +147,9 @@ export const RegisterForm: React.FC = () => {
     try {
       await loginWithGithub();
       // Redirect is handled by Supabase OAuth flow
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('GitHub login error:', error);
-      setGeneralError(error.message || 'GitHub signup failed. Please try again.');
+      setGeneralError(error instanceof Error ? error.message : 'GitHub signup failed. Please try again.');
     }
   };
 
@@ -159,9 +159,9 @@ export const RegisterForm: React.FC = () => {
     try {
       await loginWithGoogle();
       // Redirect is handled by Supabase OAuth flow
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Google login error:', error);
-      setGeneralError(error.message || 'Google signup failed. Please try again.');
+      setGeneralError(error instanceof Error ? error.message : 'Google signup failed. Please try again.');
     }
   };
 
@@ -181,24 +181,8 @@ export const RegisterForm: React.FC = () => {
     animate: { scale: 1, rotate: 360, transition: { duration: 0.5 } },
   };
 
-  const slideVariants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? 300 : -300,
-      opacity: 0
-    }),
-    center: {
-      zIndex: 1,
-      x: 0,
-      opacity: 1
-    },
-    exit: (direction: number) => ({
-      zIndex: 0,
-      x: direction < 0 ? 300 : -300,
-      opacity: 0
-    })
-  };
 
-  const isAnyLoading = isLoading || loginWithGithub.isLoading || loginWithGoogle.isLoading;
+  const isAnyLoading = isLoading;
   
   return (
     <div className="relative w-full max-w-md">
@@ -262,15 +246,9 @@ export const RegisterForm: React.FC = () => {
             </motion.div>
             <span className="text-2xl font-bold text-white">SkillLink</span>
           </Link>
-          <motion.h1 
-            className="text-2xl font-bold text-white mb-2"
-            animate={{ 
-              color: focusedField ? ['#ffffff', '#0CF2A0', '#ffffff'] : '#ffffff'
-            }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
+          <h1 className="text-2xl font-bold text-white mb-2">
             Create your account
-          </motion.h1>
+          </h1>
           <p className="text-gray-400">
             Join thousands of professionals advancing their careers
           </p>
@@ -405,13 +383,9 @@ export const RegisterForm: React.FC = () => {
             <motion.div
               className="absolute inset-0 bg-white/10 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
             />
-            {loginWithGithub.isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Github className="h-5 w-5" />
-            )}
+            <Github className="h-5 w-5" />
             <span className="relative z-10">
-              {loginWithGithub.isLoading ? 'Connecting...' : 'Continue with GitHub'}
+              Continue with GitHub
             </span>
           </motion.button>
 
@@ -426,13 +400,9 @@ export const RegisterForm: React.FC = () => {
             <motion.div
               className="absolute inset-0 bg-gray-100/50 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
             />
-            {loginWithGoogle.isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin text-gray-600" />
-            ) : (
-              <FcGoogle className="h-5 w-5" />
-            )}
+            <FcGoogle className="h-5 w-5" />
             <span className="relative z-10">
-              {loginWithGoogle.isLoading ? 'Connecting...' : 'Continue with Google'}
+              Continue with Google
             </span>
           </motion.button>
         </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import NextImage from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, X, Plus } from 'lucide-react';
 import { Input } from '@/components/publish_course/Input';
@@ -159,9 +160,11 @@ export const BasicInformationStep: React.FC<BasicInformationStepProps> = ({
                     exit={{ opacity: 0, scale: 0.8 }}
                     className="relative"
                   >
-                    <img
-                      src={typeof formData.thumbnail === 'string' ? formData.thumbnail : formData.thumbnailPreview}
+                    <NextImage
+                      src={typeof formData.thumbnail === 'string' ? formData.thumbnail : formData.thumbnailPreview || ''}
                       alt="Course thumbnail"
+                      width={400}
+                      height={192}
                       className="w-full h-48 object-cover rounded-xl"
                     />
                     <motion.button

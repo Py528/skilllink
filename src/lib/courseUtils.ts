@@ -44,7 +44,7 @@ export async function fetchLessonWithResources(lessonId: string): Promise<Lesson
 
     const data = await response.json()
     return data && data.length > 0 ? data[0] : null
-  } catch (error) {
+  } catch {
     return null
   }
 }
@@ -75,7 +75,7 @@ export async function fetchCourseLessonsWithResources(courseId: string): Promise
     }
 
     // Get all lessons for all sections
-    const sectionIds = sections.map((section: any) => section.id)
+    const sectionIds = sections.map((section: { id: string }) => section.id)
     const lessonsResponse = await fetch(`${supabaseUrl}/rest/v1/lessons?section_id=in.(${sectionIds.join(',')})&select=*&order=order_index.asc`, {
       headers: {
         'apikey': supabaseKey!,
@@ -90,7 +90,7 @@ export async function fetchCourseLessonsWithResources(courseId: string): Promise
 
     const lessons = await lessonsResponse.json()
     return lessons || []
-  } catch (error) {
+  } catch {
     return []
   }
 }

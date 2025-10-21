@@ -28,13 +28,13 @@ export default function FeaturedCoursesSection() {
             <p className="text-sm text-gray-400 mb-4">{course.level}</p>
             <div className="flex items-center">
               <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white text-xs font-medium">
-                {course.instructor
+                {(course.instructor_name || 'N/A')
                   .split(" ")
                   .map((n) => n[0])
                   .join("")}
               </div>
               <span className="ml-3 text-sm text-gray-300">
-                {course.instructor}
+                {course.instructor_name || 'N/A'}
               </span>
             </div>
           </motion.div>

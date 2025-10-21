@@ -1,13 +1,13 @@
 "use client"
 
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { 
   FolderOpen, 
   File, 
   ChevronDown, 
   ChevronRight, 
-  Search, 
+  
   X, 
   RefreshCw, 
   GitBranch, 
@@ -20,7 +20,7 @@ import {
   FileJson,
   FileText,
   BookOpen,
-  Video,
+  
   FileVideo,
   FileImage,
   FileArchive,
@@ -66,8 +66,8 @@ const getFileSystem = (course?: Course, currentLesson?: Lesson) => {
       {
         name: 'resources',
         type: 'folder' as const,
-        children: currentLesson?.resources?.map((resource, index) => {
-          const extension = resource.name.split('.').pop()?.toLowerCase();
+        children: currentLesson?.resources?.map((resource) => {
+          const extension = (resource as { name: string }).name.split('.').pop()?.toLowerCase();
           let icon = File;
           
           switch (extension) {
@@ -115,11 +115,11 @@ const getFileSystem = (course?: Course, currentLesson?: Lesson) => {
           }
           
           return {
-            name: resource.name,
+            name: (resource as { name: string }).name,
             type: 'file' as const,
             icon,
-            size: resource.size,
-            url: resource.url
+            size: (resource as { size?: number }).size,
+            url: (resource as { url?: string }).url
           };
         }) || [],
       },
@@ -134,11 +134,11 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
   const [searchText, setSearchText] = useState('')
   const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set())
   const [fileErrors, setFileErrors] = useState<Map<string, string>>(new Map())
-  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [searchResults, setSearchResults] = useState<Array<{ name: string; path: string; type: 'file'; matches: number }>>([])
   const [isSearching, setIsSearching] = useState(false)
   const [gitConnected, setGitConnected] = useState(false)
-  const [gitBranch, setGitBranch] = useState('main')
-  const [lastCommit, setLastCommit] = useState('Latest commit')
+  const [gitBranch] = useState('main')
+  const [lastCommit] = useState('Latest commit')
   
   const fileSystem = getFileSystem(course, currentLesson)
   
@@ -151,7 +151,7 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
   }
 
   // Simulate file fetching from S3/Supabase
-  const fetchFileContent = async (filePath: string, fileUrl?: string) => {
+  const fetchFileContent = async (filePath: string) => {
     setLoadingFiles(prev => new Set(prev).add(filePath))
     setFileErrors(prev => {
       const newMap = new Map(prev)
@@ -192,9 +192,9 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
       await new Promise(resolve => setTimeout(resolve, 500))
       
       const mockResults = [
-        { name: 'course-overview.md', path: 'course-info/course-overview.md', type: 'file', matches: 3 },
-        { name: 'lesson-content.md', path: 'lessons/lesson-content.md', type: 'file', matches: 1 },
-        { name: 'video-resource.mp4', path: 'resources/video-resource.mp4', type: 'file', matches: 1 }
+        { name: 'course-overview.md', path: 'course-info/course-overview.md', type: 'file' as const, matches: 3 },
+        { name: 'lesson-content.md', path: 'lessons/lesson-content.md', type: 'file' as const, matches: 1 },
+        { name: 'video-resource.mp4', path: 'resources/video-resource.mp4', type: 'file' as const, matches: 1 }
       ].filter(result => 
         result.name.toLowerCase().includes(query.toLowerCase()) ||
         result.path.toLowerCase().includes(query.toLowerCase())
@@ -209,7 +209,11 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
     }
   }
   
-  const FileSystemItem = ({ item, path = '', level = 0 }: any) => {
+  type FileItem = { name: string; type: 'file'; icon?: React.ComponentType<{ size?: number }>; size?: number; url?: string }
+  type FolderItem = { name: string; type: 'folder'; children?: Array<FileItem | FolderItem> }
+  type TreeItem = FileItem | FolderItem
+
+  const FileSystemItem = ({ item, path = '', level = 0 }: { item: TreeItem; path?: string; level?: number }) => {
     const fullPath = path ? `${path}/${item.name}` : item.name
     const isExpanded = expandedFolders.includes(fullPath)
     const isLoading = loadingFiles.has(fullPath)
@@ -224,7 +228,7 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
           style={{ paddingLeft: `${level * 16 + 4}px` }}
           onClick={() => {
             if (item.type === 'file') {
-              fetchFileContent(fullPath, item.url)
+              fetchFileContent(fullPath)
             }
           }}
         >
@@ -245,7 +249,7 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
           {item.type === 'folder' ? (
             <FolderOpen size={16} className="mr-1 text-[var(--vscode-icon-foreground)]" />
           ) : item.icon ? (
-            <item.icon size={16} className="mr-1 text-[var(--vscode-icon-foreground)]" />
+            <item.icon size={16} />
           ) : (
             <File size={16} className="mr-1 text-[var(--vscode-icon-foreground)]" />
           )}
@@ -255,9 +259,11 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
           <div className="flex items-center gap-1">
             {isLoading && <Loader2 size={12} className="animate-spin text-[var(--vscode-progressBar-background)]" />}
             {error && <AlertTriangle size={12} className="text-[var(--vscode-errorForeground)]" />}
-            {item.size && (
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {(item as any).size && (
               <span className="text-xs text-[var(--vscode-descriptionForeground)] ml-2">
-                {Math.floor(item.size / 1024)}KB
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                {Math.floor((item as any).size / 1024)}KB
               </span>
             )}
           </div>
@@ -274,7 +280,7 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
               className="mt-2 px-2 py-1 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] rounded text-xs hover:bg-[var(--vscode-button-hoverBackground)]"
               onClick={(e) => {
                 e.stopPropagation()
-                fetchFileContent(fullPath, item.url)
+                fetchFileContent(fullPath)
               }}
             >
               Retry
@@ -284,7 +290,7 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
         
         {item.type === 'folder' && isExpanded && item.children && (
           <div>
-            {item.children.map((child: any, index: number) => (
+            {item.children.map((child: TreeItem, index: number) => (
               <FileSystemItem key={index} item={child} path={fullPath} level={level + 1} />
             ))}
           </div>
@@ -396,7 +402,7 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
               ))
             ) : searchText ? (
               <div className="text-xs text-[var(--vscode-descriptionForeground)] px-2">
-                No results found for "{searchText}"
+                No results found for &quot;{searchText}&quot;
               </div>
             ) : (
               <div className="text-xs text-[var(--vscode-descriptionForeground)] px-2">

@@ -4,18 +4,22 @@ import JSZip from 'jszip';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { logger } from '@/lib/logger';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  );
+}
 
-const s3 = new S3Client({
-  region: process.env.AWS_BUCKET_REGION!,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY!,
-    secretAccessKey: process.env.AWS_SECRET_KEY!,
-  },
-});
+function getS3Client() {
+  return new S3Client({
+    region: process.env.AWS_BUCKET_REGION || 'us-east-1',
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY || '',
+      secretAccessKey: process.env.AWS_SECRET_KEY || '',
+    },
+  });
+}
 
 interface FileInfo {
   name: string;
@@ -104,7 +108,6 @@ function getFileType(filename: string): string {
 
 // Parse folder structure from uploaded files
 function parseFolderStructure(files: FileInfo[]): CourseStructure {
-  const sections: CourseStructure['sections'] = [];
   const fileMap = new Map<string, FileInfo[]>();
 
   // Group files by their path structure
@@ -184,7 +187,7 @@ async function uploadFileToS3(file: FileInfo, courseFolderId: string): Promise<{
     }
   });
 
-  await s3.send(command);
+  await getS3Client().send(command);
   
   const publicUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_BUCKET_REGION}.amazonaws.com/${s3Path}`;
   
@@ -238,7 +241,7 @@ async function processZipFile(zipBuffer: Buffer): Promise<FileInfo[]> {
         name: file.name,
         path: path,
         size: content.length,
-        type: file.type || 'application/octet-stream',
+        type: (file as JSZip.JSZipObject & { type?: string }).type || 'application/octet-stream',
         content
       });
     }
@@ -344,7 +347,7 @@ export async function POST(request: NextRequest) {
       const section = courseStructure.sections[sectionIndex];
       
       // Create section
-      const { data: createdSection, error: sectionError } = await supabase
+      const { data: createdSection, error: sectionError } = await getSupabase()
         .from('course_sections')
         .insert({
           course_id: courseId,
@@ -374,7 +377,7 @@ export async function POST(request: NextRequest) {
         const resourceFiles = lesson.files.filter(f => f.type !== 'video');
         
         // Create lesson
-        const { data: createdLesson, error: lessonError } = await supabase
+        const { data: createdLesson, error: lessonError } = await getSupabase()
           .from('lessons')
           .insert({
             course_id: courseId,
@@ -411,7 +414,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update course with folder ID
-    await supabase
+    await getSupabase()
       .from('courses')
       .update({
         content_folder_id: courseFolderId,

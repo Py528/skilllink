@@ -1,36 +1,36 @@
 "use client";
+
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { Sparkles, ArrowRight } from "lucide-react";
 import { RotatingText } from "./RotatingText";
 import { ParticleBackground } from "./ParticleBackground";
 
-
-const bannerVariants = {
-  hidden: { opacity: 0, y: -20 },
-  visible: { opacity: 1, y: 0, transition: { delay: 0.2 } },
-};
-
-const headlineVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { delay: 0.4 } },
-};
-
-const subHeadlineVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { delay: 0.6 } },
-};
-
-const formVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { delay: 0.8 } },
-};
-
 export const HeroSection = () => {
+  const bannerVariants = {
+    hidden: { opacity: 0, y: -20 },
+    visible: { opacity: 1, y: 0, transition: { delay: 0.2 } },
+  };
+
+  const headlineVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { delay: 0.4 } },
+  };
+
+  const subHeadlineVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { delay: 0.6 } },
+  };
+
+  const formVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { delay: 0.8 } },
+  };
+
   return (
     <>
       <ParticleBackground />
       
-      <main className="flex-grow flex flex-col items-center justify-center text-center px-4 pt-8 pb-16 relative z-10 min-h-[90vh] mb-12 mt-12">
+      <main className="flex-grow flex flex-col items-center justify-center text-center px-4 pt-8 pb-16 relative z-10 min-h-[90vh] mb-12">
         <motion.div
           variants={bannerVariants}
           initial="hidden"

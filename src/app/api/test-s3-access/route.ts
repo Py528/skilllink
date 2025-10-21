@@ -58,13 +58,13 @@ export async function POST(req: NextRequest) {
       bucket: process.env.AWS_BUCKET_NAME,
       region: process.env.AWS_BUCKET_REGION,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('S3 access test failed:', error);
     
     return NextResponse.json({
       error: 'S3 access failed',
-      details: error.message,
-      code: error.$metadata?.httpStatusCode,
+      details: error instanceof Error ? error.message : 'Unknown error',
+      code: (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode,
       key,
       bucket: process.env.AWS_BUCKET_NAME,
     }, { status: 500 });
