@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { VideoPlayer } from '@/components/courses/video-player'
 import { CourseNavigation } from '@/components/courses/course-navigation'
 import { Separator } from '@/components/ui/separator'
-import { Home, ChevronRight, BookOpen, Video, FileText, Download, ExternalLink, FileVideo, File, Image, FileCode, Clock, Star, CheckCircle, Loader2 } from 'lucide-react'
+import { Home, ChevronRight, BookOpen, Video, FileText, Download, ExternalLink, FileVideo, File, Image, FileCode, Clock, Star, CheckCircle, Loader2, ChevronLeft, ChevronDown } from 'lucide-react'
 import { Course, Lesson, CourseResource } from '@/types/index'
 
 const tabVariants = {
@@ -29,6 +29,62 @@ interface CourseContentProps {
 
 export function CourseContent({ course, currentLesson, lessons = [], progress = 0, onLessonChange, isSwitchingLesson = false }: CourseContentProps) {
   const [activeTab, setActiveTab] = useState('video')
+  
+  // Navigation helper functions
+  const getCurrentLessonIndex = () => {
+    if (!currentLesson) return -1;
+    return lessons.findIndex(lesson => lesson.id === currentLesson.id);
+  };
+  
+  const getPreviousLesson = () => {
+    const currentIndex = getCurrentLessonIndex();
+    return currentIndex > 0 ? lessons[currentIndex - 1] : null;
+  };
+  
+  const getNextLesson = () => {
+    const currentIndex = getCurrentLessonIndex();
+    return currentIndex < lessons.length - 1 ? lessons[currentIndex + 1] : null;
+  };
+  
+  const handlePreviousLesson = () => {
+    const previousLesson = getPreviousLesson();
+    if (previousLesson && onLessonChange) {
+      onLessonChange(previousLesson.id);
+    }
+  };
+  
+  const handleNextLesson = () => {
+    const nextLesson = getNextLesson();
+    if (nextLesson && onLessonChange) {
+      onLessonChange(nextLesson.id);
+    }
+  };
+  
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle navigation if not typing in an input/textarea
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      if (isSwitchingLesson) return;
+      
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          handlePreviousLesson();
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          handleNextLesson();
+          break;
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isSwitchingLesson, lessons, currentLesson, onLessonChange]);
   
   // Helper function to format file size
   const formatFileSize = (bytes: number): string => {
@@ -199,10 +255,20 @@ export function CourseContent({ course, currentLesson, lessons = [], progress = 
           whileHover={{ x: 5 }}
           transition={{ duration: 0.2 }}
         >
-          <Home size={16} className="text-primary" />
-          <span>Courses</span>
+          <button 
+            onClick={() => window.location.href = '/dashboard'}
+            className="flex items-center gap-1 hover:text-primary transition-colors"
+          >
+            <Home size={16} className="text-primary" />
+            <span>Courses</span>
+          </button>
           <ChevronRight size={14} />
-          <span className="font-medium text-foreground">{course.title}</span>
+          <button 
+            onClick={() => window.location.href = `/courses/${course.id}`}
+            className="font-medium text-foreground hover:text-primary transition-colors"
+          >
+            {course.title}
+          </button>
           {currentLesson && (
             <>
               <ChevronRight size={14} />
@@ -552,6 +618,38 @@ export function CourseContent({ course, currentLesson, lessons = [], progress = 
                   </motion.div>
                 </AnimatePresence>
               </Tabs>
+              
+              {/* Lesson Navigation Controls */}
+              <motion.div 
+                className="flex items-center justify-between mt-6 pt-4 border-t"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <Button
+                  variant="outline"
+                  onClick={handlePreviousLesson}
+                  disabled={!getPreviousLesson() || isSwitchingLesson}
+                  className="flex items-center gap-2"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous Lesson
+                </Button>
+                
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>Lesson {getCurrentLessonIndex() + 1} of {lessons.length}</span>
+                </div>
+                
+                <Button
+                  variant="outline"
+                  onClick={handleNextLesson}
+                  disabled={!getNextLesson() || isSwitchingLesson}
+                  className="flex items-center gap-2"
+                >
+                  Next Lesson
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </motion.div>
             </CardContent>
           </Card>
         </motion.div>

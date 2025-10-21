@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { CourseContent } from '@/components/courses/course-content'
 import { IDEInterface } from '@/components/ide/ide-interface'
@@ -27,6 +27,18 @@ interface CourseInterfaceLayoutProps {
 
 export function CourseInterfaceLayout({ course, currentLesson, lessons = [], progress = 0, onLessonChange, isSwitchingLesson = false }: CourseInterfaceLayoutProps) {
   const [isMounted, setIsMounted] = useState(false)
+  const [leftWidthPct, setLeftWidthPct] = useState<number>(50)
+  const isDraggingRef = useRef(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  // load persisted split
+  useEffect(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('courseIdeSplitPct') : null
+    if (saved) {
+      const n = Number(saved)
+      if (!Number.isNaN(n) && n >= 20 && n <= 80) setLeftWidthPct(n)
+    }
+  }, [])
   
   useEffect(() => {
     setIsMounted(true)
@@ -47,6 +59,45 @@ export function CourseInterfaceLayout({ course, currentLesson, lessons = [], pro
         },
       })
     }, 800)
+  }, [])
+
+  // persist split
+  useEffect(() => {
+    if (!isMounted) return
+    window.localStorage.setItem('courseIdeSplitPct', String(leftWidthPct))
+  }, [leftWidthPct, isMounted])
+
+  const onMouseDown = () => {
+    isDraggingRef.current = true
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'col-resize'
+  }
+
+  const onMouseUp = () => {
+    if (!isDraggingRef.current) return
+    isDraggingRef.current = false
+    document.body.style.userSelect = ''
+    document.body.style.cursor = ''
+  }
+
+  const onMouseMove = (e: MouseEvent) => {
+    if (!isDraggingRef.current || !containerRef.current) return
+    const rect = containerRef.current.getBoundingClientRect()
+    const minPct = 20
+    const maxPct = 80
+    const relativeX = e.clientX - rect.left
+    const pct = (relativeX / rect.width) * 100
+    const clamped = Math.min(Math.max(pct, minPct), maxPct)
+    setLeftWidthPct(clamped)
+  }
+
+  useEffect(() => {
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
   }, [])
 
   // Don't render until client-side to avoid hydration issues
@@ -81,14 +132,15 @@ export function CourseInterfaceLayout({ course, currentLesson, lessons = [], pro
         <ThemeToggle />
       </motion.div>
       
-      <div className="flex h-full w-full">
+      <div ref={containerRef} className="flex h-full w-full">
         <motion.div
           variants={slideIn}
           initial="initial"
           animate="animate"
           exit="exit"
           transition={{ duration: 0.3, delay: 0.2 }}
-          className={`w-1/2 transition-all duration-200 ease-in-out ${isSwitchingLesson ? 'opacity-75' : 'opacity-100'}`}
+          className={`transition-all duration-200 ease-in-out ${isSwitchingLesson ? 'opacity-75' : 'opacity-100'}`}
+          style={{ width: `${leftWidthPct}%` }}
         >
           <CourseContent 
             course={course} 
@@ -100,7 +152,18 @@ export function CourseInterfaceLayout({ course, currentLesson, lessons = [], pro
           />
         </motion.div>
         
-        <div className="w-px bg-border transition-colors duration-200 ease-in-out hover:bg-primary" />
+        {/* Drag Handle */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize panels"
+          onMouseDown={onMouseDown}
+          className="relative group cursor-col-resize select-none"
+          style={{ width: 6 }}
+        >
+          <div className="absolute inset-0 bg-border group-hover:bg-primary/70 transition-colors" />
+          <div className="absolute inset-y-0 -left-2 -right-2" />
+        </div>
         
         <motion.div
           variants={slideIn}
@@ -108,7 +171,8 @@ export function CourseInterfaceLayout({ course, currentLesson, lessons = [], pro
           animate="animate"
           exit="exit"
           transition={{ duration: 0.3, delay: 0.4 }}
-          className={`w-1/2 transition-opacity duration-200 ${isSwitchingLesson ? 'opacity-50' : 'opacity-100'}`}
+          className={`transition-opacity duration-200 ${isSwitchingLesson ? 'opacity-50' : 'opacity-100'}`}
+          style={{ width: `${100 - leftWidthPct}%` }}
         >
           <IDEInterface course={course} currentLesson={currentLesson} />
         </motion.div>
