@@ -15,11 +15,11 @@ export function IDETerminal({ setShowTerminal, course, currentLesson }: IDETermi
   const [command, setCommand] = useState('')
   const [commandHistory, setCommandHistory] = useState<string[]>([])
   const [output, setOutput] = useState<string[]>([
-    '🚀 Initializing IDE Terminal...',
-    '📡 Checking connections...',
-    '✅ Supabase: Connected',
-    '✅ S3 Storage: Connected', 
-    '✅ Git: Not connected (use "git connect" to connect)',
+    'Initializing IDE Terminal...',
+    'Checking connections...',
+    'Supabase: Connected',
+    'S3 Storage: Connected', 
+    'Git: Not connected (use "git connect" to connect)',
     '> node --version',
     'v18.15.0',
     '> npm --version',
@@ -29,7 +29,7 @@ export function IDETerminal({ setShowTerminal, course, currentLesson }: IDETermi
     currentLesson ? `> echo "Current lesson: ${currentLesson.title}"` : '> echo "No lesson selected"',
     currentLesson ? `Current lesson: ${currentLesson.title}` : 'No lesson selected',
     '',
-    '💡 Available commands: help, clear, course, lesson, git connect, exit',
+    'Available commands: help, clear, course, lesson, git connect, exit',
     '> ',
   ])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -104,25 +104,25 @@ export function IDETerminal({ setShowTerminal, course, currentLesson }: IDETermi
         }
       } else if (command === 'git connect') {
         response = [
-          '🔗 Connecting to Git repository...',
+          'Connecting to Git repository...',
           'Please choose connection method:',
           '  1. GitHub OAuth',
           '  2. GitLab OAuth', 
           '  3. Remote URL',
           '',
           'Opening Git connection dialog...',
-          '✅ Git connection initiated'
+          'Git connection initiated'
         ]
       } else if (command === 'status') {
         response = [
-          '📊 IDE Status:',
-          '  ✅ Supabase: Connected',
-          '  ✅ S3 Storage: Connected',
-          '  ❌ Git: Not connected',
-          '  📁 Course: ' + (course ? course.title : 'None selected'),
-          '  📚 Lesson: ' + (currentLesson ? currentLesson.title : 'None selected'),
-          '  💾 Auto-save: Enabled',
-          '  🔄 Sync: Active'
+          'IDE Status:',
+          '  Supabase: Connected',
+          '  S3 Storage: Connected',
+          '  Git: Not connected',
+          '  Course: ' + (course ? course.title : 'None selected'),
+          '  Lesson: ' + (currentLesson ? currentLesson.title : 'None selected'),
+          '  Auto-save: Enabled',
+          '  Sync: Active'
         ]
       } else if (command === 'history') {
         response = ['Command history:', ...commandHistory]

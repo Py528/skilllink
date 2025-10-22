@@ -51,6 +51,10 @@ export const enhancedToast = {
       duration: options?.duration || 0,
     });
   },
+
+  dismiss: (toastId?: string | number) => {
+    return toast.dismiss(toastId);
+  },
 };
 
 export const customToast = {

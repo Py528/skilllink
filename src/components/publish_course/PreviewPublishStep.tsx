@@ -6,7 +6,7 @@ import { Badge } from '@/components/publish_course/Badge';
 import { Button } from '@/components/publish_course/Button';
 import { Select } from '@/components/publish_course/Select';
 import { Input } from '@/components/publish_course/Input';
-import { toast } from '@/components/ui/sonner';
+import { enhancedToast } from '@/components/ui/enhanced-toast';
 import Image from 'next/image';
 
 interface UploadedFile {
@@ -258,20 +258,20 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
     if (roundedProgress > 0 && roundedProgress < 100) {
       // Show or update the progress toast
       if (!uploadToastId) {
-        const id = toast.loading('Uploading course files...', {
+        const id = enhancedToast.loading('Uploading course files...', {
           description: `Progress: ${roundedProgress}%`,
           duration: Infinity,
         });
         setUploadToastId(id);
       } else {
-        toast.loading('Uploading course files...', {
+        enhancedToast.loading('Uploading course files...', {
           id: uploadToastId,
           description: `Progress: ${roundedProgress}%`,
           duration: Infinity,
         });
       }
     } else if (roundedProgress >= 100 && uploadToastId) {
-      toast.success('Upload complete!', {
+      enhancedToast.success('Upload complete!', {
         id: uploadToastId,
         description: 'All files uploaded successfully.',
       });
@@ -296,17 +296,17 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
     
     // Basic validation before publishing
     if (!formData.title || formData.title.trim() === '') {
-      toast.error('Course title is required');
+      enhancedToast.error('Course title is required');
       return;
     }
     
     if (!formData.description || formData.description.trim() === '') {
-      toast.error('Course description is required');
+      enhancedToast.error('Course description is required');
       return;
     }
     
     if (!formData.modules || formData.modules.length === 0) {
-      toast.error('At least one module is required');
+      enhancedToast.error('At least one module is required');
       return;
     }
     
@@ -315,7 +315,7 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
     );
     
     if (totalLessons === 0) {
-      toast.error('At least one lesson is required');
+      enhancedToast.error('At least one lesson is required');
       return;
     }
     
@@ -330,7 +330,7 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
     } catch (err) {
       console.error('PreviewPublishStep - Publish failed:', err);
       setPublishStatus('error');
-      toast.error('Failed to publish course: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      enhancedToast.error('Failed to publish course: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 

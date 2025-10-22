@@ -123,6 +123,14 @@ const getFileSystem = (course?: Course, currentLesson?: Lesson) => {
           };
         }) || [],
       },
+      {
+        name: 'samples',
+        type: 'folder' as const,
+        children: [
+          { name: 'sample.js', type: 'file' as const, icon: FileCode },
+          { name: 'sample.py', type: 'file' as const, icon: FileCode },
+        ],
+      },
     ],
   };
 
@@ -227,8 +235,15 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
           transition={{ duration: 0.1 }}
           style={{ paddingLeft: `${level * 16 + 4}px` }}
           onClick={() => {
-            if (item.type === 'file') {
+            if (item.type === 'folder') {
+              toggleFolder(fullPath)
+            } else if (item.type === 'file') {
               fetchFileContent(fullPath)
+              try {
+                window.dispatchEvent(new CustomEvent('ide-open-file', { detail: { name: item.name, path: fullPath } }))
+              } catch (e) {
+                console.warn('Failed to dispatch open-file event', e)
+              }
             }
           }}
         >

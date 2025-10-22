@@ -14,30 +14,34 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         className: 'toast-enhanced',
         style: {
-          background: 'hsl(var(--card))',
-          border: '1px solid hsl(var(--border))',
-          color: 'hsl(var(--card-foreground))',
+          background: theme === 'dark' ? 'hsl(0 0% 20%)' : 'hsl(0 0% 100%)',
+          border: theme === 'dark' ? '1px solid hsl(0 0% 30%)' : '1px solid hsl(0 0% 90%)',
+          color: theme === 'dark' ? 'hsl(0 0% 98%)' : 'hsl(0 0% 15%)',
           borderRadius: '0.75rem',
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+          boxShadow: theme === 'dark' 
+            ? '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)'
+            : '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+          opacity: '1',
+          backdropFilter: 'none',
         },
       }}
       style={
         {
-          "--normal-bg": "hsl(var(--card))",
-          "--normal-text": "hsl(var(--card-foreground))",
-          "--normal-border": "hsl(var(--border))",
-          "--success-bg": "hsl(var(--success-50))",
-          "--success-text": "hsl(var(--success-900))",
-          "--success-border": "hsl(var(--success-200))",
-          "--error-bg": "hsl(var(--error-50))",
-          "--error-text": "hsl(var(--error-900))",
-          "--error-border": "hsl(var(--error-200))",
-          "--warning-bg": "hsl(var(--warning-50))",
-          "--warning-text": "hsl(var(--warning-900))",
-          "--warning-border": "hsl(var(--warning-200))",
-          "--info-bg": "hsl(var(--info-50))",
-          "--info-text": "hsl(var(--info-900))",
-          "--info-border": "hsl(var(--info-200))",
+          "--normal-bg": theme === 'dark' ? 'hsl(0 0% 20%)' : 'hsl(0 0% 100%)',
+          "--normal-text": theme === 'dark' ? 'hsl(0 0% 98%)' : 'hsl(0 0% 15%)',
+          "--normal-border": theme === 'dark' ? 'hsl(0 0% 30%)' : 'hsl(0 0% 90%)',
+          "--success-bg": theme === 'dark' ? '#1a4d1a' : '#e6f9e6',
+          "--success-text": theme === 'dark' ? '#90ee90' : '#004d00',
+          "--success-border": theme === 'dark' ? '#2d5a2d' : '#99e699',
+          "--error-bg": theme === 'dark' ? '#4d1a1a' : '#fee6e6',
+          "--error-text": theme === 'dark' ? '#ff9999' : '#c40000',
+          "--error-border": theme === 'dark' ? '#5a2d2d' : '#fb9999',
+          "--warning-bg": theme === 'dark' ? '#4d3d1a' : '#fff9e6',
+          "--warning-text": theme === 'dark' ? '#ffcc66' : '#997500',
+          "--warning-border": theme === 'dark' ? '#5a4d2d' : '#ffe799',
+          "--info-bg": theme === 'dark' ? '#1a3d4d' : '#e6f3ff',
+          "--info-text": theme === 'dark' ? '#66b3ff' : '#0066cc',
+          "--info-border": theme === 'dark' ? '#2d4d5a' : '#99ccff',
         } as React.CSSProperties
       }
       {...props}

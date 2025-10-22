@@ -8,7 +8,7 @@ import { CheckCircle, Circle, PlayCircle, BookOpen, Clock, BarChart, Loader2 } f
 import { Progress } from '@/components/ui/progress'
 import { Course, Lesson } from '@/types/index'
 import supabase from '@/lib/supabaseClient'
-import { toast } from 'sonner'
+import { enhancedToast } from '@/components/ui/enhanced-toast'
 
 interface CourseNavigationProps {
   course: Course
@@ -138,7 +138,7 @@ export function CourseNavigation({ course, lessons, currentLessonId, onLessonCha
     if (onLessonChange) {
       onLessonChange(lessonId);
     } else {
-      toast.error('Lesson switching not available');
+      enhancedToast.error('Lesson switching not available');
     }
   };
   

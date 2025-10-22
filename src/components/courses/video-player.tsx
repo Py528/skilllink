@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { getSignedVideoUrl } from '@/lib/courseUtils';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { enhancedToast } from '@/components/ui/enhanced-toast';
 import { VideoPlayerFallback } from './video-player-fallback';
 import './video-player.css';
 
@@ -221,7 +221,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const addBookmark = useCallback(() => {
     const newBookmark = playedSeconds;
     setBookmarks(prev => [...prev, newBookmark].sort((a, b) => a - b));
-    toast.success(`Bookmark added at ${formatTime(newBookmark)}`);
+    enhancedToast.success(`Bookmark added at ${formatTime(newBookmark)}`);
   }, [playedSeconds, formatTime]);
 
   const handleProgress = useCallback((state: { played: number; playedSeconds: number }) => {
@@ -257,7 +257,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           playerRef.current.seekTo(resumeAt);
         }
       }
-    } catch (_) {
+    } catch {
       // ignore storage errors
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -272,7 +272,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       try {
         localStorage.setItem(storageKey, String(playedSeconds));
         lastSavedRef.current = playedSeconds;
-      } catch (_) {
+      } catch {
         // ignore storage errors
       }
     }
@@ -284,7 +284,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         if (playedSeconds > 0) {
           localStorage.setItem(storageKey, String(playedSeconds));
         }
-      } catch (_) {
+      } catch {
         // ignore
       }
     };

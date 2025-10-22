@@ -1,5 +1,33 @@
 /* IDE Styling for VS Code-like appearance using CSS custom properties */
 
+/* Smooth transitions for all IDE components */
+.ide-transition {
+  transition: all 0.2s ease-in-out;
+}
+
+.ide-transition-slow {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Responsive breakpoints for IDE */
+@media (max-width: 768px) {
+  .ide-mobile-hidden {
+    display: none !important;
+  }
+  
+  .ide-mobile-compact {
+    padding: 0.25rem !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .ide-mobile-ultra-compact {
+    padding: 0.125rem !important;
+    font-size: 0.625rem !important;
+  }
+}
+
 /* Import VS Code theme variables */
 :root {
   /* Activity Bar */
@@ -91,6 +119,12 @@
 
   /* Progress Bar */
   --vscode-progressBar-background: #0e639c;
+
+  /* Scrollbar */
+  --vscode-scrollbarSlider-background: #79797966;
+  --vscode-scrollbarSlider-hoverBackground: #646464b3;
+  --vscode-scrollbarSlider-activeBackground: #bfbfbf66;
+  --vscode-scrollbarSlider-border: #79797966;
 }
 
 /* Dark theme overrides */
@@ -262,6 +296,7 @@
   align-items: center;
   gap: 8px;
   padding: 0 8px;
+  transition: all 0.2s ease-in-out;
 }
 
 .status-bar-separator {
@@ -269,6 +304,18 @@
   height: 16px;
   background: var(--vscode-statusBar-border);
   margin: 0 4px;
+  transition: all 0.2s ease-in-out;
+}
+
+.status-bar-item {
+  transition: all 0.15s ease-in-out;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-bar-item:hover {
+  transform: translateY(-1px);
 }
 
 /* Monaco Editor customizations */
@@ -276,7 +323,74 @@
   font-family: 'Fira Code', 'Monaco', 'Consolas', monospace !important;
 }
 
+/* Minimap styling */
+.monaco-editor .minimap {
+  background: var(--vscode-editor-background) !important;
+  border-left: 1px solid var(--vscode-panel-border) !important;
+}
+
+.monaco-editor .minimap .minimap-shadow-visible {
+  background: var(--vscode-editor-background) !important;
+}
+
+.monaco-editor .minimap .minimap-shadow-hidden {
+  background: var(--vscode-editor-background) !important;
+}
+
+.monaco-editor .minimap .minimap-slider {
+  background: var(--vscode-scrollbarSlider-background) !important;
+  border: 1px solid var(--vscode-scrollbarSlider-border) !important;
+}
+
+.monaco-editor .minimap .minimap-slider:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground) !important;
+}
+
+.monaco-editor .minimap .minimap-slider.active {
+  background: var(--vscode-scrollbarSlider-activeBackground) !important;
+}
+
+/* Ensure minimap is visible */
+.monaco-editor .minimap .minimap-decorations-layer {
+  background: var(--vscode-editor-background) !important;
+}
+
+.monaco-editor .minimap .minimap-overview-ruler {
+  background: var(--vscode-editor-background) !important;
+}
+
+/* Dark theme minimap */
+[data-theme="dark"] .monaco-editor .minimap {
+  background: #1e1e1e !important;
+}
+
+[data-theme="dark"] .monaco-editor .minimap .minimap-shadow-visible,
+[data-theme="dark"] .monaco-editor .minimap .minimap-shadow-hidden {
+  background: #1e1e1e !important;
+}
+
+/* Light theme minimap */
+[data-theme="light"] .monaco-editor .minimap {
+  background: #ffffff !important;
+}
+
+[data-theme="light"] .monaco-editor .minimap .minimap-shadow-visible,
+[data-theme="light"] .monaco-editor .minimap .minimap-shadow-hidden {
+  background: #ffffff !important;
+}
+
 /* Responsive design */
+@media (max-width: 1024px) {
+  .status-bar-section {
+    gap: 6px;
+    padding: 0 6px;
+  }
+  
+  .status-bar-section span {
+    font-size: 11px;
+  }
+}
+
 @media (max-width: 768px) {
   .vscode-sidebar {
     width: 100%;
@@ -290,6 +404,29 @@
   
   .status-bar-section span {
     font-size: 10px;
+  }
+  
+  .status-bar-item .status-text {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .status-bar-section {
+    gap: 2px;
+    padding: 0 2px;
+  }
+  
+  .status-bar-section span {
+    font-size: 9px;
+  }
+  
+  .status-bar-separator {
+    display: none;
+  }
+  
+  .status-bar-item {
+    padding: 1px 2px;
   }
 }
 

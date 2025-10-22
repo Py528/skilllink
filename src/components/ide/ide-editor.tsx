@@ -2,9 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X } from 'lucide-react'
+import { X, FileText, Settings, FileCode, Coffee, Wrench, Hash, Circle, Code, Globe, Palette, Database, Terminal, Apple, Moon, Edit, Ban, Lock, File } from 'lucide-react'
 import MonacoEditor from 'react-monaco-editor'
+import * as monaco from 'monaco-editor'
+import { useTheme } from 'next-themes'
 import { Course, Lesson } from '@/types/index'
+// Monaco basic languages (static imports to ensure availability and typings via our d.ts)
+import * as MonacoPython from 'monaco-editor/esm/vs/basic-languages/python/python'
+import * as MonacoMarkdown from 'monaco-editor/esm/vs/basic-languages/markdown/markdown'
+import * as MonacoShell from 'monaco-editor/esm/vs/basic-languages/shell/shell'
 
 interface IDEEditorProps {
   course?: Course
@@ -119,20 +125,238 @@ ${currentLesson.resources && currentLesson.resources.length > 0
     });
   }
 
+  // Add sample files to showcase syntax highlighting
+  files.push({
+    id: 'sample-js',
+    name: 'sample.js',
+    language: 'javascript',
+    content: `// Sample JavaScript demonstrating syntax highlighting
+function greet(name) {
+  const msg = 'Hello, ' + name + '!';
+  console.log(msg);
+  return msg;
+}
+
+class Counter {
+  constructor() {
+    this.count = 0;
+  }
+  inc() {
+    this.count += 1;
+    return this.count;
+  }
+}
+
+export { greet, Counter };
+`
+  });
+
+  files.push({
+    id: 'sample-py',
+    name: 'sample.py',
+    language: 'python',
+    content: `# Sample Python demonstrating syntax highlighting
+from typing import List
+
+def greet(name: str) -> str:
+    msg = f"Hello, {name}!"
+    print(msg)
+    return msg
+
+class Counter:
+    def __init__(self) -> None:
+        self.count = 0
+
+    def inc(self) -> int:
+        self.count += 1
+        return self.count
+
+if __name__ == '__main__':
+    greet('World')
+    c = Counter()
+    for _ in range(3):
+        print(c.inc())
+`
+  });
+
   return files;
 };
+
+// Comprehensive language detection based on filename and extension
+const getLanguageFromFileName = (fileName: string): string => {
+  if (!fileName) return 'plaintext'
+  const lower = fileName.toLowerCase()
+
+  // Special filename-only matches (no extension)
+  const specialByName: { [name: string]: string } = {
+    'dockerfile': 'dockerfile',
+    'makefile': 'makefile',
+    'readme': 'markdown',
+    'license': 'plaintext',
+    '.gitignore': 'ignore',
+    '.gitattributes': 'gitattributes',
+    '.editorconfig': 'editorconfig',
+    '.npmrc': 'properties',
+    '.yarnrc': 'properties',
+    '.bashrc': 'shell',
+    '.zshrc': 'shell',
+    '.profile': 'shell',
+  }
+  const baseName = lower.replace(/^.*\//, '') // strip any path
+  if (!baseName.includes('.')) {
+    const special = specialByName[baseName]
+    if (special) return special
+  }
+
+  // Known exact filename matches (config files)
+  const specialExact: { [name: string]: string } = {
+    'package.json': 'json',
+    'package-lock.json': 'json',
+    'pnpm-lock.yaml': 'yaml',
+    'yarn.lock': 'plaintext',
+    'tsconfig.json': 'json',
+    'jsconfig.json': 'json',
+    '.eslintrc': 'json',
+    '.eslintrc.json': 'json',
+    '.eslintrc.yaml': 'yaml',
+    '.eslintrc.yml': 'yaml',
+    '.prettierrc': 'json',
+    '.prettierrc.json': 'json',
+    '.prettierrc.yaml': 'yaml',
+    '.prettierrc.yml': 'yaml',
+    '.prettierignore': 'ignore',
+    'babel.config.js': 'javascript',
+    'babel.config.cjs': 'javascript',
+    'vite.config.ts': 'typescript',
+    'vite.config.js': 'javascript',
+    'next.config.js': 'javascript',
+    'next.config.mjs': 'javascript',
+    'tailwind.config.js': 'javascript',
+    'tailwind.config.ts': 'typescript',
+    'postcss.config.js': 'javascript',
+    'docker-compose.yml': 'yaml',
+  }
+  if (specialExact[baseName]) return specialExact[baseName]
+
+  // Handle multi-part extensions first (e.g., .d.ts)
+  if (lower.endsWith('.d.ts')) return 'typescript'
+  if (lower.endsWith('.tsx')) return 'typescript'
+  if (lower.endsWith('.jsx')) return 'javascript'
+
+  // Last extension after final dot
+  const ext = baseName.split('.').pop() || ''
+
+  const byExt: { [ext: string]: string } = {
+    // Web
+    'js': 'javascript', 'mjs': 'javascript', 'cjs': 'javascript', 'jsx': 'javascript',
+    'ts': 'typescript', 'tsx': 'typescript',
+    'html': 'html', 'htm': 'html',
+    'css': 'css', 'scss': 'scss', 'sass': 'scss', 'less': 'less',
+    'vue': 'html', 'svelte': 'html', 'astro': 'html', 'pug': 'pug', 'hbs': 'handlebars',
+
+    // Backend & general languages
+    'py': 'python', 'rb': 'ruby', 'php': 'php', 'java': 'java',
+    'kt': 'kotlin', 'kts': 'kotlin',
+    'swift': 'swift', 'go': 'go', 'rs': 'rust',
+    'c': 'c', 'h': 'c', 'hpp': 'cpp', 'hh': 'cpp', 'cc': 'cpp', 'cpp': 'cpp', 'cxx': 'cpp',
+    'm': 'objective-c', 'mm': 'objective-c',
+    'cs': 'csharp', 'vb': 'vb', 'fs': 'fsharp', 'fsi': 'fsharp', 'fsx': 'fsharp',
+    'r': 'r', 'lua': 'lua', 'dart': 'dart',
+
+    // Data / config
+    'json': 'json', 'jsonc': 'json', 'ndjson': 'json',
+    'yaml': 'yaml', 'yml': 'yaml',
+    'xml': 'xml', 'svg': 'xml',
+    'toml': 'toml', 'ini': 'ini', 'properties': 'properties', 'env': 'properties',
+
+    // Shell / scripts
+    'sh': 'shell', 'bash': 'shell', 'zsh': 'shell', 'ksh': 'shell', 'fish': 'shell',
+    'ps1': 'powershell', 'psm1': 'powershell', 'psd1': 'powershell',
+    'bat': 'bat', 'cmd': 'bat',
+
+    // Database / schemas
+    'sql': 'sql', 'prisma': 'json', 'graphql': 'graphql', 'gql': 'graphql', 'proto': 'protobuf',
+
+    // Docs
+    'md': 'markdown', 'mdx': 'markdown', 'rst': 'markdown', 'txt': 'plaintext',
+
+    // Build / tooling
+    'makefile': 'makefile', 'mk': 'makefile',
+    'dockerfile': 'dockerfile', 'docker': 'dockerfile',
+
+    // Other
+    'vim': 'vim', 'vimrc': 'vim', 'diff': 'diff', 'patch': 'diff',
+    'log': 'plaintext'
+  }
+
+  return byExt[ext] || 'plaintext'
+}
 
 export function IDEEditor({ course, currentLesson }: IDEEditorProps) {
   const [activeTab, setActiveTab] = useState('course-overview')
   const [openTabs, setOpenTabs] = useState(['course-overview'])
   const [mounted, setMounted] = useState(false)
+  const [editorError, setEditorError] = useState(false)
+  const { theme } = useTheme()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null)
   
-  const files = getFiles(course, currentLesson)
+  const baseFiles = getFiles(course, currentLesson)
+  const [dynamicFiles, setDynamicFiles] = useState<Array<{ id: string; name: string; language: string; content: string }>>([])
+  const files = [...baseFiles, ...dynamicFiles]
   
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  // Listen for sidebar open-file events and open the matching file by name.
+  // If file does not exist yet, create a dynamic file with inferred language and placeholder content.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ name: string; path?: string; content?: string }>).detail
+      if (!detail?.name) return
+      let file = files.find(f => f.name === detail.name)
+      if (!file) {
+        const language = getLanguageFromFileName(detail.name)
+        const placeholderByLang: { [k: string]: string } = {
+          javascript: `// ${detail.name}\nconsole.log('New file');\n`,
+          typescript: `// ${detail.name}\nexport {};\n`,
+          python: `# ${detail.name}\nprint('New file')\n`,
+          json: `{}\n`,
+          markdown: `# ${detail.name}\n`,
+          html: `<!doctype html>\n<html>\n  <head><meta charset=\"utf-8\"><title>${detail.name}</title></head>\n  <body></body>\n</html>\n`,
+          css: `/* ${detail.name} */\n`,
+          plaintext: ''
+        }
+        const content = detail.content ?? (placeholderByLang[language] ?? '')
+        const id = `dyn-${detail.path || detail.name}`
+        const newFile = { id, name: detail.name, language, content }
+        setDynamicFiles(prev => {
+          // Avoid duplicates by id
+          if (prev.find(f => f.id === id)) return prev
+          return [...prev, newFile]
+        })
+        setOpenTabs(prev => (prev.includes(id) ? prev : [...prev, id]))
+        setActiveTab(id)
+        return
+      }
+      setOpenTabs(prev => (prev.includes(file.id) ? prev : [...prev, file.id]))
+      setActiveTab(file.id)
+    }
+    window.addEventListener('ide-open-file', handler as EventListener)
+    return () => window.removeEventListener('ide-open-file', handler as EventListener)
+  }, [files])
+
+  // Handle window resize to refresh minimap
+  useEffect(() => {
+    const handleResize = () => {
+      if (editorRef.current) {
+        editorRef.current.layout()
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   const getFileById = (id: string) => {
@@ -148,16 +372,93 @@ export function IDEEditor({ course, currentLesson }: IDEEditorProps) {
   }
 
   const getFileIcon = (fileName: string) => {
-    if (fileName.includes('.md')) return '📝'
-    if (fileName.includes('.json')) return '🔧'
-    if (fileName.includes('.js')) return '📄'
-    if (fileName.includes('.ts')) return '📄'
-    return '📄'
+    const extension = fileName.split('.').pop()?.toLowerCase()
+    const iconMap: { [key: string]: React.ComponentType<{ size?: number }> } = {
+      'md': FileText,
+      'json': Settings,
+      'js': FileCode,
+      'jsx': FileCode,
+      'ts': FileCode,
+      'tsx': FileCode,
+      'py': Code,
+      'java': Coffee,
+      'cpp': Wrench,
+      'c': Wrench,
+      'cs': Hash,
+      'php': Code,
+      'rb': Circle,
+      'go': Code,
+      'rs': Code,
+      'swift': Apple,
+      'kt': Circle,
+      'html': Globe,
+      'css': Palette,
+      'scss': Palette,
+      'sass': Palette,
+      'less': Palette,
+      'xml': FileText,
+      'yaml': Settings,
+      'yml': Settings,
+      'sql': Database,
+      'sh': Terminal,
+      'bash': Terminal,
+      'dockerfile': Code,
+      'docker': Code,
+      'r': Code,
+      'm': Apple,
+      'mm': Apple,
+      'pl': Code,
+      'lua': Moon,
+      'vim': Edit,
+      'gitignore': Ban,
+      'gitattributes': FileText,
+      'editorconfig': Settings,
+      'env': Lock,
+      'ini': Settings,
+      'cfg': Settings,
+      'conf': Settings,
+      'toml': Settings,
+      'lock': Lock,
+      'log': File,
+      'txt': FileText,
+      'text': FileText
+    }
+    const IconComponent = iconMap[extension || ''] || FileText
+    return <IconComponent size={14} />
   }
 
   const currentFile = getFileById(activeTab)
+  
+  // Get the correct language for the current file
+  const currentLanguage = currentFile ? getLanguageFromFileName(currentFile.name) : 'plaintext'
+  
+  // Get the appropriate theme based on the current theme
+  const editorTheme = theme === 'dark' ? 'vs-dark' : 'vs-light'
 
-  if (!mounted) return null
+  // Force Monaco to re-apply language on tab/language change
+  useEffect(() => {
+    try {
+      if (editorRef.current && currentLanguage) {
+        const model = editorRef.current.getModel?.()
+        if (model) {
+          monaco.editor.setModelLanguage(model, currentLanguage)
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to set model language:', e)
+    }
+  }, [activeTab, currentLanguage])
+
+  if (!mounted) {
+    return (
+      <div className="h-full flex items-center justify-center bg-[var(--vscode-editor-background)]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--vscode-foreground)] mx-auto mb-4"></div>
+          <p className="text-[var(--vscode-foreground)]">Loading Editor...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="h-full flex flex-col bg-[var(--vscode-editor-background)]">
@@ -198,7 +499,7 @@ export function IDEEditor({ course, currentLesson }: IDEEditorProps) {
       </div>
 
       {/* Editor Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden min-h-0">
         <AnimatePresence mode="wait">
           {currentFile && (
             <motion.div
@@ -221,37 +522,155 @@ export function IDEEditor({ course, currentLesson }: IDEEditorProps) {
               </div>
               
               <div className="h-full">
-                <MonacoEditor
+                {editorError ? (
+                  <div className="h-full flex flex-col">
+                    <div className="p-4 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-sm">
+                      <strong>Editor Fallback:</strong> Monaco Editor failed to load. Using basic text editor.
+                    </div>
+                    <textarea
+                      className="flex-1 w-full p-4 font-mono text-sm bg-[var(--vscode-editor-background)] text-[var(--vscode-editor-foreground)] border-0 resize-none focus:outline-none"
+                      value={currentFile.content}
+                      onChange={(e) => {
+                        console.log('Content changed:', e.target.value)
+                      }}
+                      placeholder="Start typing your code here..."
+                    />
+                  </div>
+                ) : (
+                  <MonacoEditor
                   ref={editorRef}
                   height="100%"
-                  language={currentFile.language}
+                  language={currentLanguage}
                   value={currentFile.content}
-                  theme="vs-dark"
+                  theme={editorTheme}
+                  editorWillMount={(m) => {
+                    try {
+                      const { language: pyLang, conf: pyConf } = MonacoPython as unknown as { language: unknown; conf: unknown }
+                      if (!m.languages.getEncodedLanguageId('python')) {
+                        m.languages.register({ id: 'python' })
+                      }
+                      m.languages.setMonarchTokensProvider('python', pyLang as never)
+                      m.languages.setLanguageConfiguration('python', pyConf as never)
+
+                      const { language: mdLang, conf: mdConf } = MonacoMarkdown as unknown as { language: unknown; conf: unknown }
+                      if (!m.languages.getEncodedLanguageId('markdown')) {
+                        m.languages.register({ id: 'markdown' })
+                      }
+                      m.languages.setMonarchTokensProvider('markdown', mdLang as never)
+                      m.languages.setLanguageConfiguration('markdown', mdConf as never)
+
+                      const { language: shLang, conf: shConf } = MonacoShell as unknown as { language: unknown; conf: unknown }
+                      if (!m.languages.getEncodedLanguageId('shell')) {
+                        m.languages.register({ id: 'shell' })
+                      }
+                      m.languages.setMonarchTokensProvider('shell', shLang as never)
+                      m.languages.setLanguageConfiguration('shell', shConf as never)
+
+                      // eslint-disable-next-line no-console
+                      console.log('Monaco languages registered:', m.languages.getLanguages().map(l => l.id))
+                    } catch (e) {
+                      console.warn('Failed to register languages for Monaco:', e)
+                    }
+                  }}
                   options={{
                     selectOnLineNumbers: true,
                     roundedSelection: false,
                     readOnly: false,
                     cursorStyle: 'line',
                     automaticLayout: true,
-                    minimap: { enabled: true },
+                    minimap: { 
+                      enabled: true,
+                      maxColumn: 120,
+                      renderCharacters: true,
+                      showSlider: 'always',
+                      side: 'right',
+                      size: 'proportional'
+                    },
                     scrollBeyondLastLine: false,
                     fontSize: 14,
                     lineHeight: 22,
-                    fontFamily: "'Fira Code', 'Monaco', 'Consolas', monospace",
+                    fontFamily: "'JetBrains Mono', 'Monaco', 'Consolas', monospace",
+                    fontLigatures: true,
                     wordWrap: 'on',
                     renderWhitespace: 'selection',
-                    renderControlCharacters: true,
                     bracketPairColorization: { enabled: true },
                     guides: {
                       bracketPairs: true,
                       indentation: true
-                    }
+                    },
+                    suggest: {
+                      showKeywords: true,
+                      showSnippets: true,
+                      showFunctions: true,
+                      showVariables: true,
+                      showClasses: true
+                    },
+                    quickSuggestions: {
+                      other: true,
+                      comments: true,
+                      strings: true
+                    },
+                    parameterHints: {
+                      enabled: true
+                    },
+                    hover: {
+                      enabled: true
+                    },
+                    contextmenu: true,
+                    mouseWheelZoom: true,
+                    smoothScrolling: true,
+                    cursorBlinking: 'blink',
+                    renderLineHighlight: 'all',
+                    occurrencesHighlight: 'multiFile',
+                    selectionHighlight: true,
+                    folding: true,
+                    foldingStrategy: 'indentation',
+                    showFoldingControls: 'always',
+                    matchBrackets: 'always'
                   }}
                   onChange={(value) => {
                     // Handle content changes
                     console.log('Content changed:', value)
                   }}
+                  editorDidMount={(editor) => {
+                    // Handle editor mount
+                    editorRef.current = editor
+                    
+                    // Configure editor properly
+                    try {
+                      // Set up editor configuration
+                      editor.updateOptions({
+                        minimap: { 
+                          enabled: true,
+                          maxColumn: 120,
+                          renderCharacters: true,
+                          showSlider: 'always',
+                          side: 'right',
+                          size: 'proportional'
+                        }
+                      })
+                      
+                      // Force minimap refresh
+                      setTimeout(() => {
+                        editor.layout()
+                      }, 100)
+                      
+                      // Add error handling
+                      editor.onDidChangeModel(() => {
+                        console.log('Model changed')
+                        // Ensure minimap is visible after model change
+                        setTimeout(() => {
+                          editor.layout()
+                        }, 50)
+                      })
+                      
+                    } catch (error) {
+                      console.warn('Editor configuration error:', error)
+                      setEditorError(true)
+                    }
+                  }}
                 />
+                )}
               </div>
             </motion.div>
           )}

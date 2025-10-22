@@ -1,13 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { 
   Book, 
   LogOut, 
   Menu, 
-  Moon, 
-  Sun, 
   X, 
   Bell, 
   Search,
@@ -18,7 +16,6 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/common/Avatar";
 import { Badge } from "@/components/common/Badge";
-import { useTheme } from "@/context/ThemeContext";
 import { useUser } from "@/context/UserContext";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -32,7 +29,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   toggleSidebar,
   isSidebarOpen
 }) => {
-  const { theme, toggleTheme } = useTheme();
   const { user, logout, setRole } = useUser();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [notifications, setNotifications] = useState(3);
@@ -219,34 +215,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </motion.button>
 
-              {/* Theme Toggle */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={toggleTheme}
-                className={cn(
-                  "p-2 rounded-full focus:outline-none",
-                  "bg-secondary-100 dark:bg-secondary-800",
-                  "text-secondary-600 dark:text-secondary-400",
-                  "hover:bg-secondary-200 dark:hover:bg-secondary-700"
-                )}
-              >
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={theme}
-                    initial={{ y: -20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: 20, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {theme === "dark" ? (
-                      <Sun className="h-5 w-5" />
-                    ) : (
-                      <Moon className="h-5 w-5" />
-                    )}
-                  </motion.div>
-                </AnimatePresence>
-              </motion.button>
 
               {/* User Menu */}
               {user && (

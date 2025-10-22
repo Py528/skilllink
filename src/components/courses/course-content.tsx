@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { VideoPlayer } from '@/components/courses/video-player'
 import { CourseNavigation } from '@/components/courses/course-navigation'
 import { Separator } from '@/components/ui/separator'
-import { Home, ChevronRight, BookOpen, Video, FileText, Download, ExternalLink, FileVideo, File, Image, FileCode, Clock, Star, CheckCircle, Loader2, ChevronLeft, ChevronDown } from 'lucide-react'
+import { Home, ChevronRight, BookOpen, Video, FileText, Download, ExternalLink, FileVideo, File, Image, FileCode, Clock, Star, CheckCircle, Loader2, ChevronLeft } from 'lucide-react'
 import { Course, Lesson, CourseResource } from '@/types/index'
 
 const tabVariants = {

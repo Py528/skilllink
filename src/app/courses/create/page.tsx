@@ -14,7 +14,7 @@ import { ValidationIndicator, ProgressIndicator, CompletionTips } from '@/compon
 import { CourseValidationService, ValidationError } from '@/lib/courseValidation';
 import { CourseData } from '@/types/index';
 import { s3Service } from '@/services/s3Upload';
-import { toast } from '@/components/ui/sonner';
+import { enhancedToast } from '@/components/ui/enhanced-toast';
 import { useSupabase } from '@/providers/SupabaseProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
@@ -158,21 +158,21 @@ export default function CreateCourse() {
     if (!loading) {
       if (!user) {
         console.log('CreateCourse - No user found, redirecting to login');
-        toast.error('You must be logged in to create a course');
+        enhancedToast.error('You must be logged in to create a course');
         router.push('/login');
         return;
       }
       
       if (!profile) {
         console.log('CreateCourse - No profile found, redirecting to dashboard');
-        toast.error('Please complete your profile setup first');
+        enhancedToast.error('Please complete your profile setup first');
         router.push('/dashboard');
         return;
       }
       
       if (profile.user_type !== 'instructor') {
         console.log('CreateCourse - User is not instructor:', profile.user_type);
-        toast.error('Only instructors can create courses');
+        enhancedToast.error('Only instructors can create courses');
         router.push('/dashboard');
         return;
       }
@@ -277,10 +277,10 @@ export default function CreateCourse() {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success('Course saved as draft successfully!');
+      enhancedToast.success('Course saved as draft successfully!');
     } catch (error) {
       console.error('Error saving draft:', error);
-      toast.error('Failed to save draft. Please try again.');
+      enhancedToast.error('Failed to save draft. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -360,19 +360,19 @@ export default function CreateCourse() {
     // Basic validation
     if (!formData.title || formData.title.trim() === '') {
       console.error('CreateCourse - Title is required');
-      toast.error('Course title is required');
+      enhancedToast.error('Course title is required');
       return;
     }
     
     if (!formData.description || formData.description.trim() === '') {
       console.error('CreateCourse - Description is required');
-      toast.error('Course description is required');
+      enhancedToast.error('Course description is required');
       return;
     }
     
     if (!user?.id) {
       console.error('CreateCourse - User not found');
-      toast.error('You must be logged in to create a course');
+      enhancedToast.error('You must be logged in to create a course');
       return;
     }
     
@@ -395,12 +395,12 @@ export default function CreateCourse() {
       if (!basicTestResult) {
         console.warn('CreateCourse - Database test failed, but continuing with publish...');
         // Don't block the publish process if the test fails
-        // toast.error('Database connection test failed. Please check your setup.');
+        // enhancedToast.error('Database connection test failed. Please check your setup.');
         // return;
       }
 
       // Show S3 upload toast with Progress component
-      toastId = toast.loading(
+      toastId = enhancedToast.loading(
         <div className="flex flex-col gap-2">
           <span className="font-semibold text-primary">Uploading files to AWS S3...</span>
           <Progress value={0} />
@@ -410,7 +410,7 @@ export default function CreateCourse() {
       );
 
       // After S3 upload, update toast to Supabase upload
-      toast.loading(
+      enhancedToast.loading(
         <div className="flex flex-col gap-2">
           <span className="font-semibold text-primary">Saving course data to Supabase...</span>
         </div>,
@@ -442,7 +442,7 @@ export default function CreateCourse() {
       // Upload bulk upload files to S3 FIRST
       if (bulkUploadFiles.length > 0) {
         console.log('CreateCourse - Uploading bulk upload files to S3:', bulkUploadFiles.length);
-        toast.loading(
+        enhancedToast.loading(
           <div className="flex flex-col gap-2">
             <span className="font-semibold text-primary">Uploading bulk upload files to AWS S3...</span>
             <Progress value={0} />
@@ -500,7 +500,7 @@ export default function CreateCourse() {
           console.log('CreateCourse - Bulk upload files uploaded successfully');
         } catch (error) {
           console.error('CreateCourse - Bulk upload failed:', error);
-          toast.error('Failed to upload bulk upload files: ' + (error instanceof Error ? error.message : 'Unknown error'));
+          enhancedToast.error('Failed to upload bulk upload files: ' + (error instanceof Error ? error.message : 'Unknown error'));
           return;
         }
       } else {
@@ -605,7 +605,7 @@ export default function CreateCourse() {
       console.log('CreateCourse - Publishing with user:', user?.id);
       if (!user) {
         console.error('CreateCourse - No user found during publish');
-        toast.error('You must be logged in to create a course');
+        enhancedToast.error('You must be logged in to create a course');
         throw new Error('You must be logged in to create a course');
       }
 
@@ -704,12 +704,12 @@ export default function CreateCourse() {
         if (courseError) {
           console.error('CreateCourse - Course creation failed:', courseError, 'User:', user?.id);
           const errorMessage = courseError instanceof Error ? courseError.message : 'Unknown error';
-          toast.error('Failed to create course: ' + errorMessage);
+          enhancedToast.error('Failed to create course: ' + errorMessage);
           throw new Error(`Failed to create course: ${errorMessage}`);
         }
         if (!course) {
           console.error('CreateCourse - No course returned from insert, possible RLS or network issue. User:', user?.id, 'Response:', { course, courseError });
-          toast.error('Failed to create course: No course returned. Check your permissions, RLS, and Supabase logs.');
+          enhancedToast.error('Failed to create course: No course returned. Check your permissions, RLS, and Supabase logs.');
           throw new Error('Failed to create course: No course returned.');
         }
         
@@ -728,7 +728,7 @@ export default function CreateCourse() {
       // Defensive check - ensure course is defined using ref
       if (!courseRef.current || !courseIdRef.current) {
         console.error('CreateCourse - Course is undefined after creation block');
-        toast.error('Failed to create course: Course object is undefined');
+        enhancedToast.error('Failed to create course: Course object is undefined');
         throw new Error('Course object is undefined');
       }
       
@@ -752,13 +752,13 @@ export default function CreateCourse() {
 
       if (sectionsError) {
         console.error('CreateCourse - Sections creation failed:', sectionsError);
-        toast.error('Failed to create sections: ' + sectionsError.message);
+        enhancedToast.error('Failed to create sections: ' + sectionsError.message);
         throw new Error(`Failed to create sections: ${sectionsError.message}`);
       }
 
       if (!sections || sections.length === 0) {
         console.error('CreateCourse - No sections returned from insert');
-        toast.error('Failed to create sections: No sections returned');
+        enhancedToast.error('Failed to create sections: No sections returned');
         throw new Error('Failed to create sections: No sections returned');
       }
 
@@ -873,7 +873,7 @@ export default function CreateCourse() {
             .select();
           if (lessonsError) {
             console.error('CreateCourse - Lessons creation failed:', lessonsError);
-            toast.error('Failed to create lessons: ' + lessonsError.message);
+            enhancedToast.error('Failed to create lessons: ' + lessonsError.message);
             throw new Error(`Failed to create lessons: ${lessonsError.message}`);
           }
           console.log(`CreateCourse - Lessons created successfully for section ${i + 1}:`, createdLessons?.length || 0);
@@ -903,15 +903,15 @@ export default function CreateCourse() {
       }
 
       // After everything is successful
-      toast.dismiss(toastId);
-      toast.success('Course published successfully!');
+      enhancedToast.dismiss(toastId);
+      enhancedToast.success('Course published successfully!');
       
       console.log('CreateCourse - Redirecting to dashboard...');
       // Redirect to the course page or dashboard
       router.push('/dashboard');
     } catch (error) {
-      toast.dismiss(toastId);
-      toast.error('Failed to publish course: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      enhancedToast.dismiss(toastId);
+      enhancedToast.error('Failed to publish course: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsSaving(false);
       publishingRef.current = false; // Reset publishing flag
@@ -1096,10 +1096,10 @@ export default function CreateCourse() {
                       
                       if (error) {
                         console.error('Test course creation failed:', error);
-                        toast.error('Test failed: ' + error.message);
+                        enhancedToast.error('Test failed: ' + error.message);
                       } else {
                         console.log('Test course created:', data);
-                        toast.success('Test course created successfully!');
+                        enhancedToast.success('Test course created successfully!');
                         
                         // Clean up
                         await supabase
@@ -1109,7 +1109,7 @@ export default function CreateCourse() {
                       }
                     } catch (err) {
                       console.error('Test course creation error:', err);
-                      toast.error('Test error: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                      enhancedToast.error('Test error: ' + (err instanceof Error ? err.message : 'Unknown error'));
                     }
                   }}
                   className="text-xs"
@@ -1188,7 +1188,7 @@ export default function CreateCourse() {
                       requirements: ''
                     });
                     setCurrentStep(4); // Go to the last step
-                    toast.success('Form populated with test data');
+                    enhancedToast.success('Form populated with test data');
                   }}
                   className="text-xs"
                 >

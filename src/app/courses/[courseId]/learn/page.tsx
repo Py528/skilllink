@@ -6,7 +6,7 @@ import { CourseInterfaceLayout } from '@/components/courses/course-interface-lay
 import { Course, Lesson, CourseResource } from '@/types/index'
 import { Skeleton } from '@/components/ui/skeleton'
 import supabase from '@/lib/supabaseClient'
-import { toast } from 'sonner'
+import { enhancedToast } from '@/components/ui/enhanced-toast'
 
 export default function CourseLearnPage() {
   const params = useParams()
@@ -107,11 +107,11 @@ export default function CourseLearnPage() {
         // Scroll to top of content
         window.scrollTo({ top: 0, behavior: 'smooth' });
         
-        toast.success(`Switched to: ${lesson.title}`);
+        enhancedToast.success(`Switched to: ${lesson.title}`);
       }
     } catch (error) {
       console.error('Error switching lesson:', error);
-      toast.error('Failed to switch lesson');
+      enhancedToast.error('Failed to switch lesson');
     } finally {
       setIsSwitchingLesson(false);
     }
