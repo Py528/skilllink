@@ -1,0 +1,11 @@
+# Example CSV file for bulk sync testing
+# Format: lesson_id,course_folder,filename
+# No header row required
+# Lines starting with # are ignored
+
+# Replace these with actual lesson IDs from your Supabase database
+abc123-def456-789-012-34567890abcd,course_1752811917716_0d5g65,01_introduction.mp4
+def456-ghi789-012-345-678901234567,course_1752811917716_0d5g65,02_basics.mp4
+ghi789-jkl012-345-678-901234567890,course_1752811917716_0d5g65,03_advanced.mp4
+
+
