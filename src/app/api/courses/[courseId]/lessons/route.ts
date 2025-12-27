@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Prefer anon key for read-only GETs; fallback to service role if anon missing
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('Missing Supabase environment variables');
@@ -47,7 +48,7 @@ export async function GET(
     if (lessonsError) {
       console.error('Error fetching direct lessons:', lessonsError);
       return NextResponse.json(
-        { error: 'Failed to load lessons' },
+        { error: 'Failed to load lessons', details: lessonsError.message },
         { status: 500 }
       );
     }
@@ -66,7 +67,7 @@ export async function GET(
       if (sectionsError) {
         console.error('Error fetching sections:', sectionsError);
         return NextResponse.json(
-          { error: 'Failed to load course sections' },
+          { error: 'Failed to load course sections', details: sectionsError.message },
           { status: 500 }
         );
       }
@@ -86,7 +87,7 @@ export async function GET(
       if (sectionLessonsError) {
         console.error('Error fetching section lessons:', sectionLessonsError);
         return NextResponse.json(
-          { error: 'Failed to load lessons' },
+          { error: 'Failed to load lessons', details: sectionLessonsError.message },
           { status: 500 }
         );
       }
@@ -99,6 +100,14 @@ export async function GET(
     }
 
     // Process lessons to ensure video URLs and resources are properly formatted
+    const bucket = process.env.AWS_BUCKET_NAME || process.env.NEXT_PUBLIC_AWS_BUCKET_NAME;
+    const region = process.env.AWS_BUCKET_REGION || process.env.AWS_REGION || process.env.NEXT_PUBLIC_AWS_REGION;
+    const buildS3Https = (keyOrPath: string) => {
+      if (!bucket || !region) return keyOrPath;
+      const clean = keyOrPath.replace(/^\//, '');
+      return `https://${bucket}.s3.${region}.amazonaws.com/${clean}`;
+    };
+
     const processedLessons = lessonsData.map(lesson => {
       // Ensure video_url is properly formatted
       let videoUrl = lesson.video_url;
@@ -118,12 +127,10 @@ export async function GET(
       }
       
       if (videoUrl && !videoUrl.startsWith('http://') && !videoUrl.startsWith('https://')) {
-        // If it's a relative path, assume it's in the S3 bucket
         if (videoUrl.startsWith('videos/') || videoUrl.startsWith('course_')) {
-          videoUrl = `https://courses-skilllearn.s3.us-east-1.amazonaws.com/${videoUrl}`;
+          videoUrl = buildS3Https(videoUrl);
         } else {
-          // If it's just a filename, assume it's in the videos folder
-          videoUrl = `https://courses-skilllearn.s3.us-east-1.amazonaws.com/videos/${videoUrl}`;
+          videoUrl = buildS3Https(`videos/${videoUrl}`);
         }
       }
 
@@ -133,14 +140,12 @@ export async function GET(
         resources = lesson.content.resources.map((resource: { url: string; name: string; size: number; type: string; key?: string }) => {
           let resourceUrl = resource.url;
           if (resourceUrl && !resourceUrl.startsWith('http://') && !resourceUrl.startsWith('https://')) {
-            // If it's a relative path, assume it's in the S3 bucket
             if (resourceUrl.startsWith('documents/') || resourceUrl.startsWith('transcripts/') || 
                 resourceUrl.startsWith('subtitles/') || resourceUrl.startsWith('instructions/') ||
                 resourceUrl.startsWith('course_')) {
-              resourceUrl = `https://courses-skilllearn.s3.us-east-1.amazonaws.com/${resourceUrl}`;
+              resourceUrl = buildS3Https(resourceUrl);
             } else {
-              // If it's just a filename, assume it's in the documents folder
-              resourceUrl = `https://courses-skilllearn.s3.us-east-1.amazonaws.com/documents/${resourceUrl}`;
+              resourceUrl = buildS3Https(`documents/${resourceUrl}`);
             }
           }
           return {
@@ -155,14 +160,12 @@ export async function GET(
         const legacyResources = lesson.resources.map((resource: { url: string; name: string; size: number; type: string; key?: string }) => {
           let resourceUrl = resource.url;
           if (resourceUrl && !resourceUrl.startsWith('http://') && !resourceUrl.startsWith('https://')) {
-            // If it's a relative path, assume it's in the S3 bucket
             if (resourceUrl.startsWith('documents/') || resourceUrl.startsWith('transcripts/') || 
                 resourceUrl.startsWith('subtitles/') || resourceUrl.startsWith('instructions/') ||
                 resourceUrl.startsWith('course_')) {
-              resourceUrl = `https://courses-skilllearn.s3.us-east-1.amazonaws.com/${resourceUrl}`;
+              resourceUrl = buildS3Https(resourceUrl);
             } else {
-              // If it's just a filename, assume it's in the documents folder
-              resourceUrl = `https://courses-skilllearn.s3.us-east-1.amazonaws.com/documents/${resourceUrl}`;
+              resourceUrl = buildS3Https(`documents/${resourceUrl}`);
             }
           }
           return {

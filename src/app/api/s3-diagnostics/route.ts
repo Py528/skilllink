@@ -10,7 +10,9 @@ const s3 = new S3Client({
   },
 });
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const prefix = searchParams.get('prefix') || undefined;
   const diagnostics = {
     environment: {
       bucket: !!process.env.AWS_BUCKET_NAME,
@@ -49,7 +51,8 @@ export async function GET() {
     try {
       const listCommand = new ListObjectsV2Command({
         Bucket: process.env.AWS_BUCKET_NAME!,
-        MaxKeys: 5,
+        MaxKeys: 50,
+        Prefix: prefix,
       });
       const listResult = await s3.send(listCommand);
       
@@ -58,7 +61,8 @@ export async function GET() {
         status: 'PASSED',
         details: {
           objectCount: listResult.Contents?.length || 0,
-          sampleObjects: listResult.Contents?.slice(0, 3).map(obj => ({
+          prefix: prefix || null,
+          sampleObjects: listResult.Contents?.slice(0, 10).map(obj => ({
             key: obj.Key,
             size: obj.Size,
             lastModified: obj.LastModified,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, FileText, Settings, FileCode, Coffee, Wrench, Hash, Circle, Code, Globe, Palette, Database, Terminal, Apple, Moon, Edit, Ban, Lock, File } from 'lucide-react'
 import MonacoEditor from 'react-monaco-editor'
@@ -303,7 +303,7 @@ export function IDEEditor({ course, currentLesson }: IDEEditorProps) {
   
   const baseFiles = getFiles(course, currentLesson)
   const [dynamicFiles, setDynamicFiles] = useState<Array<{ id: string; name: string; language: string; content: string }>>([])
-  const files = [...baseFiles, ...dynamicFiles]
+  const files = useMemo(() => [...baseFiles, ...dynamicFiles], [baseFiles, dynamicFiles])
   
   useEffect(() => {
     setMounted(true)
@@ -315,7 +315,7 @@ export function IDEEditor({ course, currentLesson }: IDEEditorProps) {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ name: string; path?: string; content?: string }>).detail
       if (!detail?.name) return
-      let file = files.find(f => f.name === detail.name)
+        const file = files.find(f => f.name === detail.name)
       if (!file) {
         const language = getLanguageFromFileName(detail.name)
         const placeholderByLang: { [k: string]: string } = {
@@ -518,6 +518,34 @@ export function IDEEditor({ course, currentLesson }: IDEEditorProps) {
                 <div className="flex items-center gap-4 text-xs text-[var(--vscode-descriptionForeground)]">
                   <span>{currentFile.content.split('\n').length} lines</span>
                   <span>{currentFile.language}</span>
+                  <button
+                    className="px-2 py-1 border rounded"
+                    onClick={async () => {
+                      try {
+                        const fileName = currentFile?.name || 'untitled.txt'
+                        const content = currentFile?.content || ''
+                        const base64 = typeof btoa !== 'undefined' ? btoa(unescape(encodeURIComponent(content))) : Buffer.from(content, 'utf-8').toString('base64')
+                        const projectId = (currentLesson as unknown as { ide_project_id?: string })?.ide_project_id
+                        if (!projectId) {
+                          console.warn('No ide_project_id on lesson; cannot upload')
+                          return
+                        }
+                        const res = await fetch(`/api/ide/projects/${projectId}/files/upload`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ path: fileName, contentBase64: base64, contentType: 'text/plain' })
+                        })
+                        if (!res.ok) throw new Error(await res.text())
+                        console.log('Saved file to backend index')
+                        // Optionally trigger a re-index event for sidebar
+                        window.dispatchEvent(new CustomEvent('ide-reload-index', { detail: { projectId } }))
+                      } catch (e) {
+                        console.error('Save failed', e)
+                      }
+                    }}
+                  >
+                    Save
+                  </button>
                 </div>
               </div>
               
@@ -566,7 +594,6 @@ export function IDEEditor({ course, currentLesson }: IDEEditorProps) {
                       m.languages.setMonarchTokensProvider('shell', shLang as never)
                       m.languages.setLanguageConfiguration('shell', shConf as never)
 
-                      // eslint-disable-next-line no-console
                       console.log('Monaco languages registered:', m.languages.getLanguages().map(l => l.id))
                     } catch (e) {
                       console.warn('Failed to register languages for Monaco:', e)

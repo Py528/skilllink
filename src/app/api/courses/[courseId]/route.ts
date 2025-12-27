@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase environment variables');
+// Create supabase client only if we have the required variables
+let supabase: ReturnType<typeof createClient> | null = null;
+
+if (supabaseUrl && supabaseKey) {
+  try {
+    supabase = createClient(supabaseUrl, supabaseKey);
+  } catch (error) {
+    console.error('Failed to create Supabase client:', error);
+  }
 }
-
-const supabase = createClient(supabaseUrl!, supabaseKey!);
 
 export async function GET(
   request: NextRequest,
@@ -24,7 +29,7 @@ export async function GET(
       );
     }
 
-    if (!supabaseUrl || !supabaseKey) {
+    if (!supabase) {
       return NextResponse.json(
         { error: 'Database configuration error' },
         { status: 500 }
@@ -60,13 +65,15 @@ export async function GET(
     }
 
     // Process course data
+    const instructor = course.instructor as { full_name?: string; avatar_url?: string } | null;
+    const estimatedDuration = typeof course.estimated_duration === 'number' ? course.estimated_duration : 0;
     const processedCourse = {
       ...course,
-      instructor_name: course.instructor?.full_name || 'Unknown Instructor',
-      instructor_avatar: course.instructor?.avatar_url || '/default-avatar.svg',
+      instructor_name: instructor?.full_name || 'Unknown Instructor',
+      instructor_avatar: instructor?.avatar_url || '/default-avatar.svg',
       student_count: course.total_enrollments || 0,
       rating: course.average_rating || 0,
-      duration: course.estimated_duration ? `${Math.floor(course.estimated_duration / 60)}h ${course.estimated_duration % 60}m` : 'Not specified',
+      duration: estimatedDuration > 0 ? `${Math.floor(estimatedDuration / 60)}h ${estimatedDuration % 60}m` : 'Not specified',
       level: course.difficulty_level || 'Beginner',
       category: course.category || 'Uncategorized',
       content_folder_id: course.content_folder_id

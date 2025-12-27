@@ -31,6 +31,7 @@ import {
   CloudOff
 } from 'lucide-react'
 import { Course, Lesson } from '@/types/index'
+// import { useIdeProject } from '@/components/ide/useIdeProject'
 
 interface IDESidebarProps {
   activeView: string
@@ -148,6 +149,12 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
   const [gitBranch] = useState('main')
   const [lastCommit] = useState('Latest commit')
   
+  // Backend-driven IDE tree (lesson project preferred, fallback to course project)
+  // const lessonProjectId = (currentLesson as unknown as { ide_project_id?: string })?.ide_project_id
+  // const courseProjectId = undefined // Placeholder: fetch course-level project id if you store it on course
+  // const projectId = lessonProjectId || courseProjectId
+  // const { files: ideFiles } = useIdeProject(projectId)
+  // const backendTree = ideFiles.length ? buildExplorerTree(ideFiles) : null
   const fileSystem = getFileSystem(course, currentLesson)
   
   const toggleFolder = (path: string) => {
