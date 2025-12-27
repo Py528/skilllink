@@ -1,5 +1,6 @@
 import { Github, Mail, ExternalLink, Twitter } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import Image from "next/image";
 import Link from "next/link";
 
 const currentYear = new Date().getFullYear();
@@ -11,9 +12,19 @@ export function Footer() {
         <div className="grid md:grid-cols-3 gap-10">
           {/* Brand Info */}
           <div className="space-y-4">
-            <h2 className="text-xl font-bold text-foreground tracking-tight">
-              SkillLink
-            </h2>
+            <Link href="/" className="flex items-center space-x-3 group">
+              <div className="relative h-14 w-14">
+                <Image
+                  src="/logo.png"
+                  alt="SkillLink Logo"
+                  fill
+                  className="object-contain group-hover:scale-105 transition-transform duration-200"
+                />
+              </div>
+              <h2 className="text-xl font-bold text-foreground tracking-tight group-hover:text-primary transition-colors duration-200">
+                SkillLink
+              </h2>
+            </Link>
             <p className="text-sm max-w-sm leading-relaxed font-medium">
               Empowering professionals with skills for today&apos;s dynamic
               workplace.

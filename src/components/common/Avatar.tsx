@@ -44,6 +44,7 @@ export const Avatar: React.FC<AvatarProps> = ({
         fill
         className="object-cover"
         sizes={`(max-width: 768px) ${size === 'sm' ? '32px' : size === 'md' ? '40px' : '48px'}`}
+        unoptimized={typeof src === 'string' && src.includes('.s3.')}
       />
       
       {status && (

@@ -4,12 +4,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Save, Check } from 'lucide-react';
 import { Button } from '@/components/publish_course/Button';
-import { Progress } from '@/components/publish_course/Progress';
 import { Card, CardContent } from '@/components/publish_course/Card';
 import { BasicInformationStep } from '@/components/publish_course/BasicInformationStep';
 import { CourseContentStep } from '@/components/publish_course/CourseContentStep';
 import { PricingSettingsStep } from '@/components/publish_course/PricingSettingsStep';
 import { PreviewPublishStep } from '@/components/publish_course/PreviewPublishStep';
+import { IDEProjectsStep } from '@/components/publish_course/IDEProjectsStep';
 import { ValidationIndicator, ProgressIndicator, CompletionTips } from '@/components/publish_course/ValidationIndicator';
 import { CourseValidationService, ValidationError } from '@/lib/courseValidation';
 import { CourseData } from '@/types/index';
@@ -55,6 +55,29 @@ interface Module {
   lessons: Lesson[];
 }
 
+interface ProjectFile {
+  id: string;
+  name: string;
+  type: 'file' | 'folder';
+  content?: string;
+  children?: ProjectFile[];
+  isExpanded?: boolean;
+  fileType?: string;
+}
+
+interface IDEProject {
+  id: string;
+  lesson_title: string;
+  name: string;
+  template?: string;
+  entry_file?: string;
+  package_manager?: 'npm' | 'yarn' | 'pnpm' | 'pip' | 'poetry';
+  env_vars_example?: string[];
+  readme?: string;
+  files: ProjectFile[];
+  isExpanded?: boolean;
+}
+
 interface CourseFormData {
   title: string;
   description: string;
@@ -64,6 +87,7 @@ interface CourseFormData {
   thumbnailPreview?: string;
   tags: string[];
   modules: Module[];
+  ideProjects: IDEProject[];
   pricingType: 'free' | 'paid';
   price: string;
   visibility: 'public' | 'private' | 'draft';
@@ -76,8 +100,9 @@ interface CourseFormData {
 const steps = [
   { id: 1, title: 'Basic Information', description: 'Course details and metadata' },
   { id: 2, title: 'Course Content', description: 'Modules, lessons, and structure' },
-  { id: 3, title: 'Pricing & Settings', description: 'Pricing and access control' },
-  { id: 4, title: 'Preview & Publish', description: 'Review and go live' }
+  { id: 3, title: 'IDE Projects', description: 'Configure IDE projects for code lessons' },
+  { id: 4, title: 'Pricing & Settings', description: 'Pricing and access control' },
+  { id: 5, title: 'Preview & Publish', description: 'Review and go live' }
 ];
 
 function isFile(obj: unknown): obj is File {
@@ -106,6 +131,7 @@ export default function CreateCourse() {
     thumbnail: null,
     tags: [],
     modules: [],
+    ideProjects: [],
     pricingType: 'free',
     price: '',
     visibility: 'public',
@@ -245,6 +271,9 @@ export default function CreateCourse() {
         }
         break;
       case 3:
+        // IDE Projects step - no validation required, it's optional
+        break;
+      case 4:
         if (formData.pricingType === 'paid' && (!formData.price || parseFloat(formData.price) <= 0)) {
           newErrors.price = 'Please enter a valid price';
         }
@@ -399,22 +428,17 @@ export default function CreateCourse() {
         // return;
       }
 
-      // Show S3 upload toast with Progress component
+      // Show S3 upload toast
       toastId = enhancedToast.loading(
-        <div className="flex flex-col gap-2">
-          <span className="font-semibold text-primary">Uploading files to AWS S3...</span>
-          <Progress value={0} />
-          <span className="text-xs text-muted-foreground">This may take a while for large files.</span>
-        </div>,
+        'Uploading files to AWS S3... This may take a while for large files.',
         { duration: Infinity }
       );
 
       // After S3 upload, update toast to Supabase upload
+      enhancedToast.dismiss(toastId);
       enhancedToast.loading(
-        <div className="flex flex-col gap-2">
-          <span className="font-semibold text-primary">Saving course data to Supabase...</span>
-        </div>,
-        { id: toastId, duration: Infinity }
+        'Saving course data to Supabase...',
+        { duration: Infinity }
       );
 
       // 0. Handle bulk upload files FIRST (upload to S3 only now)
@@ -442,13 +466,10 @@ export default function CreateCourse() {
       // Upload bulk upload files to S3 FIRST
       if (bulkUploadFiles.length > 0) {
         console.log('CreateCourse - Uploading bulk upload files to S3:', bulkUploadFiles.length);
+        enhancedToast.dismiss(toastId);
         enhancedToast.loading(
-          <div className="flex flex-col gap-2">
-            <span className="font-semibold text-primary">Uploading bulk upload files to AWS S3...</span>
-            <Progress value={0} />
-            <span className="text-xs text-muted-foreground">Uploading {bulkUploadFiles.length} files from bulk upload.</span>
-          </div>,
-          { id: toastId, duration: Infinity }
+          `Uploading bulk upload files to AWS S3... Uploading ${bulkUploadFiles.length} files from bulk upload.`,
+          { duration: Infinity }
         );
 
         try {
@@ -922,18 +943,29 @@ export default function CreateCourse() {
     const stepComponents = {
       1: BasicInformationStep,
       2: CourseContentStep,
-      3: PricingSettingsStep,
-      4: PreviewPublishStep
+      3: IDEProjectsStep,
+      4: PricingSettingsStep,
+      5: PreviewPublishStep
     };
 
     const StepComponent = stepComponents[currentStep as keyof typeof stepComponents];
     
     if (!StepComponent) return null;
 
+    if (currentStep === 3) {
+      return (
+        <IDEProjectsStep
+          ideProjects={formData.ideProjects}
+          setIdeProjects={(projects) => updateFormData({ ideProjects: projects })}
+          modules={formData.modules}
+        />
+      );
+    }
+
     return (
       <StepComponent
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        {...({ formData, updateFormData, errors, onPublish: currentStep === 4 ? handlePublish : undefined } as any)}
+        {...({ formData, updateFormData, errors, onPublish: currentStep === 5 ? handlePublish : undefined } as any)}
       />
     );
   };
@@ -1155,6 +1187,7 @@ export default function CreateCourse() {
                       level: 'beginner',
                       thumbnail: null,
                       tags: ['test', 'demo'],
+                      ideProjects: [],
                       modules: [{
                         id: generateId(),
                         title: 'Test Module',

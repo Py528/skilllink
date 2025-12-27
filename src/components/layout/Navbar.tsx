@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
+import Link from "next/link";
 import { 
-  Book, 
   LogOut, 
   Menu, 
   X, 
@@ -111,16 +112,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </motion.div>
               </motion.button>
 
-              <motion.div 
-                className="flex-shrink-0 flex items-center"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Book className="h-7 w-7 text-primary-600 dark:text-primary-500" />
-                <span className="ml-2 text-xl font-bold text-secondary-900 dark:text-white">
-                  Skill<span className="text-primary-600 dark:text-primary-500">Learn</span>
-                </span>
-              </motion.div>
+              <Link href="/" className="flex-shrink-0">
+                <motion.div 
+                  className="flex items-center space-x-3"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <div className="relative h-12 w-12">
+                    <Image
+                      src="/logo.png"
+                      alt="SkillLink Logo"
+                      fill
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
+                  <span className="text-xl font-bold text-secondary-900 dark:text-white">
+                    Skill<span className="text-primary-600 dark:text-primary-500">Link</span>
+                  </span>
+                </motion.div>
+              </Link>
             </div>
 
             {/* Center Section: Search (Desktop) */}

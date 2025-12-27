@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { NavLink } from "../navigation/NavLink";
 import { DropdownMenu } from "../navigation/DropdownMenu";
 import { DropdownItem } from "../navigation/DropdownItem";
@@ -32,38 +33,24 @@ export const Header = ({ isScrolled }: HeaderProps) => {
       className="fixed px-6 w-full md:px-10 lg:px-16 top-0 z-50 backdrop-blur-md border-b border-gray-800/50"
     >
       <nav className="flex justify-between items-center max-w-screen-xl mx-auto h-[70px]">
-        <div className="flex items-center flex-shrink-0">
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
+        <Link href="/" className="flex items-center flex-shrink-0">
+          <motion.div 
+            className="flex items-center space-x-3"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            <path
-              d="M12 2L2 7L12 12L22 7L12 2Z"
-              stroke="#0CF2A0"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M2 17L12 22L22 17"
-              stroke="#0CF2A0"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M2 12L12 17L22 12"
-              stroke="#0CF2A0"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span className="text-xl font-bold text-white ml-2">SkillLink</span>
-        </div>
+            <div className="relative h-12 w-12">
+              <Image
+                src="/logo.png"
+                alt="SkillLink Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+            <span className="text-xl font-bold text-white">SkillLink</span>
+          </motion.div>
+        </Link>
 
         <div className="hidden md:flex items-center justify-center flex-grow space-x-6 lg:space-x-8 px-4">
           <NavLink href="#">Courses</NavLink>

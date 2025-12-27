@@ -15,6 +15,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
   
   // Handle thumbnail URL - if it's an AWS S3 URL, use it directly, otherwise use a fallback
   const thumbnailUrl = imageError || !course.thumbnail_url ? '/default-course-thumbnail.svg' : course.thumbnail_url;
+  const isS3Thumb = typeof thumbnailUrl === 'string' && thumbnailUrl.includes('.s3.');
   
   // Handle instructor avatar - if it's an AWS S3 URL, use it directly, otherwise use a fallback
   const instructorAvatar = avatarError || !course.instructor?.avatar ? '/default-avatar.svg' : course.instructor.avatar;
@@ -40,6 +41,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
           fill
           className="object-cover"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          unoptimized={isS3Thumb}
           onError={handleImageError}
         />
         {course.price && course.price > 0 && (
@@ -58,6 +60,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
                 fill
                 className="object-cover"
                 sizes="32px"
+                unoptimized={typeof instructorAvatar === 'string' && instructorAvatar.includes('.s3.')}
                 onError={handleAvatarError}
               />
             </div>

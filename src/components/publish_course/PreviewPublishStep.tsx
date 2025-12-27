@@ -7,6 +7,7 @@ import { Button } from '@/components/publish_course/Button';
 import { Select } from '@/components/publish_course/Select';
 import { Input } from '@/components/publish_course/Input';
 import { enhancedToast } from '@/components/ui/enhanced-toast';
+import { toast } from 'sonner';
 import Image from 'next/image';
 
 interface UploadedFile {
@@ -265,14 +266,12 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
         setUploadToastId(id);
       } else {
         enhancedToast.loading('Uploading course files...', {
-          id: uploadToastId,
           description: `Progress: ${roundedProgress}%`,
           duration: Infinity,
         });
       }
     } else if (roundedProgress >= 100 && uploadToastId) {
       enhancedToast.success('Upload complete!', {
-        id: uploadToastId,
         description: 'All files uploaded successfully.',
       });
       setUploadToastId(null);
@@ -591,12 +590,19 @@ export const PreviewPublishStep: React.FC<PreviewPublishStepProps> = ({
             <Card className="overflow-hidden" hover>
               {formData.thumbnail && (
                 <div className="aspect-video bg-[#111111] relative">
-                  <Image
-                    src={typeof formData.thumbnail === 'string' ? formData.thumbnail : (formData.thumbnailPreview as string) || '/default-course-thumbnail.svg'}
+                  {(() => {
+                    const thumbSrc = typeof formData.thumbnail === 'string' ? formData.thumbnail : (formData.thumbnailPreview as string) || '/default-course-thumbnail.svg';
+                    const isS3 = typeof thumbSrc === 'string' && thumbSrc.includes('.s3.');
+                    return (
+                      <Image
+                        src={thumbSrc}
                     alt={formData.title || 'Untitled Course'}
                     fill
                     className="object-cover"
-                  />
+                        unoptimized={isS3}
+                      />
+                    );
+                  })()}
                 </div>
               )}
               <CardContent className="p-4">

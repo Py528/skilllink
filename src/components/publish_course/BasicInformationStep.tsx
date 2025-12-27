@@ -160,13 +160,20 @@ export const BasicInformationStep: React.FC<BasicInformationStepProps> = ({
                     exit={{ opacity: 0, scale: 0.8 }}
                     className="relative"
                   >
-                    <NextImage
-                      src={typeof formData.thumbnail === 'string' ? formData.thumbnail : formData.thumbnailPreview || ''}
-                      alt="Course thumbnail"
-                      width={400}
-                      height={192}
-                      className="w-full h-48 object-cover rounded-xl"
-                    />
+                    {(() => {
+                      const thumbSrc = typeof formData.thumbnail === 'string' ? formData.thumbnail : formData.thumbnailPreview || '';
+                      const isS3 = typeof thumbSrc === 'string' && thumbSrc.includes('.s3.');
+                      return (
+                        <NextImage
+                          src={thumbSrc}
+                          alt="Course thumbnail"
+                          width={400}
+                          height={192}
+                          className="w-full h-48 object-cover rounded-xl"
+                          unoptimized={isS3}
+                        />
+                      );
+                    })()}
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}

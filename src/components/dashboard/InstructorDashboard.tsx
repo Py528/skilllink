@@ -23,12 +23,26 @@ const courseCache = new Map<string, { data: CourseWithInstructor[], timestamp: n
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Preload critical data
-const preloadData = () => {
+const preloadData = async () => {
   // Preload user data
   if (typeof window !== 'undefined') {
-    // Preload course images
-    const imagePreload = new Image();
-    imagePreload.src = '/api/courses/preload-images';
+    try {
+      // Preload course images (non-blocking)
+      const response = await fetch('/api/courses/preload-images');
+      if (response.ok) {
+        const { images } = await response.json();
+        // Preload images in background
+        images?.forEach((url: string) => {
+          if (url) {
+            const img = new Image();
+            img.src = url;
+          }
+        });
+      }
+    } catch (error) {
+      // Silently fail - this is not critical
+      console.debug('Failed to preload images:', error);
+    }
   }
 };
 

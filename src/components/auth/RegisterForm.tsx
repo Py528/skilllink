@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import Link from 'next/link';
 import { Github, Sparkles } from 'lucide-react';
 import { FcGoogle } from "react-icons/fc";
@@ -236,15 +237,21 @@ export const RegisterForm: React.FC = () => {
         </motion.div>
 
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center justify-center mb-6">
+          <Link href="/" className="inline-flex items-center justify-center mb-6 group">
             <motion.div
-              whileHover={{ rotate: 360 }}
-              transition={{ duration: 0.5 }}
-              className="mr-2"
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              transition={{ duration: 0.3 }}
+              className="mr-3 relative h-14 w-14"
             >
-              <Sparkles className="w-7 h-7 text-[#0CF2A0]" />
+              <Image
+                src="/logo.png"
+                alt="SkillLink Logo"
+                fill
+                className="object-contain"
+                priority
+              />
             </motion.div>
-            <span className="text-2xl font-bold text-white">SkillLink</span>
+            <span className="text-2xl font-bold text-white group-hover:text-[#0CF2A0] transition-colors duration-200">SkillLink</span>
           </Link>
           <h1 className="text-2xl font-bold text-white mb-2">
             Create your account

@@ -54,8 +54,9 @@ const groupLessonsBySection = async (courseId: string, lessons: Lesson[]): Promi
       }];
     }
 
-    // Group lessons by section
-    return sections.map(section => {
+    // Group lessons by section and capture unassigned lessons to avoid dropping any
+    const sectionIds = new Set((sections || []).map(s => s.id));
+    const grouped: CourseSection[] = sections.map(section => {
       const sectionLessons = lessons.filter(lesson => lesson.section_id === section.id);
       const progress = sectionLessons.length > 0 
         ? Math.round((sectionLessons.filter(l => l.is_preview).length / sectionLessons.length) * 100) 
@@ -70,6 +71,21 @@ const groupLessonsBySection = async (courseId: string, lessons: Lesson[]): Promi
         progress
       };
     });
+
+    // Add a fallback section for any lessons that don't match a known section
+    const unassignedLessons = lessons.filter(l => !l.section_id || !sectionIds.has(l.section_id));
+    if (unassignedLessons.length > 0) {
+      grouped.push({
+        id: 'unassigned-section',
+        title: 'Other Lessons',
+        description: 'Lessons not assigned to a section',
+        order_index: (sections[sections.length - 1]?.order_index || 0) + 1,
+        lessons: unassignedLessons,
+        progress: Math.round((unassignedLessons.filter(l => l.is_preview).length / unassignedLessons.length) * 100)
+      });
+    }
+
+    return grouped;
   } catch (error) {
     console.error('Error grouping lessons by section:', error);
     return [];
@@ -186,7 +202,7 @@ export function CourseNavigation({ course, lessons, currentLessonId, onLessonCha
         </div>
       </motion.div>
       
-      <ScrollArea className="h-[300px]">
+      <ScrollArea className="max-h-[60vh]">
         {courseSections.length > 0 ? (
           <Accordion
             type="multiple"
