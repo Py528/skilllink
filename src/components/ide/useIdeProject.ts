@@ -11,13 +11,23 @@ export interface IdeFileIndexItem {
   checksum_sha256: string | null
 }
 
+export interface IdeFileContent {
+  content: string
+  metadata: IdeFileIndexItem & {
+    content_type: string
+  }
+}
+
 export function useIdeProject(projectId?: string) {
   const [files, setFiles] = useState<IdeFileIndexItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!projectId) return
+    if (!projectId) {
+      setFiles([])
+      return
+    }
     let cancelled = false
     const handler = (e: Event) => {
       const pid = (e as CustomEvent<{ projectId: string }>).detail?.projectId
@@ -44,6 +54,19 @@ export function useIdeProject(projectId?: string) {
   }, [projectId])
 
   return { files, loading, error }
+}
+
+/**
+ * Fetch file content from the API
+ */
+export async function fetchFileContent(projectId: string, filePath: string): Promise<IdeFileContent> {
+  const encodedPath = encodeURIComponent(filePath)
+  const res = await fetch(`/api/ide/projects/${projectId}/files/${encodedPath}`)
+  if (!res.ok) {
+    const errorText = await res.text()
+    throw new Error(`Failed to fetch file: ${res.status} ${errorText}`)
+  }
+  return res.json()
 }
 
 export function buildExplorerTree(files: IdeFileIndexItem[]) {

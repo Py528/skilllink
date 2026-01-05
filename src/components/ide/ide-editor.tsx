@@ -7,6 +7,7 @@ import MonacoEditor from 'react-monaco-editor'
 import * as monaco from 'monaco-editor'
 import { useTheme } from 'next-themes'
 import { Course, Lesson } from '@/types/index'
+import { useIdeProject, fetchFileContent, type IdeFileIndexItem } from '@/components/ide/useIdeProject'
 // Monaco basic languages (static imports to ensure availability and typings via our d.ts)
 import * as MonacoPython from 'monaco-editor/esm/vs/basic-languages/python/python'
 import * as MonacoMarkdown from 'monaco-editor/esm/vs/basic-languages/markdown/markdown'
@@ -17,170 +18,13 @@ interface IDEEditorProps {
   currentLesson?: Lesson
 }
 
-// Generate files based on course and lesson data
-const getFiles = (course?: Course, currentLesson?: Lesson) => {
-  const files = [];
-
-  // Add course overview file
-  if (course) {
-    files.push({
-      id: 'course-overview',
-      name: 'course-overview.md',
-      language: 'markdown',
-      content: `# ${course.title}
-
-## Course Overview
-
-**Instructor:** ${course.instructor_name || 'Unknown Instructor'}
-**Duration:** ${course.duration || 'Not specified'}
-**Level:** ${course.level || 'Beginner'}
-**Category:** ${course.category || 'Uncategorized'}
-
-## Description
-
-${course.description || 'No description available'}
-
-## Course Statistics
-
-- **Total Lessons:** ${course.total_lessons || 0}
-- **Student Count:** ${course.student_count || 0}
-- **Rating:** ${course.rating || 0}/5
-- **Price:** ${course.price === 0 ? 'Free' : `$${course.price}`}
-
-## Learning Objectives
-
-1. Master the core concepts
-2. Apply knowledge through practical exercises
-3. Complete hands-on projects
-4. Build a portfolio of work
-
-## Prerequisites
-
-- Basic understanding of the subject
-- Willingness to learn and practice
-- Access to required tools and resources
-
-## Course Structure
-
-This course is organized into modules, each containing multiple lessons designed to build upon previous knowledge and prepare you for the next level of learning.
-
----
-
-*Last updated: ${course.updated_at ? new Date(course.updated_at).toLocaleDateString() : 'Unknown'}*
-`
-    });
-  }
-
-  // Add lesson content file
-  if (currentLesson) {
-    files.push({
-      id: 'lesson-content',
-      name: `${currentLesson.title.replace(/[^a-zA-Z0-9]/g, '_')}.md`,
-      language: 'markdown',
-      content: `# ${currentLesson.title}
-
-## Lesson Overview
-
-**Duration:** ${currentLesson.duration ? `${Math.floor(currentLesson.duration / 60)}:${(currentLesson.duration % 60).toString().padStart(2, '0')}` : 'Not specified'}
-**Type:** ${currentLesson.content?.type || 'Video Lesson'}
-**Order:** ${currentLesson.order_index || 1}
-
-## Description
-
-${currentLesson.description || 'No description available'}
-
-## Video Content
-
-${currentLesson.video_url ? `**Video URL:** ${currentLesson.video_url}` : 'No video available for this lesson'}
-
-## Resources
-
-${currentLesson.resources && currentLesson.resources.length > 0 
-  ? currentLesson.resources.map((resource, index) => 
-      `${index + 1}. **${(resource as { name?: string }).name || 'Resource'}** (${(resource as { size?: number }).size ? `${Math.floor((resource as { size: number }).size / 1024)}KB` : 'Unknown size'})
-         - Type: ${(resource as { type?: string }).type || 'Unknown'}
-         - URL: ${(resource as { url?: string }).url || 'Not available'}`
-    ).join('\n\n')
-  : 'No additional resources available for this lesson'
+interface FileWithContent {
+  id: string
+  name: string
+  language: string
+  content: string
+  path?: string
 }
-
-## Key Points
-
-- This lesson covers important concepts
-- Follow along with the video content
-- Complete any provided exercises
-- Review the resources for additional learning
-
-## Next Steps
-
-1. Watch the video content
-2. Review the provided resources
-3. Complete any assignments
-4. Move to the next lesson when ready
-
----
-
-*Lesson ID: ${currentLesson.id}*
-`
-    });
-  }
-
-  // Add sample files to showcase syntax highlighting
-  files.push({
-    id: 'sample-js',
-    name: 'sample.js',
-    language: 'javascript',
-    content: `// Sample JavaScript demonstrating syntax highlighting
-function greet(name) {
-  const msg = 'Hello, ' + name + '!';
-  console.log(msg);
-  return msg;
-}
-
-class Counter {
-  constructor() {
-    this.count = 0;
-  }
-  inc() {
-    this.count += 1;
-    return this.count;
-  }
-}
-
-export { greet, Counter };
-`
-  });
-
-  files.push({
-    id: 'sample-py',
-    name: 'sample.py',
-    language: 'python',
-    content: `# Sample Python demonstrating syntax highlighting
-from typing import List
-
-def greet(name: str) -> str:
-    msg = f"Hello, {name}!"
-    print(msg)
-    return msg
-
-class Counter:
-    def __init__(self) -> None:
-        self.count = 0
-
-    def inc(self) -> int:
-        self.count += 1
-        return self.count
-
-if __name__ == '__main__':
-    greet('World')
-    c = Counter()
-    for _ in range(3):
-        print(c.inc())
-`
-  });
-
-  return files;
-};
 
 // Comprehensive language detection based on filename and extension
 const getLanguageFromFileName = (fileName: string): string => {
@@ -293,59 +137,163 @@ const getLanguageFromFileName = (fileName: string): string => {
 }
 
 export function IDEEditor({ course, currentLesson }: IDEEditorProps) {
-  const [activeTab, setActiveTab] = useState('course-overview')
-  const [openTabs, setOpenTabs] = useState(['course-overview'])
+  const [activeTab, setActiveTab] = useState<string | null>(null)
+  const [openTabs, setOpenTabs] = useState<string[]>([])
   const [mounted, setMounted] = useState(false)
   const [editorError, setEditorError] = useState(false)
   const { theme } = useTheme()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null)
   
-  const baseFiles = getFiles(course, currentLesson)
-  const [dynamicFiles, setDynamicFiles] = useState<Array<{ id: string; name: string; language: string; content: string }>>([])
-  const files = useMemo(() => [...baseFiles, ...dynamicFiles], [baseFiles, dynamicFiles])
+  // Get project ID from lesson or course
+  const projectId = (currentLesson as unknown as { ide_project_id?: string })?.ide_project_id
+  const { files: ideFiles, loading: filesLoading } = useIdeProject(projectId)
+  
+  // Map IDE files to editor files with content
+  const [filesWithContent, setFilesWithContent] = useState<Map<string, FileWithContent>>(new Map())
+  const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set())
+  
+  // Initialize sample files when project loads
+  useEffect(() => {
+    if (projectId && ideFiles.length === 0 && !filesLoading) {
+      // Initialize sample files if project has no files yet
+      fetch(`/api/ide/projects/${projectId}/files/init-samples`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: false }),
+      }).catch(err => {
+        console.warn('Failed to initialize sample files:', err)
+      })
+    }
+  }, [projectId, ideFiles.length, filesLoading])
+  
+  // Load file content when files are available
+  useEffect(() => {
+    if (!projectId || ideFiles.length === 0) return
+    
+    const loadFileContents = async () => {
+      let firstFileOpened = false
+      for (const file of ideFiles) {
+        if (filesWithContent.has(file.path)) continue // Already loaded
+        
+        setLoadingFiles(prev => new Set(prev).add(file.path))
+        try {
+          const fileContent = await fetchFileContent(projectId, file.path)
+          const language = getLanguageFromFileName(file.path)
+          const fileName = file.path.split('/').pop() || file.path
+          
+          setFilesWithContent(prev => {
+            const newMap = new Map(prev)
+            newMap.set(file.path, {
+              id: file.id,
+              name: fileName,
+              language,
+              content: fileContent.content,
+              path: file.path,
+            })
+            return newMap
+          })
+          
+          // Auto-open first file if no tabs are open
+          if (!firstFileOpened && openTabs.length === 0) {
+            setOpenTabs([file.path])
+            setActiveTab(file.path)
+            firstFileOpened = true
+          }
+        } catch (err) {
+          console.error(`Failed to load file ${file.path}:`, err)
+        } finally {
+          setLoadingFiles(prev => {
+            const newSet = new Set(prev)
+            newSet.delete(file.path)
+            return newSet
+          })
+        }
+      }
+    }
+    
+    loadFileContents()
+  }, [projectId, ideFiles.length]) // Only depend on length to avoid infinite loops
+  
+  const files = useMemo(() => Array.from(filesWithContent.values()), [filesWithContent])
   
   useEffect(() => {
     setMounted(true)
   }, [])
 
   // Listen for sidebar open-file events and open the matching file by name.
-  // If file does not exist yet, create a dynamic file with inferred language and placeholder content.
+  // Fetch file content from API if not already loaded.
   useEffect(() => {
-    const handler = (e: Event) => {
+    const handler = async (e: Event) => {
       const detail = (e as CustomEvent<{ name: string; path?: string; content?: string }>).detail
-      if (!detail?.name) return
-        const file = files.find(f => f.name === detail.name)
+      if (!detail?.name || !projectId) return
+      
+      const filePath = detail.path || detail.name
+      let file = filesWithContent.get(filePath)
+      
+      // If file not loaded, try to find it in IDE files and load it
       if (!file) {
-        const language = getLanguageFromFileName(detail.name)
-        const placeholderByLang: { [k: string]: string } = {
-          javascript: `// ${detail.name}\nconsole.log('New file');\n`,
-          typescript: `// ${detail.name}\nexport {};\n`,
-          python: `# ${detail.name}\nprint('New file')\n`,
-          json: `{}\n`,
-          markdown: `# ${detail.name}\n`,
-          html: `<!doctype html>\n<html>\n  <head><meta charset=\"utf-8\"><title>${detail.name}</title></head>\n  <body></body>\n</html>\n`,
-          css: `/* ${detail.name} */\n`,
-          plaintext: ''
+        const ideFile = ideFiles.find(f => f.path === filePath || f.path.endsWith(`/${filePath}`))
+        if (ideFile) {
+          setLoadingFiles(prev => new Set(prev).add(ideFile.path))
+          try {
+            const fileContent = await fetchFileContent(projectId, ideFile.path)
+            const language = getLanguageFromFileName(ideFile.path)
+            file = {
+              id: ideFile.id,
+              name: ideFile.path.split('/').pop() || ideFile.path,
+              language,
+              content: fileContent.content,
+              path: ideFile.path,
+            }
+            setFilesWithContent(prev => {
+              const newMap = new Map(prev)
+              newMap.set(ideFile.path, file!)
+              return newMap
+            })
+          } catch (err) {
+            console.error(`Failed to load file ${ideFile.path}:`, err)
+            return
+          } finally {
+            setLoadingFiles(prev => {
+              const newSet = new Set(prev)
+              newSet.delete(ideFile.path)
+              return newSet
+            })
+          }
+        } else {
+          // File doesn't exist in IDE, create placeholder (for new files)
+          const language = getLanguageFromFileName(detail.name)
+          const placeholderByLang: { [k: string]: string } = {
+            javascript: `// ${detail.name}\nconsole.log('New file');\n`,
+            typescript: `// ${detail.name}\nexport {};\n`,
+            python: `# ${detail.name}\nprint('New file')\n`,
+            json: `{}\n`,
+            markdown: `# ${detail.name}\n`,
+            html: `<!doctype html>\n<html>\n  <head><meta charset="utf-8"><title>${detail.name}</title></head>\n  <body></body>\n</html>\n`,
+            css: `/* ${detail.name} */\n`,
+            plaintext: ''
+          }
+          const content = detail.content ?? (placeholderByLang[language] ?? '')
+          const id = `dyn-${filePath}`
+          file = { id, name: detail.name, language, content, path: filePath }
+          setFilesWithContent(prev => {
+            const newMap = new Map(prev)
+            newMap.set(filePath, file!)
+            return newMap
+          })
         }
-        const content = detail.content ?? (placeholderByLang[language] ?? '')
-        const id = `dyn-${detail.path || detail.name}`
-        const newFile = { id, name: detail.name, language, content }
-        setDynamicFiles(prev => {
-          // Avoid duplicates by id
-          if (prev.find(f => f.id === id)) return prev
-          return [...prev, newFile]
-        })
-        setOpenTabs(prev => (prev.includes(id) ? prev : [...prev, id]))
-        setActiveTab(id)
-        return
       }
-      setOpenTabs(prev => (prev.includes(file.id) ? prev : [...prev, file.id]))
-      setActiveTab(file.id)
+      
+      if (file) {
+        const fileId = file.path || file.id
+        setOpenTabs(prev => (prev.includes(fileId) ? prev : [...prev, fileId]))
+        setActiveTab(fileId)
+      }
     }
     window.addEventListener('ide-open-file', handler as EventListener)
     return () => window.removeEventListener('ide-open-file', handler as EventListener)
-  }, [files])
+  }, [projectId, filesWithContent, ideFiles])
 
   // Handle window resize to refresh minimap
   useEffect(() => {
@@ -360,7 +308,8 @@ export function IDEEditor({ course, currentLesson }: IDEEditorProps) {
   }, [])
 
   const getFileById = (id: string) => {
-    return files.find(file => file.id === id)
+    // Try to find by path first, then by id
+    return files.find(file => (file.path || file.id) === id) || files.find(file => file.id === id)
   }
   
   const closeTab = (id: string) => {
@@ -522,22 +471,59 @@ export function IDEEditor({ course, currentLesson }: IDEEditorProps) {
                     className="px-2 py-1 border rounded"
                     onClick={async () => {
                       try {
-                        const fileName = currentFile?.name || 'untitled.txt'
-                        const content = currentFile?.content || ''
-                        const base64 = typeof btoa !== 'undefined' ? btoa(unescape(encodeURIComponent(content))) : Buffer.from(content, 'utf-8').toString('base64')
-                        const projectId = (currentLesson as unknown as { ide_project_id?: string })?.ide_project_id
                         if (!projectId) {
                           console.warn('No ide_project_id on lesson; cannot upload')
                           return
                         }
+                        
+                        // Get current content from editor
+                        const editor = editorRef.current
+                        const content = editor?.getValue() || currentFile?.content || ''
+                        const filePath = currentFile?.path || currentFile?.name || 'untitled.txt'
+                        
+                        // Determine content type from file extension
+                        const ext = filePath.split('.').pop()?.toLowerCase()
+                        const contentTypeMap: { [key: string]: string } = {
+                          'js': 'application/javascript',
+                          'jsx': 'application/javascript',
+                          'ts': 'application/typescript',
+                          'tsx': 'application/typescript',
+                          'py': 'text/x-python',
+                          'md': 'text/markdown',
+                          'json': 'application/json',
+                          'html': 'text/html',
+                          'css': 'text/css',
+                        }
+                        const contentType = contentTypeMap[ext || ''] || 'text/plain'
+                        
+                        const base64 = typeof btoa !== 'undefined' 
+                          ? btoa(unescape(encodeURIComponent(content))) 
+                          : Buffer.from(content, 'utf-8').toString('base64')
+                        
                         const res = await fetch(`/api/ide/projects/${projectId}/files/upload`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ path: fileName, contentBase64: base64, contentType: 'text/plain' })
+                          body: JSON.stringify({ 
+                            path: filePath, 
+                            contentBase64: base64, 
+                            contentType,
+                            storage: 's3' // Prefer S3 if available
+                          })
                         })
                         if (!res.ok) throw new Error(await res.text())
+                        
+                        // Update local file content
+                        setFilesWithContent(prev => {
+                          const newMap = new Map(prev)
+                          const existing = newMap.get(filePath)
+                          if (existing) {
+                            newMap.set(filePath, { ...existing, content })
+                          }
+                          return newMap
+                        })
+                        
                         console.log('Saved file to backend index')
-                        // Optionally trigger a re-index event for sidebar
+                        // Trigger a re-index event for sidebar
                         window.dispatchEvent(new CustomEvent('ide-reload-index', { detail: { projectId } }))
                       } catch (e) {
                         console.error('Save failed', e)
@@ -656,8 +642,18 @@ export function IDEEditor({ course, currentLesson }: IDEEditorProps) {
                     matchBrackets: 'always'
                   }}
                   onChange={(value) => {
-                    // Handle content changes
-                    console.log('Content changed:', value)
+                    // Update file content in state when user edits
+                    if (currentFile && projectId) {
+                      const filePath = currentFile.path || currentFile.id
+                      setFilesWithContent(prev => {
+                        const newMap = new Map(prev)
+                        const existing = newMap.get(filePath)
+                        if (existing) {
+                          newMap.set(filePath, { ...existing, content: value || '' })
+                        }
+                        return newMap
+                      })
+                    }
                   }}
                   editorDidMount={(editor) => {
                     // Handle editor mount

@@ -31,7 +31,7 @@ import {
   CloudOff
 } from 'lucide-react'
 import { Course, Lesson } from '@/types/index'
-// import { useIdeProject } from '@/components/ide/useIdeProject'
+import { useIdeProject, buildExplorerTree } from '@/components/ide/useIdeProject'
 
 interface IDESidebarProps {
   activeView: string
@@ -138,6 +138,61 @@ const getFileSystem = (course?: Course, currentLesson?: Lesson) => {
   return courseStructure;
 };
 
+// Convert backend tree structure to file system format
+function convertBackendTreeToFileSystem(
+  backendTree: Record<string, { name: string; type: 'folder' | 'file'; children?: Record<string, any>; file?: any }>,
+  course?: Course
+) {
+  const convertNode = (node: { name: string; type: 'folder' | 'file'; children?: Record<string, any>; file?: any }): any => {
+    if (node.type === 'file') {
+      const extension = node.name.split('.').pop()?.toLowerCase()
+      let icon = File
+      
+      switch (extension) {
+        case 'js':
+        case 'jsx':
+        case 'ts':
+        case 'tsx':
+        case 'py':
+        case 'java':
+        case 'cpp':
+        case 'c':
+        case 'html':
+        case 'css':
+          icon = FileCode
+          break
+        case 'md':
+          icon = FileText
+          break
+        case 'json':
+          icon = FileJson
+          break
+        default:
+          icon = File
+      }
+      
+      return {
+        name: node.name,
+        type: 'file' as const,
+        icon,
+      }
+    } else {
+      return {
+        name: node.name,
+        type: 'folder' as const,
+        children: node.children ? Object.values(node.children).map(convertNode) : [],
+      }
+    }
+  }
+  
+  // Wrap in course folder
+  return {
+    name: course?.title || 'Course',
+    type: 'folder' as const,
+    children: Object.values(backendTree).map(convertNode),
+  }
+}
+
 export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<string[]>(['Course', 'course-info', 'lessons', 'resources'])
   const [searchText, setSearchText] = useState('')
@@ -150,12 +205,17 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
   const [lastCommit] = useState('Latest commit')
   
   // Backend-driven IDE tree (lesson project preferred, fallback to course project)
-  // const lessonProjectId = (currentLesson as unknown as { ide_project_id?: string })?.ide_project_id
+  const lessonProjectId = (currentLesson as unknown as { ide_project_id?: string })?.ide_project_id
   // const courseProjectId = undefined // Placeholder: fetch course-level project id if you store it on course
-  // const projectId = lessonProjectId || courseProjectId
-  // const { files: ideFiles } = useIdeProject(projectId)
-  // const backendTree = ideFiles.length ? buildExplorerTree(ideFiles) : null
-  const fileSystem = getFileSystem(course, currentLesson)
+  const projectId = lessonProjectId
+  const { files: ideFiles, loading: ideFilesLoading } = useIdeProject(projectId)
+  
+  // Use backend files if available, otherwise fallback to generated structure
+  const backendTree = ideFiles.length > 0 ? buildExplorerTree(ideFiles) : null
+  const fallbackFileSystem = getFileSystem(course, currentLesson)
+  
+  // Convert backend tree to file system structure if available
+  const fileSystem = backendTree ? convertBackendTreeToFileSystem(backendTree, course) : fallbackFileSystem
   
   const toggleFolder = (path: string) => {
     setExpandedFolders(prev => 
@@ -228,7 +288,7 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
   type FolderItem = { name: string; type: 'folder'; children?: Array<FileItem | FolderItem> }
   type TreeItem = FileItem | FolderItem
 
-  const FileSystemItem = ({ item, path = '', level = 0 }: { item: TreeItem; path?: string; level?: number }) => {
+  const FileSystemItem = ({ item, path = '', level = 0, ideFilesList = [] }: { item: TreeItem; path?: string; level?: number; ideFilesList?: typeof ideFiles }) => {
     const fullPath = path ? `${path}/${item.name}` : item.name
     const isExpanded = expandedFolders.includes(fullPath)
     const isLoading = loadingFiles.has(fullPath)
@@ -245,9 +305,21 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
             if (item.type === 'folder') {
               toggleFolder(fullPath)
             } else if (item.type === 'file') {
-              fetchFileContent(fullPath)
+              // Find the actual file path from backend if available
+              const actualPath = ideFilesList.find(f => 
+                f.path === fullPath || 
+                f.path.endsWith(`/${item.name}`) ||
+                f.path === item.name
+              )?.path || fullPath
+              
+              fetchFileContent(actualPath)
               try {
-                window.dispatchEvent(new CustomEvent('ide-open-file', { detail: { name: item.name, path: fullPath } }))
+                window.dispatchEvent(new CustomEvent('ide-open-file', { 
+                  detail: { 
+                    name: item.name, 
+                    path: actualPath 
+                  } 
+                }))
               } catch (e) {
                 console.warn('Failed to dispatch open-file event', e)
               }
@@ -313,7 +385,7 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
         {item.type === 'folder' && isExpanded && item.children && (
           <div>
             {item.children.map((child: TreeItem, index: number) => (
-              <FileSystemItem key={index} item={child} path={fullPath} level={level + 1} />
+              <FileSystemItem key={index} item={child} path={fullPath} level={level + 1} ideFilesList={ideFiles} />
             ))}
           </div>
         )}
@@ -340,7 +412,7 @@ export function IDESidebar({ activeView, course, currentLesson }: IDESidebarProp
       
       <div className="flex-1 overflow-auto">
         <div className="p-1">
-          <FileSystemItem item={fileSystem} />
+          <FileSystemItem item={fileSystem} ideFilesList={ideFiles} />
         </div>
       </div>
     </div>
