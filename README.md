@@ -1,244 +1,102 @@
-# SkillLink – Enterprise Learning Platform
+# SkillLearn – Distributed Compute Platform for Everyone
 
-**A modern, cloud-based learning management system built for scalability, performance, and real-world enterprise needs.**
-
----
-
-## 🔄 Minimal S3 → Supabase Sync
-
-**Minimal, deterministic workflow**: Lambda triggers on S3 ObjectCreated events and updates `lessons.video_url` directly. No heuristics, no webhooks, no filename inference.
-
-### Architecture
-
-- **Lambda**: `aws/lambdas/s3-lesson-sync/index.js`
-  - Triggers on S3 `ObjectCreated` events
-  - Updates `lessons.video_url` directly using `SUPABASE_SERVICE_ROLE_KEY`
-  - Stores only the S3 key (e.g., `course_<folder>/videos/<filename>`)
-  - Requires `lesson_id` to be provided via S3 object metadata (`x-amz-meta-lesson-id`)
-
-- **Bulk Sync**: `tools/bulk-sync-lessons-from-csv.js`
-  - Accepts CSV: `lesson_id,course_folder,filename`
-  - Updates `lessons.video_url` explicitly
-
-### Lambda Behavior
-
-- Processes S3 ObjectCreated events
-- Filters for video files only (`.mp4`, `.mov`, `.mkv`, `.webm`, `.avi`)
-- Extracts `lesson_id` from S3 object metadata (`x-amz-meta-lesson-id` or `x-amz-meta-lesson_id`)
-- Updates `lessons.video_url` with the S3 key (metadata not found = skipped, logged)
-- Stores only the S3 key path; presigned URLs generated at playback time
-
-### Deployment Steps
-
-#### 1. Create Lambda Function
-
-```bash
-# Package the Lambda (if needed)
-cd aws/lambdas/s3-lesson-sync
-zip -r function.zip index.js node_modules/  # If using @supabase/supabase-js
-```
-
-Via AWS Console:
-1. Go to Lambda → Create function
-2. **Runtime**: Node.js 18.x or higher
-3. **Code**: Upload `index.js` (or zip with dependencies)
-4. **Environment variables**:
-   - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
-   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (from Supabase dashboard → Settings → API)
-5. **IAM Role**: Ensure the Lambda execution role has:
-   - CloudWatch Logs write permissions (for logging)
-   - Basic Lambda execution permissions
-
-#### 2. Configure S3 → Lambda Trigger
-
-**Option A: EventBridge (Recommended)**
-
-1. Enable EventBridge notifications on your S3 bucket:
-   ```bash
-   aws s3api put-bucket-notification-configuration \
-     --bucket your-bucket-name \
-     --notification-configuration '{
-       "EventBridgeConfiguration": {}
-     }'
-   ```
-
-2. Create EventBridge rule:
-   - Go to EventBridge → Rules → Create rule
-   - **Event pattern**:
-     ```json
-     {
-       "source": ["aws.s3"],
-       "detail-type": ["Object Created"],
-       "detail": {
-         "bucket": {
-           "name": ["your-bucket-name"]
-         }
-       }
-     }
-     ```
-   - **Target**: Select your Lambda function
-   - **Permissions**: EventBridge will automatically create necessary permissions
-
-**Option B: Direct S3 Bucket Notification**
-
-1. Go to S3 → Your bucket → Properties → Event notifications
-2. Create event notification:
-   - **Event type**: `ObjectCreated` → `Put`
-   - **Destination**: Lambda function → Select your Lambda
-   - **Prefix** (optional): `course_` or `course_*/videos/` to filter
-
-#### 3. Verify CloudWatch Logs
-
-- Go to CloudWatch → Log groups → `/aws/lambda/your-function-name`
-- Check logs after uploading a test video file
-- Look for: `Updated lesson <id> -> <s3-key>` or error messages
-
-### Bulk Sync from CSV
-
-**CSV Format** (no header, one row per lesson):
-```
-lesson_id,course_folder,filename
-```
-
-**Example**:
-```
-3e5f8f0c-1234-4bcd-ae2f-112233445566,course_1752811917716_0d5g65,01_introduction.mp4
-a1b2c3d4-5678-90ef-ghij-klmnopqrstuv,course_1752811917716_0d5g65,02_basics.mp4
-```
-
-**Run**:
-```bash
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co \
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key \
-node tools/bulk-sync-lessons-from-csv.js /path/to/lessons.csv
-```
-
-**Output**: Lists each updated lesson and a final summary (updated count, errors).
-
-### Verification
-
-#### 1. Single S3 File Test
-
-1. Upload a video to S3 with metadata:
-   ```bash
-   aws s3 cp test-video.mp4 s3://your-bucket/course_test/videos/test.mp4 \
-     --metadata "lesson-id=your-lesson-uuid"
-   ```
-
-2. Check Lambda logs in CloudWatch:
-   - Should see: `Updated lesson <uuid> -> course_test/videos/test.mp4`
-
-3. Query Supabase:
-   ```sql
-   SELECT id, title, video_url, updated_at 
-   FROM lessons 
-   WHERE id = 'your-lesson-uuid';
-   ```
-   - `video_url` should be: `course_test/videos/test.mp4`
-
-#### 2. Bulk CSV Test
-
-1. Create CSV file with test data:
-   ```csv
-   lesson-uuid-1,course_folder_1,video1.mp4
-   lesson-uuid-2,course_folder_1,video2.mp4
-   ```
-
-2. Run bulk sync script (see above)
-
-3. Verify in Supabase:
-   ```sql
-   SELECT id, title, video_url 
-   FROM lessons 
-   WHERE id IN ('lesson-uuid-1', 'lesson-uuid-2')
-   ORDER BY updated_at DESC;
-   ```
-
-#### 3. Confirm DB Updates
-
-```bash
-# Using Supabase CLI or psql
-psql "$SUPABASE_DB_URL" -c "
-  SELECT id, title, video_url, updated_at 
-  FROM lessons 
-  WHERE video_url IS NOT NULL 
-  ORDER BY updated_at DESC 
-  LIMIT 20;
-"
-```
-
-#### 4. Playback Test
-
-1. In the app, navigate to a lesson with a `video_url`
-2. Verify the video player loads the presigned URL
-3. Check browser network tab: should see a presigned S3 URL (temporary, expires)
-4. Video should play correctly
-
-**Note**: The app's presigning logic should use the stored S3 key from `lessons.video_url` to generate temporary URLs at runtime.
-
-### Troubleshooting
-
-- **Lambda not triggering**: Check EventBridge/S3 notification configuration, Lambda permissions
-- **"No lesson_id metadata provided"**: Ensure S3 upload includes `x-amz-meta-lesson-id` header
-- **"Update failed"**: Check Supabase service role key, RLS policies, lesson ID exists
-- **No logs**: Verify CloudWatch Logs permissions on Lambda execution role
+**Run Blender, game engines, and heavy compute workloads from your browser — on a 4GB RAM laptop.**
 
 ---
 
-## 🚀 Overview
+## The Problem
 
-**SkillLink** is an open-source enterprise learning platform designed to make corporate and institutional training more effective.  
-It provides tools for **course creation**, **learner management**, and **performance analytics**, all powered by a scalable backend and a responsive, mobile-first frontend.
+If you're a student in India, you probably have a low-end machine. A 4GB RAM laptop that can't open Blender, can't run a game engine, can't do 3D rendering. The tools exist. The tutorials exist. The hardware doesn't.
 
-The goal of SkillLink is to give organizations and educators a flexible way to manage online learning — from employee onboarding to university-level e-learning programs.
+Buying a powerful machine isn't an option for most people. Cloud subscriptions are expensive. So the gap between wanting to learn and being able to learn stays wide.
 
----
-
-## ✨ Features
-
-### 🎓 Learning Experience
-- Interactive video player with progress tracking and playback controls  
-- Support for downloadable content and offline access  
-- Mobile-first responsive UI built with modern web tech  
-- Accessibility-friendly design (WCAG compliant)
-
-### 👩‍🏫 Instructor & Admin Tools
-- Drag-and-drop course builder  
-- Content management for lessons, resources, and assessments  
-- Analytics dashboard to monitor learner engagement and progress  
-- Role-based permissions for admins, instructors, and learners  
-
-### 🏢 Enterprise Capabilities
-- Multi-tenant architecture for large organizations  
-- Secure API integrations for HR and LMS systems  
-- Reporting and insights for performance tracking  
-- Scalable infrastructure designed for high concurrency  
+SkillLearn closes that gap.
 
 ---
 
-## 🧠 Tech Stack
+## What It Does
+
+SkillLearn distributes heavy compute workloads — 3D rendering, game development, app builds — across multiple low-powered machines and streams the output to your browser.
+
+No GPU required. No cloud subscription. No expensive hardware.
+
+If you have a 4GB RAM laptop and a network connection, you can run Blender.
+
+---
+
+## How It Works
+
+The core insight: most machines are idle most of the time. A college lab at 11pm. A friend's laptop sitting unused. Two old Macs in a corner that nobody touches.
+
+SkillLearn coordinates those machines into a single compute pool.
+
+The hard problem was memory. On a single machine, a program loads into one contiguous RAM pool. Across machines that disconnect randomly and have inconsistent bandwidth, you need a distributed memory scheduler that:
+
+- Partitions compute instances equally across nodes
+- Handles node disconnection without dropping the session
+- Rebalances load when machines join or leave the network
+- Keeps the browser session alive regardless of what happens underneath
+
+Think of it like a CPU core scheduler — but across a network of unreliable consumer hardware.
+
+---
+
+## What You Can Run
+
+- 3D rendering (Blender)
+- Game development
+- App builds
+- Any compute-heavy workload that would otherwise require expensive hardware
+
+This isn't just a coding sandbox. Replit lets you write code. SkillLearn lets you render worlds.
+
+---
+
+## Tech Stack
 
 | Layer | Technology |
-|-------|-------------|
-| **Frontend** | Next.js 15, TypeScript, Tailwind CSS |
-| **Backend** | Node.js, Supabase |
-| **Database** | PostgreSQL (with real-time features) |
+|-------|------------|
+| **Frontend** | Next.js, TypeScript, Tailwind CSS |
+| **Backend** | Node.js, REST APIs |
+| **Database** | PostgreSQL, Redis |
+| **Infrastructure** | Docker, distributed node orchestration |
+| **Compute Distribution** | Custom distributed memory scheduler |
 | **Storage** | AWS S3 |
-| **Infrastructure** | AWS + global CDN |
-| **Auth & Security** | Supabase Auth, JWT, HTTPS, role-based access control |
+| **Auth** | JWT, role-based access control |
 
 ---
 
-## 🛠️ Getting Started
+## Architecture
+
+```
+Browser Client
+      |
+      v
+Stream Layer (session persistence, reconnection logic)
+      |
+      v
+Memory Scheduler (partitions workload across nodes)
+      |
+      ├── Node 1 (4GB RAM machine)
+      ├── Node 2 (4GB RAM machine)
+      └── Node 3 (4GB RAM machine)
+```
+
+Each node contributes compute. The scheduler ensures no single node holds the full workload. If a node drops, the session continues.
+
+---
+
+## Getting Started
 
 ### Prerequisites
 - Node.js (v18+)
-- PostgreSQL database
-- Supabase project
-- AWS S3 credentials (for file uploads)
+- Docker
+- PostgreSQL
+- At least two machines on the same network (or Vultr free tier nodes)
 
 ### Installation
 
+```bash
 # Clone the repository
 git clone https://github.com/Py528/skilllink.git
 
@@ -251,53 +109,58 @@ npm install
 # Create environment file
 cp .env.example .env
 
-# Run the development server
+# Start the node coordinator
+npm run coordinator
+
+# Start the development server
 npm run dev
+```
 
-Once running, open [http://localhost:3000](http://localhost:3000) to view the app.
-
----
-
-## 📈 Roadmap
-
-* [ ] Add certificate generation
-* [ ] Implement discussion forums
-* [ ] Improve analytics visualization
-* [ ] Add support for SCORM/xAPI content
-* [ ] Mobile app (React Native)
+Open [http://localhost:3000](http://localhost:3000) to view the app.
 
 ---
 
-## 🧩 Contributing
+## Real Usage
 
-Contributions are welcome!
-Please fork the repo and create a pull request with your proposed changes.
-
-1. Fork the project
-2. Create a new branch (`feature/awesome-feature`)
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+- Deployed to students at COEP and PICT, Pune — first and second year students running software their laptops couldn't otherwise open
+- Pitched at Microsoft
+- Built entirely from scratch — no AI coding tools, no boilerplate. Docker orchestration, Blender integration, distributed memory scheduling, all written by hand
 
 ---
 
-## 🔒 Security
+## What's Next
 
-* Data encrypted at rest and in transit
-* Compliant with GDPR and SOC 2 principles
-* Regular dependency audits
-* Role-based access with logging and permissions
-
----
-
-## 📬 Contact
-
-For support, feedback, or collaboration:
-
-**Author:** [@Py528](https://github.com/Py528)
-**Email:** [pranaav.shinde5280@gmail.com](mailto:pranaav.shinde5280@gmail.com)
-**Website:** [https://skilllink.com](https://skilllink.com)
+- [ ] Public node registry — let anyone contribute idle compute
+- [ ] Paying client onboarding
+- [ ] Mobile node support (contribute compute from your phone)
+- [ ] Support for ML training workloads
+- [ ] Per-user compute quotas and billing layer
+- [ ] Constitutional agent layer — verify every compute request against user-defined rules before execution
 
 ---
 
-**SkillLink** © 2025 – Open-source enterprise learning platform.
+## The Bigger Picture
+
+There are billions of underpowered machines sitting idle right now. Students who want to learn but can't afford the hardware. Developers who want to build but are priced out of cloud compute.
+
+SkillLearn is infrastructure for the next billion users who can't afford a MacBook Pro.
+
+---
+
+## Contributing
+
+Contributions welcome. Fork the repo, create a branch, open a pull request.
+
+---
+
+## Contact
+
+**Author:** Pranav Shinde  
+**Email:** shinde.a.pranav@gmail.com  
+**Website:** shindepranav.site  
+**LinkedIn:** linkedin.com/in/pranaavshinde  
+**GitHub:** [@Py528](https://github.com/Py528)
+
+---
+
+SkillLearn © 2025 – Distributed compute for everyone.
